@@ -1,0 +1,235 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { QRCodeSVG } from 'qrcode.react';
+import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../services/firebase';
+
+const Dashboard = () => {
+    const { profile, user } = useAuth();
+    const [dependents, setDependents] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDependents = async () => {
+            if (!profile) return;
+            const q = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
+            const querySnap = await getDocs(q);
+            const docs = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setDependents(docs);
+            setLoading(false);
+        };
+
+        fetchDependents();
+    }, [profile]);
+
+    if (!profile) return null;
+
+    // Calculate maturation progress
+    const now = new Date();
+    const joinedDate = profile.tier_joined_date?.toDate() || new Date();
+    const graceExpiry = profile.grace_period_expiry?.toDate() || new Date();
+    const totalDays = differenceInDays(graceExpiry, joinedDate);
+    const daysPassed = differenceInDays(now, joinedDate);
+    const progressPercent = Math.min(Math.round((daysPassed / totalDays) * 100), 100);
+    const isMatured = daysPassed >= totalDays;
+
+    const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
+    const dailyBurn = TIER_COSTS[profile.active_tier] || 0;
+
+    return (
+        <div className="min-h-screen bg-slate-50 pb-24">
+            {/* Header Profile Section */}
+            <div className="bg-brand-secondary text-white pt-12 pb-24 px-6 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                <div className="flex justify-between items-center mb-10 relative">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                            <Shield className="w-8 h-8 text-brand-primary" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold font-heading">Hazina Guardian</h2>
+                            <p className="text-white/60 text-sm">Community Member Since {format(joinedDate, 'MMM yyyy')}</p>
+                        </div>
+                    </div>
+                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+                        <Users className="w-6 h-6 text-white" />
+                    </div>
+                </div>
+
+                {/* Digital ID Card */}
+                <div className="relative group perspective-1000">
+                    <div className="bg-gradient-to-br from-brand-primary via-emerald-600 to-brand-secondary p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden transform-gpu hover:rotate-y-6 transition-all duration-700">
+                        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                        <div className="flex justify-between items-start mb-10">
+                            <div>
+                                <p className="text-xs uppercase tracking-widest text-emerald-100 font-bold mb-1 opacity-70">Official Digital ID</p>
+                                <h3 className="text-2xl font-black font-heading tracking-tight">{profile.id.substring(0, 10).toUpperCase()}</h3>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
+                                {!isMatured && (
+                                    <div className="bg-yellow-400 absolute -top-8 -right-4 px-4 py-2 rounded-full flex items-center gap-2 shadow-lg animate-pulse border-4 border-slate-50">
+                                        <Clock className="w-4 h-4 text-emerald-900" />
+                                        <span className="text-xs font-black text-emerald-900 uppercase tracking-tighter">In Waiting</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-end">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-inner border flex items-center gap-2 ${profile.active_tier === 'gold' ? 'bg-amber-400 text-amber-950 border-amber-300' :
+                                            profile.active_tier === 'silver' ? 'bg-slate-300 text-slate-800 border-slate-200' :
+                                                'bg-orange-800/20 text-orange-200 border-orange-700/30'
+                                        }`}>
+                                        <Zap className="w-3 h-3" />
+                                        {profile.active_tier} Member
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-emerald-200/60 mb-1">Phone Number</p>
+                                    <p className="font-bold font-mono tracking-widest">{profile.phoneNumber}</p>
+                                </div>
+                            </div>
+                            <div className="bg-white p-2.5 rounded-2xl shadow-xl transform group-hover:scale-110 transition-transform duration-500">
+                                <QRCodeSVG value={profile.id} size={70} fgColor="#064e3b" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Stats and Info Area */}
+            <div className="px-6 -mt-10 space-y-6 relative">
+                {/* Daily Burn Card */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="card bg-white border-none shadow-md overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-brand-primary/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 bg-brand-primary/10 rounded-xl">
+                                <TrendingUp className="w-5 h-5 text-brand-primary" />
+                            </div>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Daily Burn</span>
+                        </div>
+                        <p className="text-3xl font-black text-slate-900">KSh {dailyBurn}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
+                            <AlertCircle className="w-3 h-3" /> Auto-deducted
+                        </p>
+                    </div>
+                    <div className="card bg-white border-none shadow-md overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 bg-blue-500/10 rounded-xl">
+                                <CreditCard className="w-5 h-5 text-blue-500" />
+                            </div>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Your Fund</span>
+                        </div>
+                        <p className="text-3xl font-black text-slate-900">KSh {profile.balance || 0}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
+                            Top up via M-Pesa
+                        </p>
+                    </div>
+                </div>
+
+                {/* Maturation Status */}
+                <div className="card bg-white p-6 shadow-md border-none relative overflow-hidden">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-3">
+                            <Shield className={`w-6 h-6 ${isMatured ? 'text-brand-primary' : 'text-yellow-500 animate-pulse'}`} />
+                            <div>
+                                <h4 className="font-bold text-slate-900">Shield Growth</h4>
+                                <p className="text-xs text-slate-400">{isMatured ? 'Fully Protected' : 'Maturing toward full coverage'}</p>
+                            </div>
+                        </div>
+                        <span className="text-2xl font-black text-brand-primary">{progressPercent}%</span>
+                    </div>
+
+                    <div className="w-full h-5 bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner border border-slate-50">
+                        <div
+                            className={`h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm ${isMatured ? 'bg-gradient-to-r from-brand-primary to-emerald-400' : 'bg-gradient-to-r from-yellow-400 to-orange-400'
+                                }`}
+                            style={{ width: `${progressPercent}%` }}
+                        >
+                            <div className="absolute top-0 right-0 h-full w-full bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:24px_24px] animate-shimmer"></div>
+                        </div>
+                    </div>
+
+                    {!isMatured && (
+                        <div className="mt-6 p-4 bg-yellow-50/50 rounded-2xl border border-yellow-100/50 text-xs text-slate-600 flex gap-4 items-center">
+                            <Clock className="w-10 h-10 text-yellow-600" />
+                            <p className="leading-relaxed">
+                                Your <strong className="text-yellow-700">Shield</strong> will be fully matured on <strong className="text-yellow-700">{format(graceExpiry, 'PP')}</strong>.
+                                Daily contributions build your future protection.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="space-y-3">
+                    <h4 className="font-black text-xs uppercase tracking-widest text-slate-400 ml-1">Guardian Services</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <button className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group">
+                            <div className="p-4 bg-red-50 text-red-500 rounded-2xl group-hover:bg-red-500 group-hover:text-white transition-colors duration-500">
+                                <Heart className="w-6 h-6" />
+                            </div>
+                            <span className="text-sm font-bold text-slate-700">Crisis Claim</span>
+                        </button>
+                        <button className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group">
+                            <div className="p-4 bg-amber-50 text-amber-500 rounded-2xl group-hover:bg-amber-500 group-hover:text-white transition-colors duration-500">
+                                <Zap className="w-6 h-6" />
+                            </div>
+                            <span className="text-sm font-bold text-slate-700">Upgrade Tier</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Family Members */}
+                <div className="card bg-white shadow-md border-none pb-4">
+                    <div className="flex justify-between items-center mb-6">
+                        <h4 className="font-black text-slate-900 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-brand-primary" />
+                            Dependents <span className="text-sm text-slate-400 font-normal">({dependents.length})</span>
+                        </h4>
+                        <button className="p-2 bg-brand-primary/10 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-white transition-all">
+                            <PlusCircle className="w-6 h-6" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {dependents.length > 0 ? dependents.map(dep => (
+                            <div key={dep.id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center font-bold text-slate-500">
+                                        {dep.name[0]}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-800 text-sm">{dep.name}</p>
+                                        <p className="text-[10px] text-slate-400 uppercase tracking-tighter uppercase">{dep.active_tier} Coverage</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {!dep.is_matured && (
+                                        <Clock className="w-4 h-4 text-yellow-500" />
+                                    )}
+                                    <ChevronRight className="w-5 h-5 text-slate-300" />
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="text-center py-8">
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Users className="w-8 h-8 text-slate-300" />
+                                </div>
+                                <p className="text-xs text-slate-400 italic">Protect your spouse, children or elderly parents.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Dashboard;
