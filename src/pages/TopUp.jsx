@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, CheckCircle2, AlertCircle, Phone } from 'lucide-react';
 
 const TopUp = () => {
-    const { profile, user } = useAuth();
+    const { profile, user, isDemoMode } = useAuth();
     const navigate = useNavigate();
     const [amount, setAmount] = useState('300'); // Default to month for bronze
     const [loading, setLoading] = useState(false);
@@ -20,6 +20,14 @@ const TopUp = () => {
         setErrorMsg('');
 
         try {
+            if (isDemoMode) {
+                setTimeout(() => {
+                    setStatus('success');
+                    setLoading(false);
+                }, 1500);
+                return;
+            }
+
             // In a real app, point this to your deployed Firebase Function URL
             const cloudFunctionUrl = "http://localhost:5001/YOUR_PROJECT_ID/your-region/stkPush";
 
@@ -89,8 +97,8 @@ const TopUp = () => {
                                     type="button"
                                     onClick={() => setAmount(val.toString())}
                                     className={`py-3 rounded-xl border-2 font-bold transition-all ${amount === val.toString()
-                                            ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
-                                            : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200'
+                                        ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
+                                        : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200'
                                         }`}
                                 >
                                     {val}

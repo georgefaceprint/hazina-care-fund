@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter } from 'lucide-react';
 
 const AdminPanel = () => {
-    const { profile } = useAuth();
+    const { profile, isDemoMode } = useAuth();
     const navigate = useNavigate();
     const [claims, setClaims] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -23,6 +23,12 @@ const AdminPanel = () => {
             return;
         }
 
+        if (isDemoMode) {
+            setClaims([{ id: 'demo-claim', type: 'medical', amount: 5000, description: 'Medical Emergency', status: 'pending_review', guardian_id: 'demo-123', createdAt: { toDate: () => new Date() } }]);
+            setLoading(false);
+            return;
+        }
+
         const q = query(
             collection(db, 'claims'),
             orderBy('createdAt', 'desc')
@@ -35,6 +41,11 @@ const AdminPanel = () => {
             }));
             setClaims(claimsData);
             setLoading(false);
+        }, (error) => {
+            console.error("Error fetching real-time claims:", error);
+            setLoading(false); // Ensure loading state is cleared even on error
+            // Optionally, set an error state to display to the user
+            // setError('Failed to load claims. Please try again later.');
         });
 
         return () => unsubscribe();
@@ -116,8 +127,8 @@ const AdminPanel = () => {
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded ${claim.type === 'medical' ? 'bg-red-100 text-red-700' :
-                                                claim.type === 'bereavement' ? 'bg-slate-200 text-slate-800' :
-                                                    'bg-blue-100 text-blue-700'
+                                            claim.type === 'bereavement' ? 'bg-slate-200 text-slate-800' :
+                                                'bg-blue-100 text-blue-700'
                                             }`}>
                                             {claim.type.replace('_', ' ')}
                                         </span>
@@ -129,8 +140,8 @@ const AdminPanel = () => {
                                     <p className="text-xs text-slate-500 font-mono tracking-tight mt-1">ID: {claim.guardian_id}</p>
                                 </div>
                                 <div className={`px-3 py-1 rounded-full border text-xs font-bold uppercase tracking-tight flex items-center gap-1 ${claim.status === 'pending_review' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                        claim.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                            'bg-red-50 text-red-700 border-red-200'
+                                    claim.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                        'bg-red-50 text-red-700 border-red-200'
                                     }`}>
                                     {claim.status === 'pending_review' ? <Clock className="w-3 h-3" /> :
                                         claim.status === 'approved' ? <ShieldCheck className="w-3 h-3" /> :

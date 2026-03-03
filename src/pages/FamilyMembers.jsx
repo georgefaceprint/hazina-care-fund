@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users, Shield, ArrowLeft, PlusCircle, AlertCircle } from 'lucide-react';
 
 const FamilyMembers = () => {
-    const { profile } = useAuth();
+    const { profile, isDemoMode } = useAuth();
     const navigate = useNavigate();
     const [dependents, setDependents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -20,14 +20,25 @@ const FamilyMembers = () => {
     useEffect(() => {
         const fetchDependents = async () => {
             if (!profile) return;
-            const q = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
-            const querySnap = await getDocs(q);
-            const docs = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setDependents(docs);
-            setLoading(false);
+            if (isDemoMode) {
+                setDependents([{ id: 'demo-dep-1', name: 'Demo Dependent', active_tier: 'gold', createdAt: { toDate: () => new Date() }, grace_period_expiry: { toDate: () => new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) } }]);
+                setLoading(false);
+                return;
+            }
+            try {
+                if (!db) { setLoading(false); return; }
+                const q = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
+                const querySnap = await getDocs(q);
+                const docs = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setDependents(docs);
+            } catch (error) {
+                console.error("Error fetching dependents:", error);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchDependents();
-    }, [profile]);
+    }, [profile, isDemoMode]);
 
     const handleAddDependent = async (e) => {
         e.preventDefault();
@@ -125,8 +136,8 @@ const FamilyMembers = () => {
                                         type="button"
                                         onClick={() => setNewDepTier(tier)}
                                         className={`py-3 px-2 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all ${newDepTier === tier
-                                                ? 'border-brand-primary bg-brand-primary text-white'
-                                                : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-white'
+                                            ? 'border-brand-primary bg-brand-primary text-white'
+                                            : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-white'
                                             }`}
                                     >
                                         {tier}
@@ -194,8 +205,8 @@ const FamilyMembers = () => {
                                             <h4 className="font-bold text-slate-900 text-lg">{dep.name}</h4>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider ${dep.active_tier === 'gold' ? 'bg-amber-100 text-amber-700' :
-                                                        dep.active_tier === 'silver' ? 'bg-slate-200 text-slate-700' :
-                                                            'bg-orange-100 text-orange-800'
+                                                    dep.active_tier === 'silver' ? 'bg-slate-200 text-slate-700' :
+                                                        'bg-orange-100 text-orange-800'
                                                     }`}>
                                                     {dep.active_tier}
                                                 </span>

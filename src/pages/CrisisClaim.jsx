@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, BookOpen, Skull, AlertCircle } from 'lucide-react';
 
 const CrisisClaim = () => {
-    const { profile } = useAuth();
+    const { profile, isDemoMode } = useAuth();
     const navigate = useNavigate();
     const [claimType, setClaimType] = useState('medical');
     const [amount, setAmount] = useState('');
@@ -25,6 +25,17 @@ const CrisisClaim = () => {
         setStatus('pending');
 
         try {
+            if (isDemoMode) {
+                setTimeout(() => {
+                    setStatus('success');
+                    setLoading(false);
+                    setTimeout(() => navigate('/dashboard'), 3000);
+                }, 1000);
+                return;
+            }
+
+            if (!db) { throw new Error("Database not initialized"); }
+
             await addDoc(collection(db, 'claims'), {
                 guardian_id: profile.id,
                 type: claimType,
@@ -42,7 +53,7 @@ const CrisisClaim = () => {
             console.error("Error submitting claim: ", error);
             setStatus('error');
         } finally {
-            setLoading(false);
+            if (!isDemoMode) setLoading(false);
         }
     };
 

@@ -8,7 +8,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { db } from '../services/firebase';
 
 const Dashboard = () => {
-    const { profile, user } = useAuth();
+    const { profile, user, isDemoMode } = useAuth();
     const navigate = useNavigate();
     const [dependents, setDependents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,15 +16,27 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchDependents = async () => {
             if (!profile) return;
-            const q = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
-            const querySnap = await getDocs(q);
-            const docs = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setDependents(docs);
-            setLoading(false);
+            if (isDemoMode) {
+                setDependents([{ id: 'demo-1', name: 'Demo Dependent', active_tier: 'gold', is_matured: false }]);
+                setLoading(false);
+                return;
+            }
+
+            try {
+                if (!db) { setLoading(false); return; }
+                const q = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
+                const querySnap = await getDocs(q);
+                const docs = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setDependents(docs);
+            } catch (error) {
+                console.error("Error fetching dependents:", error);
+            } finally {
+                setLoading(false);
+            }
         };
 
         fetchDependents();
-    }, [profile]);
+    }, [profile, isDemoMode]);
 
     if (!profile) return null;
 
