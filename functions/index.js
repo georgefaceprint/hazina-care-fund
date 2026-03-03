@@ -81,23 +81,144 @@ exports.checkMaturation = onSchedule({
     console.log("Maturation statuses updated.");
 });
 
-// 3. M-Pesa STK Push Initializer (Placeholder)
-exports.stkPush = onRequest(async (req, res) => {
-    // Logic to trigger Safaricom Daraja STK Push would go here
-    // Authentication with Daraja, building the request, and sending to STK Push endpoint.
-    res.status(200).send({ message: "STK Push initialized" });
+// Environment variables (replace with actual Safaricom Daraja values)
+const DARAJA_CONSUMER_KEY = "YOUR_CONSUMER_KEY";
+const DARAJA_CONSUMER_SECRET = "YOUR_CONSUMER_SECRET";
+const DARAJA_SHORTCODE = "174379"; // sandbox shortcode
+const DARAJA_PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"; // sandbox passkey
+const CALLBACK_URL = "https://your-region-your-project-id.cloudfunctions.net/mpesaCallback"; // Add actual URL later
+
+async function generateAccessToken() {
+    const credentials = Buffer.from(`${DARAJA_CONSUMER_KEY}:${DARAJA_CONSUMER_SECRET}`).toString("base64");
+    const response = await axios.get("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", {
+        headers: { Authorization: `Basic ${credentials}` }
+    });
+    return response.data.access_token;
+}
+
+// 3. M-Pesa STK Push Initializer
+exports.stkPush = onRequest({ cors: true }, async (req, res) => {
+    try {
+        if (req.method !== 'POST') {
+            res.status(405).send('Method Not Allowed');
+            return;
+        }
+
+        const { phoneNumber, amount, userId } = req.body;
+
+        if (!phoneNumber || !amount || !userId) {
+            res.status(400).send({ error: "Missing required fields" });
+            return;
+        }
+
+        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber;
+
+        const timestamp = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, -3);
+        const password = Buffer.from(`${DARAJA_SHORTCODE}${DARAJA_PASSKEY}${timestamp}`).toString("base64");
+
+        const token = await generateAccessToken();
+
+        const pushData = {
+            BusinessShortCode: DARAJA_SHORTCODE,
+            Password: password,
+            Timestamp: timestamp,
+            TransactionType: "CustomerPayBillOnline",
+            Amount: amount,
+            PartyA: formattedPhone, // phone number making payment
+            PartyB: DARAJA_SHORTCODE,
+            PhoneNumber: formattedPhone,
+            CallBackURL: CALLBACK_URL,
+            AccountReference: `Hazina-${userId.substring(0, 5)}`,
+            TransactionDesc: "Hazina Care Top Up"
+        };
+
+        const response = await axios.post("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", pushData, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        // Store checkout request to link the callback
+        await db.collection("stk_requests").doc(response.data.CheckoutRequestID).set({
+            userId,
+            amount: Number(amount),
+            status: "pending",
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.status(200).send({ success: true, data: response.data });
+    } catch (error) {
+        console.error("STK Push error: ", error.response?.data || error.message);
+        res.status(500).send({ error: "Failed to initiate STK Push" });
+    }
 });
 
 // 4. M-Pesa Callback Handler
 exports.mpesaCallback = onRequest(async (req, res) => {
-    const callbackData = req.body.Body.stkCallback;
+    try {
+        const callbackData = req.body.Body.stkCallback;
+        const checkoutRequestId = callbackData.CheckoutRequestID;
+        const resultCode = callbackData.ResultCode;
 
-    if (callbackData.ResultCode === 0) {
-        // Payment successful
-        // 1. Get transaction details and amount
-        // 2. Identify user by checkoutRequestId
-        // 3. Update Firestore balance
+        const requestDocRef = db.collection("stk_requests").doc(checkoutRequestId);
+        const requestDoc = await requestDocRef.get();
+
+        if (!requestDoc.exists) {
+            console.log(`CheckoutRequestID not found: ${checkoutRequestId}`);
+            res.status(200).send("Acknowledged");
+            return;
+        }
+
+        const requestInfo = requestDoc.data();
+
+        if (resultCode === 0) {
+            // Payment successful
+            const meta = callbackData.CallbackMetadata.Item;
+            const amountItem = meta.find(item => item.Name === "Amount");
+            const mpesaReceiptItem = meta.find(item => item.Name === "MpesaReceiptNumber");
+            const sourcePhoneItem = meta.find(item => item.Name === "PhoneNumber");
+
+            const amount = amountItem ? amountItem.Value : requestInfo.amount;
+            const receipt = mpesaReceiptItem ? mpesaReceiptItem.Value : "UNKNOWN";
+
+            const batch = db.batch();
+
+            // 1. Update STK request
+            batch.update(requestDocRef, {
+                status: "completed",
+                receipt,
+                completedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 2. Add to User Balance
+            const userRef = db.collection("users").doc(requestInfo.userId);
+            batch.update(userRef, {
+                balance: admin.firestore.FieldValue.increment(amount)
+            });
+
+            // 3. Log transaction
+            const transRef = db.collection("transactions").doc();
+            batch.set(transRef, {
+                user_id: requestInfo.userId,
+                amount,
+                type: "top-up",
+                method: "mpesa",
+                receipt,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            await batch.commit();
+            console.log(`Payment successful for user: ${requestInfo.userId}, Amount: ${amount}`);
+        } else {
+            // Payment failed or cancelled
+            await requestDocRef.update({
+                status: "failed",
+                errorMsg: callbackData.ResultDesc
+            });
+            console.log(`Payment failed: ${callbackData.ResultDesc}`);
+        }
+
+        res.status(200).send("Success");
+    } catch (error) {
+        console.error("Callback processing error: ", error);
+        res.status(200).send("Acknowledged with error");
     }
-
-    res.status(200).send("Success");
 });
