@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import TopUp from './pages/TopUp';
 import FamilyMembers from './pages/FamilyMembers';
+import CrisisClaim from './pages/CrisisClaim';
 import AppLayout from './layouts/AppLayout';
 
 const ProtectedRoute = ({ children }) => {
@@ -36,6 +37,7 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/topup" element={<TopUp />} />
             <Route path="/family" element={<FamilyMembers />} />
+            <Route path="/claim" element={<CrisisClaim />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             {/* These would be built next */}
             <Route path="/payouts" element={<Dashboard />} />

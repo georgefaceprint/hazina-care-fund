@@ -173,7 +173,10 @@ const Dashboard = () => {
                 <div className="space-y-3">
                     <h4 className="font-black text-xs uppercase tracking-widest text-slate-400 ml-1">Guardian Services</h4>
                     <div className="grid grid-cols-2 gap-4">
-                        <button className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group">
+                        <button
+                            onClick={() => navigate('/claim')}
+                            className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
+                        >
                             <div className="p-4 bg-red-50 text-red-500 rounded-2xl group-hover:bg-red-500 group-hover:text-white transition-colors duration-500">
                                 <Heart className="w-6 h-6" />
                             </div>
