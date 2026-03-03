@@ -22,13 +22,13 @@ const AppLayout = () => {
             {/* Bottom Navigation */}
             <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white p-4 border-t border-slate-100 z-50 rounded-t-[2.5rem] shadow-[0_-10px_30px_rgba(16,185,129,0.08)]">
                 <div className="flex justify-around items-center h-12">
-                    <NavLink to="/dashboard" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <Home className="w-7 h-7" />
-                        <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Home</span>
+                    <NavLink to="/dashboard" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <Home className="w-6 h-6" />
+                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">Home</span>
                     </NavLink>
-                    <NavLink to="/family" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <Users className="w-7 h-7" />
-                        <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Family</span>
+                    <NavLink to="/family" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <Users className="w-6 h-6" />
+                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">Family</span>
                     </NavLink>
                     <div className="relative -mt-16 bg-white p-3 rounded-full shadow-2xl border-2 border-slate-50 group active:scale-90 transition-all cursor-pointer">
                         <div className="bg-gradient-to-br from-brand-primary to-emerald-600 p-4 rounded-full text-white shadow-[0_10px_20px_rgba(16,185,129,0.3)]">
@@ -36,19 +36,19 @@ const AppLayout = () => {
                         </div>
                     </div>
                     {isAdmin ? (
-                        <NavLink to="/admin" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <ShieldCheck className="w-7 h-7" />
-                            <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Admin</span>
+                        <NavLink to="/admin" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <ShieldCheck className="w-6 h-6" />
+                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">Admin</span>
                         </NavLink>
                     ) : (
-                        <NavLink to="/topup" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <CreditCard className="w-7 h-7" />
-                            <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Wallet</span>
+                        <NavLink to="/topup" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <CreditCard className="w-6 h-6" />
+                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">Wallet</span>
                         </NavLink>
                     )}
-                    <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <User className="w-7 h-7" />
-                        <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Profile</span>
+                    <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <User className="w-6 h-6" />
+                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">Profile</span>
                     </NavLink>
                 </div>
             </nav>
