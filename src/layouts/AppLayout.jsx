@@ -1,8 +1,12 @@
 import React from 'react';
-import { Home, Users, CreditCard, User, Heart, Settings, ShieldCheck, TrendingUp, HelpCircle } from 'lucide-react';
+import { Home, Users, CreditCard, User, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const AppLayout = () => {
+    const { profile } = useAuth();
+    const isAdmin = profile?.role === 'admin';
+
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Background Decor */}
@@ -31,10 +35,17 @@ const AppLayout = () => {
                             <Zap className="w-8 h-8" />
                         </div>
                     </div>
-                    <NavLink to="/payouts" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <CreditCard className="w-7 h-7" />
-                        <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Payouts</span>
-                    </NavLink>
+                    {isAdmin ? (
+                        <NavLink to="/admin" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <ShieldCheck className="w-7 h-7" />
+                            <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Admin</span>
+                        </NavLink>
+                    ) : (
+                        <NavLink to="/topup" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <CreditCard className="w-7 h-7" />
+                            <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Wallet</span>
+                        </NavLink>
+                    )}
                     <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
                         <User className="w-7 h-7" />
                         <span className="text-[10px] font-black uppercase tracking-widest invisible group-hover:visible transition-all">Profile</span>
