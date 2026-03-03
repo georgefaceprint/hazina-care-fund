@@ -81,15 +81,16 @@ exports.checkMaturation = onSchedule({
     console.log("Maturation statuses updated.");
 });
 
-// Environment variables (replace with actual Safaricom Daraja values)
-const DARAJA_CONSUMER_KEY = process.env.DARAJA_CONSUMER_KEY || "YOUR_CONSUMER_KEY";
-const DARAJA_CONSUMER_SECRET = process.env.DARAJA_CONSUMER_SECRET || "YOUR_CONSUMER_SECRET";
-const DARAJA_SHORTCODE = process.env.DARAJA_SHORTCODE || "174379"; // sandbox shortcode
-const DARAJA_PASSKEY = process.env.DARAJA_PASSKEY || "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"; // sandbox passkey
-const CALLBACK_URL = process.env.CALLBACK_URL || "https://your-region-your-project-id.cloudfunctions.net/mpesaCallback";
+const { defineSecret } = require('firebase-functions/params');
 
-async function generateAccessToken() {
-    const credentials = Buffer.from(`${DARAJA_CONSUMER_KEY}:${DARAJA_CONSUMER_SECRET}`).toString("base64");
+const darajaConsumerKey = defineSecret('DARAJA_CONSUMER_KEY');
+const darajaConsumerSecret = defineSecret('DARAJA_CONSUMER_SECRET');
+const darajaShortcode = defineSecret('DARAJA_SHORTCODE');
+const darajaPasskey = defineSecret('DARAJA_PASSKEY');
+const darajaCallbackUrl = defineSecret('CALLBACK_URL');
+
+async function generateAccessToken(consumerKey, consumerSecret) {
+    const credentials = Buffer.from(`${consumerKey}:${consumerSecret}`).toString("base64");
     const response = await axios.get("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", {
         headers: { Authorization: `Basic ${credentials}` }
     });
@@ -97,12 +98,21 @@ async function generateAccessToken() {
 }
 
 // 3. M-Pesa STK Push Initializer
-exports.stkPush = onRequest({ cors: true }, async (req, res) => {
+exports.stkPush = onRequest({
+    cors: true,
+    secrets: [darajaConsumerKey, darajaConsumerSecret, darajaShortcode, darajaPasskey, darajaCallbackUrl]
+}, async (req, res) => {
     try {
         if (req.method !== 'POST') {
             res.status(405).send('Method Not Allowed');
             return;
         }
+
+        const consumerKey = darajaConsumerKey.value();
+        const consumerSecret = darajaConsumerSecret.value();
+        const shortcode = darajaShortcode.value();
+        const passkey = darajaPasskey.value();
+        const callbackUrl = darajaCallbackUrl.value();
 
         const { phoneNumber, amount, userId } = req.body;
 
@@ -114,20 +124,20 @@ exports.stkPush = onRequest({ cors: true }, async (req, res) => {
         const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber;
 
         const timestamp = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, -3);
-        const password = Buffer.from(`${DARAJA_SHORTCODE}${DARAJA_PASSKEY}${timestamp}`).toString("base64");
+        const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 
-        const token = await generateAccessToken();
+        const token = await generateAccessToken(consumerKey, consumerSecret);
 
         const pushData = {
-            BusinessShortCode: DARAJA_SHORTCODE,
+            BusinessShortCode: shortcode,
             Password: password,
             Timestamp: timestamp,
             TransactionType: "CustomerPayBillOnline",
             Amount: amount,
             PartyA: formattedPhone, // phone number making payment
-            PartyB: DARAJA_SHORTCODE,
+            PartyB: shortcode,
             PhoneNumber: formattedPhone,
-            CallBackURL: CALLBACK_URL,
+            CallBackURL: callbackUrl,
             AccountReference: `Hazina-${userId.substring(0, 5)}`,
             TransactionDesc: "Hazina Care Top Up"
         };
