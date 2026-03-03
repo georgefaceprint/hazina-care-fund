@@ -13,10 +13,19 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
+let app, auth, db, functions;
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const functions = getFunctions(app);
+try {
+    if (!firebaseConfig.apiKey) {
+        console.error("🔥 FATAL: VITE_FIREBASE_API_KEY is missing. Your Vercel environment variables are not loaded correctly.");
+    }
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    functions = getFunctions(app);
+} catch (error) {
+    console.error("Firebase initialization failed:", error);
+}
 
+export { auth, db, functions };
 export default app;

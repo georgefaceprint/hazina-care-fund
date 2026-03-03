@@ -4,6 +4,7 @@ import { auth, db } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Phone, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -11,6 +12,7 @@ const LoginPage = () => {
     const [confirmationResult, setConfirmationResult] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const { enableDemoMode } = useAuth();
     const navigate = useNavigate();
 
     const setupRecaptcha = () => {
@@ -120,6 +122,23 @@ const LoginPage = () => {
                         >
                             {loading ? 'Sending...' : 'Get Security Code'}
                             <ArrowRight className="w-5 h-5" />
+                        </button>
+
+                        <div className="relative flex items-center py-2">
+                            <div className="flex-grow border-t border-slate-200"></div>
+                            <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase tracking-widest">or</span>
+                            <div className="flex-grow border-t border-slate-200"></div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                enableDemoMode();
+                                navigate('/dashboard');
+                            }}
+                            className="w-full py-4 text-sm font-bold text-slate-500 hover:text-brand-primary bg-slate-100/80 rounded-2xl transition-colors shadow-inner"
+                        >
+                            View App Demo (Bypass Authentication)
                         </button>
                     </form>
                 ) : (
