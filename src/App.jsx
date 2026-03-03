@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
+import TopUp from './pages/TopUp';
+import FamilyMembers from './pages/FamilyMembers';
 import AppLayout from './layouts/AppLayout';
 
 const ProtectedRoute = ({ children }) => {
@@ -32,9 +34,10 @@ const App = () => {
             </ProtectedRoute>
           }>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/topup" element={<TopUp />} />
+            <Route path="/family" element={<FamilyMembers />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             {/* These would be built next */}
-            <Route path="/family" element={<Dashboard />} />
             <Route path="/payouts" element={<Dashboard />} />
             <Route path="/settings" element={<Dashboard />} />
           </Route>
