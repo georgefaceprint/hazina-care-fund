@@ -7,6 +7,7 @@ import TopUp from './pages/TopUp';
 import FamilyMembers from './pages/FamilyMembers';
 import CrisisClaim from './pages/CrisisClaim';
 import AdminPanel from './pages/AdminPanel';
+import ProfileSettings from './pages/ProfileSettings';
 import AppLayout from './layouts/AppLayout';
 
 const ProtectedRoute = ({ children }) => {
@@ -40,9 +41,8 @@ const App = () => {
             <Route path="/family" element={<FamilyMembers />} />
             <Route path="/claim" element={<CrisisClaim />} />
             <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/settings" element={<ProfileSettings />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            {/* These would be built next */}
-            <Route path="/settings" element={<Dashboard />} />
           </Route>
         </Routes>
       </AuthProvider>
