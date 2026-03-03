@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
@@ -8,6 +9,7 @@ import { db } from '../services/firebase';
 
 const Dashboard = () => {
     const { profile, user } = useAuth();
+    const navigate = useNavigate();
     const [dependents, setDependents] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -81,8 +83,8 @@ const Dashboard = () => {
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3">
                                     <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-inner border flex items-center gap-2 ${profile.active_tier === 'gold' ? 'bg-amber-400 text-amber-950 border-amber-300' :
-                                            profile.active_tier === 'silver' ? 'bg-slate-300 text-slate-800 border-slate-200' :
-                                                'bg-orange-800/20 text-orange-200 border-orange-700/30'
+                                        profile.active_tier === 'silver' ? 'bg-slate-300 text-slate-800 border-slate-200' :
+                                            'bg-orange-800/20 text-orange-200 border-orange-700/30'
                                         }`}>
                                         <Zap className="w-3 h-3" />
                                         {profile.active_tier} Member
@@ -118,7 +120,7 @@ const Dashboard = () => {
                             <AlertCircle className="w-3 h-3" /> Auto-deducted
                         </p>
                     </div>
-                    <div className="card bg-white border-none shadow-md overflow-hidden relative group">
+                    <div className="card bg-white border-none shadow-md overflow-hidden relative group cursor-pointer" onClick={() => navigate('/topup')}>
                         <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
                         <div className="flex items-center gap-3 mb-3">
                             <div className="p-2 bg-blue-500/10 rounded-xl">
@@ -128,7 +130,7 @@ const Dashboard = () => {
                         </div>
                         <p className="text-3xl font-black text-slate-900">KSh {profile.balance || 0}</p>
                         <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
-                            Top up via M-Pesa
+                            Top up via M-Pesa <ChevronRight className="w-3 h-3" />
                         </p>
                     </div>
                 </div>
@@ -193,7 +195,10 @@ const Dashboard = () => {
                             <Users className="w-5 h-5 text-brand-primary" />
                             Dependents <span className="text-sm text-slate-400 font-normal">({dependents.length})</span>
                         </h4>
-                        <button className="p-2 bg-brand-primary/10 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-white transition-all">
+                        <button
+                            onClick={() => navigate('/family')}
+                            className="p-2 bg-brand-primary/10 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-white transition-all"
+                        >
                             <PlusCircle className="w-6 h-6" />
                         </button>
                     </div>
