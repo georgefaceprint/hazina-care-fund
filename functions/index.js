@@ -82,11 +82,11 @@ exports.checkMaturation = onSchedule({
 });
 
 // Environment variables (replace with actual Safaricom Daraja values)
-const DARAJA_CONSUMER_KEY = "YOUR_CONSUMER_KEY";
-const DARAJA_CONSUMER_SECRET = "YOUR_CONSUMER_SECRET";
-const DARAJA_SHORTCODE = "174379"; // sandbox shortcode
-const DARAJA_PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"; // sandbox passkey
-const CALLBACK_URL = "https://your-region-your-project-id.cloudfunctions.net/mpesaCallback"; // Add actual URL later
+const DARAJA_CONSUMER_KEY = process.env.DARAJA_CONSUMER_KEY || "YOUR_CONSUMER_KEY";
+const DARAJA_CONSUMER_SECRET = process.env.DARAJA_CONSUMER_SECRET || "YOUR_CONSUMER_SECRET";
+const DARAJA_SHORTCODE = process.env.DARAJA_SHORTCODE || "174379"; // sandbox shortcode
+const DARAJA_PASSKEY = process.env.DARAJA_PASSKEY || "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"; // sandbox passkey
+const CALLBACK_URL = process.env.CALLBACK_URL || "https://your-region-your-project-id.cloudfunctions.net/mpesaCallback";
 
 async function generateAccessToken() {
     const credentials = Buffer.from(`${DARAJA_CONSUMER_KEY}:${DARAJA_CONSUMER_SECRET}`).toString("base64");
