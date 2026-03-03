@@ -1,7 +1,10 @@
 {
   "name": "functions",
   "version": "1.0.0",
-  "description": "",
+  "description": "dynrvGIy2cFwJStWnB7m9gNJAON7V7AITncKbczTvJIZDd69",
+  "engines": {
+    "node": "20"
+  },
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
