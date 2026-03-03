@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
         setIsDemoMode(true);
         setUser({ uid: 'demo-user', phoneNumber: '+254700000000' });
         setProfile({
+            id: 'demo-profile-12345',
             role: 'admin',
             active_tier: 'gold',
             national_id: '12345678',
@@ -77,7 +78,8 @@ export const AuthProvider = ({ children }) => {
         loading,
         isAuthenticated: !!user,
         enableDemoMode,
-        logout
+        logout,
+        isDemoMode
     };
 
     return (
