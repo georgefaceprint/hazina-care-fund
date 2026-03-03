@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #10b981;
+  --color-brand-secondary: #064e3b;
+  --color-brand-accent: #f59e0b;
+  --color-hazina-bronze: #cd7f32;
+  --color-hazina-silver: #c0c0c0;
+  --color-hazina-gold: #ffd700;
+  
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Outfit', sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 min-h-screen font-sans;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+  
+  .btn-primary {
+    @apply bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2;
+  }
+  
+  .card {
+    @apply bg-white p-6 rounded-2xl shadow-sm border border-slate-100;
+  }
+}
