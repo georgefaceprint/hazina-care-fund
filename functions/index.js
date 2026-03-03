@@ -222,3 +222,81 @@ exports.mpesaCallback = onRequest(async (req, res) => {
         res.status(200).send("Acknowledged with error");
     }
 });
+
+// 5. Africa's Talking USSD Webhook Handler
+exports.ussd = onRequest(async (req, res) => {
+    try {
+        const { sessionId, serviceCode, phoneNumber, text } = req.body;
+
+        // Format phone to match our DB (+254...)
+        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+
+        // Get user profile
+        const usersSnap = await db.collection("users").where("phoneNumber", "==", formattedPhone).limit(1).get();
+        const userExists = !usersSnap.empty;
+        let profile = userExists ? usersSnap.docs[0].data() : null;
+        let userId = userExists ? usersSnap.docs[0].id : null;
+
+        let response = "";
+
+        if (text === "") {
+            // First time accessing the USSD menu
+            if (userExists) {
+                const balance = profile.balance || 0;
+                response = `CON Welcome to Hazina Care\n` +
+                    `Your balance: KSh ${balance}\n` +
+                    `1. Check Shield Status\n` +
+                    `2. Claim Crisis Fund\n` +
+                    `3. Add Dependent\n` +
+                    `4. Top Up Wallet`;
+            } else {
+                response = `CON Welcome to Hazina Care.\n` +
+                    `Register to protect your family.\n` +
+                    `1. Register (KSh 100/mo Bronze)\n` +
+                    `2. Learn More`;
+            }
+        } else if (text === "1") {
+            if (userExists) {
+                // Check Shield Status
+                const now = new Date();
+                const graceExpiry = profile.grace_period_expiry.toDate();
+                if (graceExpiry <= now) {
+                    response = `END Your Hazina Shield is FULLY ACTIVE.\nTier: ${profile.active_tier.toUpperCase()}`;
+                } else {
+                    const waitDays = Math.ceil((graceExpiry - now) / (1000 * 60 * 60 * 24));
+                    response = `END Your Hazina Shield is IN WAITING.\nMatures in ${waitDays} days. Keep paying your daily contribution!`;
+                }
+            } else {
+                // Register flow
+                response = `CON Enter your National ID number:`;
+            }
+        } else if (text === "2" && userExists) {
+            // Claim flow
+            const graceExpiry = profile.grace_period_expiry.toDate();
+            if (graceExpiry > new Date()) {
+                response = `END Sorry, your shield is still maturing. You can claim after your 180-day grace period ends.`;
+            } else {
+                response = `CON Select Claim Type:\n1. Medical Crisis\n2. Bereavement\n3. School Fees`;
+            }
+        } else if (text === "4" && userExists) {
+            // Top up via USSD using STK Push
+            response = `END We are sending an M-Pesa prompt to your phone for KSh 300 to fund your wallet. Please enter your PIN.`;
+
+            // Trigger STK Push (in real usage, invoke your STK logic here)
+            /* 
+            const token = await generateAccessToken();
+            // ... trigger daraja API
+            */
+        } else {
+            response = "END Invalid option selected. Please dial again.";
+        }
+
+        // Send the response back to Africa's Talking
+        res.set("Content-Type", "text/plain");
+        res.send(response);
+    } catch (error) {
+        console.error("USSD error: ", error);
+        res.set("Content-Type", "text/plain");
+        res.send("END An error occurred. Please try again later.");
+    }
+});
