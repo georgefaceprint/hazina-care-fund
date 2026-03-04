@@ -69,9 +69,17 @@ const Dashboard = () => {
     if (!profile) return null;
 
     // Calculate maturation progress
+    // Calculate maturation progress
     const now = new Date();
-    const joinedDate = profile.tier_joined_date?.toDate() || new Date();
-    const graceExpiry = profile.grace_period_expiry?.toDate() || new Date();
+
+    // Safely handle both Firestore Timestamps (which have .toDate()) and regular JS Dates (from Demo Mode)
+    const getSafeDate = (dateVal) => {
+        if (!dateVal) return new Date();
+        return typeof dateVal.toDate === 'function' ? dateVal.toDate() : new Date(dateVal);
+    };
+
+    const joinedDate = getSafeDate(profile.tier_joined_date);
+    const graceExpiry = getSafeDate(profile.grace_period_expiry);
     const totalDays = differenceInDays(graceExpiry, joinedDate);
     const daysPassed = differenceInDays(now, joinedDate);
     const progressPercent = totalDays > 0
