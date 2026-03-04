@@ -13,16 +13,17 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [isDemoMode, setIsDemoMode] = useState(false);
 
-    const enableDemoMode = () => {
+    const enableDemoMode = (phone = '+254712345678') => {
         setIsDemoMode(true);
-        setUser({ uid: 'demo-user', phoneNumber: '+254700000000' });
+        setUser({ uid: 'demo-user', phoneNumber: phone });
         setProfile({
             id: 'demo-profile-12345',
             role: 'admin',
             active_tier: 'gold',
             national_id: '12345678',
             balance: 5000,
-            status: 'active'
+            status: 'active',
+            phoneNumber: phone
         });
         setLoading(false);
     };

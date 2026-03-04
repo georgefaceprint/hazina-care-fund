@@ -22,22 +22,6 @@ const TopUp = () => {
         setErrorMsg('');
 
         try {
-            if (isDemoMode) {
-                setTimeout(async () => {
-                    await addDoc(collection(db, 'transactions'), {
-                        userId: profile.id,
-                        type: 'topup',
-                        amount: Number(amount),
-                        status: 'completed',
-                        source: 'demo_topup',
-                        createdAt: serverTimestamp()
-                    });
-                    setStatus('success');
-                    setLoading(false);
-                }, 1500);
-                return;
-            }
-
             const formattedPhone = profile.phoneNumber.startsWith('+') ? profile.phoneNumber.substring(1) : profile.phoneNumber;
 
             // Call the Firebase Cloud Function instead of direct Daraja API

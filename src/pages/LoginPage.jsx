@@ -12,7 +12,14 @@ const LoginPage = () => {
     const [confirmationResult, setConfirmationResult] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { enableDemoMode } = useAuth();
+    const { enableDemoMode, isDemoMode, user } = useAuth();
+
+    React.useEffect(() => {
+        if (isDemoMode && user) {
+            navigate('/dashboard');
+        }
+    }, [isDemoMode, user, navigate]);
+
     const onSignInSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -115,8 +122,8 @@ const LoginPage = () => {
                     <button
                         type="button"
                         onClick={() => {
-                            enableDemoMode();
-                            navigate('/dashboard');
+                            const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+254${phoneNumber.replace(/^0/, '')}`;
+                            enableDemoMode(phoneNumber ? formatPhone : '+254712345678');
                         }}
                         className="w-full py-4 text-sm font-bold text-slate-500 hover:text-brand-primary bg-slate-100/80 rounded-2xl transition-colors shadow-inner"
                     >
