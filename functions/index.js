@@ -9,8 +9,13 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 admin.initializeApp();
 const db = admin.firestore();
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY_HERE";
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
+    console.error("❌ ERROR: GEMINI_API_KEY is not set in Firebase environment variables.");
+}
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || "");
 
 // 1. Daily Deduction Engine (Cron Job)
 
@@ -464,7 +469,7 @@ exports.chatWithSifuna = onCall({ cors: true }, async (request) => {
                 
                 USER CONTEXT:
                 - Current User Language: ${language === 'sw' ? 'Swahili' : 'English'}.
-                - Always respond in the user's preferred language.
+                - CRITICAL: You MUST respond in ${language === 'sw' ? 'Swahili' : 'English'}.
             `
         });
 
@@ -483,10 +488,10 @@ exports.chatWithSifuna = onCall({ cors: true }, async (request) => {
         // Detect if the AI thinks it learned something new (Basic heuristic or secondary model call)
         // For now, let's use a simple pattern check or just store specific types of info if the AI flags it.
         // Dynamic "Learning" trigger: Search for "I'll remember that" or "Noted" in AI response to trigger storage.
-        if (userId && (text.includes("I'll remember that") || text.includes("Noted") || text.includes("Nitakumbuka"))) {
+        if (userId && (text.includes("I'll remember that") || text.includes("Noted") || text.includes("Nitakumbuka") || text.includes("imehifadhiwa"))) {
             // We can extract the fact using another LLM call or just log the whole move for human review.
             // For this beta, we'll log the "learned" interaction to a dedicated collection.
-            await db.collection("users").doc(userId).collection("memory").add({
+            await db.collection("users").doc(userId).collection("memories").add({
                 fact: `Learned from user: "${message}"`,
                 ai_response: text,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
