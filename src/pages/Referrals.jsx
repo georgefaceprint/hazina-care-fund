@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gift, Share2, Copy, Check, Users, ShieldCheck, Zap, ArrowLeft, TrendingUp } from 'lucide-react';
+import { Gift, Share2, Copy, Check, Users, ShieldCheck, Zap, ArrowLeft, TrendingUp, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';

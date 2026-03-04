@@ -5,7 +5,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, BookOpen, Skull, AlertCircle, Upload, FileCheck, X } from 'lucide-react';
+import { ArrowLeft, Heart, BookOpen, Skull, AlertCircle, Upload, FileCheck, X, Camera } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import CameraCapture from '../components/CameraCapture';
 
