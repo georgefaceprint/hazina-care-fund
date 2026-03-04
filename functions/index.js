@@ -1,5 +1,5 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const axios = require("axios");
@@ -415,31 +415,26 @@ exports.ussd = onRequest(async (req, res) => {
 });
 
 // 6. AI Assistant Hub (Sifuna AI)
-exports.chatWithSifuna = onRequest({
-    cors: true,
-}, async (req, res) => {
+exports.chatWithSifuna = onCall({ cors: true }, async (request) => {
     try {
-        if (req.method !== 'POST') {
-            res.status(405).send('Method Not Allowed');
-            return;
-        }
-
-        const { message, history, language = 'en', userId } = req.body;
+        const { message, history, language = 'en', userId } = request.data;
 
         if (!message) {
-            res.status(400).send({ error: "No message provided" });
-            return;
+            throw new HttpsError('invalid-argument', 'The function must be called with a "message" argument.');
         }
 
         // --- SELF-LEARNING MECHANISM (Retrieval) ---
         // Fetch long-term "learned" facts about this user from Firestore
         let persistentContext = "";
+        // Retrieve user-specific memory if userId is provided
+        let learnedFacts = [];
         if (userId) {
-            const memorySnap = await db.collection("users").doc(userId).collection("memory").get();
-            const learnedFacts = memorySnap.docs.map(doc => doc.data().fact);
-            if (learnedFacts.length > 0) {
-                persistentContext = `\nLEARNED FACTS ABOUT THIS USER:\n- ${learnedFacts.join('\n- ')}`;
-            }
+            const memoriesRef = db.collection('users').doc(userId).collection('memories');
+            const memoriesSnapshot = await memoriesRef.orderBy('timestamp', 'desc').limit(20).get();
+            learnedFacts = memoriesSnapshot.docs.map(doc => doc.data().fact);
+        }
+        if (learnedFacts.length > 0) {
+            persistentContext = `\nLEARNED FACTS ABOUT THIS USER:\n- ${learnedFacts.join('\n- ')}`;
         }
 
         const model = genAI.getGenerativeModel({
@@ -498,9 +493,9 @@ exports.chatWithSifuna = onRequest({
             });
         }
 
-        res.status(200).send({ text });
+        return { text };
     } catch (error) {
-        console.error("Gemini Error: ", error);
-        res.status(500).send({ error: "Sifuna is taking a short break. Please try again in a moment." });
+        console.error("Chat error:", error);
+        throw new HttpsError('internal', error.message || 'An unknown error occurred.');
     }
 });
