@@ -38,6 +38,11 @@ const translations = {
         daily_contributions: "Daily contributions build your future protection.",
         protect_family: "Protect your spouse, children or elderly parents.",
         view_all: "View All",
+        completed: "Completed",
+        processing: "Processing",
+        rejected: "Rejected",
+        new_member: "New Member",
+        tier_upgrade_activity: "Tier Upgrade",
 
         // TopUp
         fund_wallet: "Fund Wallet",
@@ -136,10 +141,10 @@ const translations = {
         admin: "Usimamizi",
 
         // Dashboard
-        daily_burn: "Gharama ya Kila Siku",
-        weekly_burn: "Gharama ya Wiki",
-        monthly_burn: "Gharama ya Mwezi",
-        yearly_burn: "Gharama ya Mwaka",
+        daily_burn: "Gharama / Siku",
+        weekly_burn: "Gharama / Wiki",
+        monthly_burn: "Gharama / Mwezi",
+        yearly_burn: "Gharama / Mwaka",
         your_fund: "Mfuko Wako",
         shield_growth: "Ukuaji wa Kinga",
         fully_protected: "Imelindwa Kikamilifu",
@@ -165,6 +170,11 @@ const translations = {
         daily_contributions: "Michango ya kila siku hujenga ulinzi wako wa baadaye.",
         protect_family: "Mlinde mwenzi wako, watoto au wazazi wazee.",
         view_all: "Ona Zote",
+        completed: "Imekamilika",
+        processing: "Inachakata",
+        rejected: "Imekataliwa",
+        new_member: "Mwanachama Mpya",
+        tier_upgrade_activity: "Marekebisho ya Daraja",
 
         // TopUp
         fund_wallet: "Weka Pesa kwenye Pochi",

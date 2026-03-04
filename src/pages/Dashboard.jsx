@@ -43,7 +43,7 @@ const Dashboard = () => {
                 const depSnap = await getDocs(depQ);
                 setDependents(depSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-                // Fetch Activities
+                // Fetch Claims
                 const claimsQ = query(collection(db, 'claims'), where('guardian_id', '==', profile.id), orderBy('createdAt', 'desc'), limit(5));
                 const claimsSnap = await getDocs(claimsQ);
                 const claimsData = claimsSnap.docs.map(doc => ({
@@ -53,9 +53,31 @@ const Dashboard = () => {
                     date: doc.data().createdAt?.toDate()
                 }));
 
-                // Topups (In production, these come from 'topups' collection)
-                // For MVP, we'll just show claims as activity or a placeholder
-                setActivities(claimsData);
+                // Fetch Topups
+                const topupsQ = query(collection(db, 'topups'), where('guardian_id', '==', profile.id), orderBy('createdAt', 'desc'), limit(5));
+                const topupsSnap = await getDocs(topupsQ);
+                const topupsData = topupsSnap.docs.map(doc => ({
+                    id: doc.id,
+                    type: 'topup',
+                    ...doc.data(),
+                    date: doc.data().createdAt?.toDate()
+                }));
+
+                // Treat recently added dependents as activity
+                const depActivity = depSnap.docs.map(doc => ({
+                    id: doc.id,
+                    type: 'dependent',
+                    label: doc.data().name,
+                    status: 'completed',
+                    date: doc.data().createdAt?.toDate()
+                }));
+
+                // Combine and Sort
+                const combined = [...claimsData, ...topupsData, ...depActivity]
+                    .sort((a, b) => (b.date || 0) - (a.date || 0))
+                    .slice(0, 7);
+
+                setActivities(combined);
 
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -224,7 +246,7 @@ const Dashboard = () => {
                                 <select
                                     value={burnPeriod}
                                     onChange={(e) => setBurnPeriod(e.target.value)}
-                                    className="text-xs font-bold text-slate-500 uppercase tracking-tighter bg-transparent border-none p-0 pr-4 focus:ring-0 cursor-pointer outline-none"
+                                    className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter bg-transparent border-none p-0 pr-4 focus:ring-0 cursor-pointer outline-none"
                                 >
                                     <option value="daily">{t('daily_burn')}</option>
                                     <option value="weekly">{t('weekly_burn')}</option>
@@ -244,7 +266,7 @@ const Dashboard = () => {
                             <div className="p-2 bg-blue-500/10 rounded-xl">
                                 <CreditCard className="w-5 h-5 text-blue-500" />
                             </div>
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">{t('your_fund')}</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('your_fund')}</span>
                         </div>
                         <p className="text-3xl font-black text-slate-900">KSh {profile.balance || 0}</p>
                         <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
