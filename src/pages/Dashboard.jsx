@@ -273,30 +273,35 @@ const Dashboard = () => {
                         </h4>
                     </div>
                     <div className="space-y-1">
-                        {[
-                            { id: 1, type: 'topup', amount: 500, date: '2 hours ago', status: 'completed' },
-                            { id: 2, type: 'claim', amount: 15000, date: '1 day ago', status: 'pending_review' }
-                        ].map(activity => (
-                            <div key={activity.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-2 rounded-xl ${activity.type === 'topup' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                                        {activity.type === 'topup' ? <CreditCard className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                        {activities.length > 0 ? (
+                            activities.slice(0, 3).map(activity => (
+                                <div key={activity.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-xl ${activity.type === 'topup' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                            {activity.type === 'topup' ? <CreditCard className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-sm">
+                                                {activity.type === 'topup' ? 'Wallet Top-up' : 'Crisis Claim'}
+                                            </p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                                                {activity.date ? format(activity.date, 'MMM d, yyyy') : 'Recently'}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-bold text-slate-800 text-sm">
-                                            {activity.type === 'topup' ? 'Wallet Top-up' : 'Crisis Claim'}
+                                    <div className="text-right">
+                                        <p className="font-black text-slate-900 text-sm">KSh {activity.amount?.toLocaleString() || 0}</p>
+                                        <p className={`text-[9px] font-black uppercase tracking-widest ${activity.status === 'completed' || activity.status === 'approved' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                            {(activity.status || 'pending').replace('_', ' ')}
                                         </p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{activity.date}</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="font-black text-slate-900 text-sm">KSh {activity.amount}</p>
-                                    <p className={`text-[9px] font-black uppercase tracking-widest ${activity.status === 'completed' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                        {activity.status.replace('_', ' ')}
-                                    </p>
-                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-6 text-slate-400 text-sm font-bold italic">
+                                No recent activity
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
 
@@ -349,7 +354,7 @@ const Dashboard = () => {
                 <div className="space-y-3">
                     <div className="flex justify-between items-center px-1">
                         <h4 className="font-black text-xs uppercase tracking-widest text-slate-400">Activity Timeline</h4>
-                        <button className="text-[10px] font-black text-brand-primary uppercase tracking-tighter">View All</button>
+                        <button onClick={() => navigate('/topup')} className="text-[10px] font-black text-brand-primary uppercase tracking-tighter">View All</button>
                     </div>
                     <RecentActivity activities={activities} />
                 </div>

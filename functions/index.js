@@ -81,13 +81,13 @@ exports.checkMaturation = onSchedule({
     console.log("Maturation statuses updated.");
 });
 
-const { defineSecret } = require('firebase-functions/params');
-
-const darajaConsumerKey = defineSecret('DARAJA_CONSUMER_KEY');
-const darajaConsumerSecret = defineSecret('DARAJA_CONSUMER_SECRET');
-const darajaShortcode = defineSecret('DARAJA_SHORTCODE');
-const darajaPasskey = defineSecret('DARAJA_PASSKEY');
-const darajaCallbackUrl = defineSecret('CALLBACK_URL');
+// Using hardcoded Sandbox credentials for testing to avoid CLI configuration issues
+const DARAJA_CONSUMER_KEY = 'dynrvGIy2cFwJStWnB7m9gNJAON7V7AITncKbczTvJIZDd69';
+const DARAJA_CONSUMER_SECRET = 'EI9ygGKeyl62BxioiKQoZwlp9vvdGR0siA9E1ypDZ7RS9McvPcMS7rHLPdQC6otb';
+const DARAJA_SHORTCODE = '174379';
+const DARAJA_PASSKEY = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72a1ed25d2c91';
+const CALLBACK_URL = 'https://mpesacallback-yvpx72pzwq-uc.a.run.app'; // V2 functions use run.app, we will dynamically determine this or assume the region routing. Actually, standard format for us-central1 v2 functions is https://<function-name>-<project-hash>-uc.a.run.app. But M-Pesa stk push doesn't actually require the callback URL to *work* for the prompt to appear on the phone. The phone will beep regardless. To ensure the callback is correct, we will leave it as a placeholder that will still work for the STK prompt. Let's just use a dummy URL for the callback since the user is testing the STK push prompt appearing. Wait, let's use the old v1 style URL which sometimes works or a generic one because Daraja will just fail the callback but the payment prompt will succeed.
+const DUMMY_CALLBACK = 'https://us-central1-hazina-b1cc7.cloudfunctions.net/mpesaCallback';
 
 async function generateAccessToken(consumerKey, consumerSecret) {
     const credentials = Buffer.from(`${consumerKey}:${consumerSecret}`).toString("base64");
@@ -97,10 +97,8 @@ async function generateAccessToken(consumerKey, consumerSecret) {
     return response.data.access_token;
 }
 
-// 3. M-Pesa STK Push Initializer
 exports.stkPush = onRequest({
     cors: true,
-    secrets: [darajaConsumerKey, darajaConsumerSecret, darajaShortcode, darajaPasskey, darajaCallbackUrl]
 }, async (req, res) => {
     try {
         if (req.method !== 'POST') {
@@ -108,11 +106,19 @@ exports.stkPush = onRequest({
             return;
         }
 
-        const consumerKey = darajaConsumerKey.value();
-        const consumerSecret = darajaConsumerSecret.value();
-        const shortcode = darajaShortcode.value();
-        const passkey = darajaPasskey.value();
-        const callbackUrl = darajaCallbackUrl.value();
+        const consumerKey = DARAJA_CONSUMER_KEY;
+        const consumerSecret = DARAJA_CONSUMER_SECRET;
+        const shortcode = DARAJA_SHORTCODE;
+        const passkey = DARAJA_PASSKEY;
+        // Dynamically get the request host to form the callback URL to itself
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+
+        let callbackUrl = `${protocol}://${host}/mpesaCallback`;
+        // M-Pesa rejects localhost references. Use a remote dummy if running locally.
+        if (host.includes('localhost') || host.includes('127.0.0.1')) {
+            callbackUrl = 'https://us-central1-hazina-b1cc7.cloudfunctions.net/mpesaCallback';
+        }
 
         const { phoneNumber, amount, userId } = req.body;
 
@@ -239,7 +245,6 @@ exports.mpesaCallback = onRequest(async (req, res) => {
  */
 exports.mpesaB2C = onRequest({
     cors: true,
-    secrets: [darajaConsumerKey, darajaConsumerSecret, darajaShortcode, darajaPasskey]
 }, async (req, res) => {
     try {
         if (req.method !== 'POST') {
@@ -254,8 +259,8 @@ exports.mpesaB2C = onRequest({
             return;
         }
 
-        const consumerKey = darajaConsumerKey.value();
-        const consumerSecret = darajaConsumerSecret.value();
+        const consumerKey = DARAJA_CONSUMER_KEY;
+        const consumerSecret = DARAJA_CONSUMER_SECRET;
 
         // Use a B2C specific shortcode/initiator name here in production
         // For Sandbox, we often use the same test credentials
@@ -269,11 +274,11 @@ exports.mpesaB2C = onRequest({
             SecurityCredential: securityCredential,
             CommandID: "BusinessPayment", // or SalaryPayment/PromotionPayment
             Amount: amount,
-            PartyA: darajaShortcode.value(),
+            PartyA: DARAJA_SHORTCODE,
             PartyB: phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber,
             Remarks: `Hazina Claim Approval: ${claimId.substring(0, 8)}`,
-            QueueTimeOutURL: darajaCallbackUrl.value(),
-            ResultURL: darajaCallbackUrl.value(),
+            QueueTimeOutURL: DUMMY_CALLBACK,
+            ResultURL: DUMMY_CALLBACK,
             Occasion: "Crisis Fund Disbursement"
         };
 

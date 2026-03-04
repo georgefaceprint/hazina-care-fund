@@ -38,31 +38,40 @@ const TopUp = () => {
                 return;
             }
 
-            // Use environment variable for the M-Pesa Cloud Function
-            const cloudFunctionUrl = import.meta.env.VITE_MPESA_URL;
+            const formattedPhone = profile.phoneNumber.startsWith('+') ? profile.phoneNumber.substring(1) : profile.phoneNumber;
 
-            if (!cloudFunctionUrl) {
-                throw new Error('M-Pesa service URL not configured. Please check your .env file.');
-            }
+            // Call the Firebase Cloud Function instead of direct Daraja API
+            // Use the standard function URL format or proxy to the local emulator if running locally
+            // Alternatively, since the app is using Vite proxy potentially or deployed on Firebase Hosting
+            // The function in index.js is an HTTP function named stkPush
 
-            const response = await fetch(cloudFunctionUrl, {
+            // To be safe across local and production environments, we call it directly via the correct Cloud Function URL
+            // Since this is a test environment, let's use the explicit cloud function domain if deployed or localhost
+            const functionUrl = window.location.hostname === 'localhost'
+                ? 'http://127.0.0.1:5001/hazina-b1cc7/us-central1/stkPush'
+                : 'https://us-central1-hazina-b1cc7.cloudfunctions.net/stkPush';
+
+            const stkResponse = await fetch(functionUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    phoneNumber: profile.phoneNumber,
+                    phoneNumber: formattedPhone,
                     amount: Number(amount),
-                    userId: profile.id,
-                    timestamp: new Date().toISOString()
+                    userId: profile.id
                 })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Failed to initiate M-Pesa STK Push');
+            if (!stkResponse.ok) {
+                const errorData = await stkResponse.json().catch(() => ({}));
+                console.error("STK Push error: ", errorData);
+                throw new Error(errorData.error || 'Failed to initiate M-Pesa STK Push on phone.');
             }
 
+            // The function has successfully sent the prompt to the phone.
+            // In a real app, you would listen for the callback to update the balance.
+            // Here we assume the user will enter their PIN.
             setStatus('success');
         } catch (error) {
             console.error('Top up error:', error);

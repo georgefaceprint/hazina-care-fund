@@ -7,6 +7,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc,
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Download } from 'lucide-react';
 import { generateWorkflowPDF } from '../utils/pdfGenerator';
+import { format, subDays, startOfDay } from 'date-fns';
 
 
 const AdminPanel = () => {
@@ -117,6 +118,26 @@ const AdminPanel = () => {
     if (loading) return null;
 
     const filteredClaims = claims.filter(c => filter === 'all' || c.status === filter);
+
+    // Calculate last 7 days of growth from transactions
+    const last7Days = Array.from({ length: 7 }).map((_, i) => {
+        const d = subDays(new Date(), 6 - i);
+        return { date: d, label: format(d, 'EEE'), volume: 0 };
+    });
+
+    transactions.forEach(t => {
+        if (!t.createdAt) return;
+        const tDate = t.createdAt.toDate();
+        const tStart = startOfDay(tDate).getTime();
+
+        const dayMatch = last7Days.find(d => startOfDay(d.date).getTime() === tStart);
+        if (dayMatch && t.type === 'top-up') {
+            dayMatch.volume += t.amount;
+        }
+    });
+
+    const maxVolume = Math.max(...last7Days.map(d => d.volume), 1); // avoid div by 0
+
 
     return (
         <div className="min-h-screen bg-slate-50 pt-8 px-6 pb-32 font-sans">
@@ -325,21 +346,26 @@ const AdminPanel = () => {
                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                         <h4 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <TrendingUp className="w-5 h-5 text-brand-primary" />
-                            Fund Growth (Mock)
+                            Fund Growth (Top-ups)
                         </h4>
                         <div className="h-48 flex items-end gap-2 px-2">
-                            {[40, 60, 45, 80, 55, 90, 100].map((h, i) => (
-                                <div key={i} className="flex-1 bg-brand-primary/10 rounded-t-lg relative group transition-all hover:bg-brand-primary/20">
-                                    <div
-                                        className="absolute bottom-0 left-0 w-full bg-brand-primary rounded-t-lg transition-all"
-                                        style={{ height: `${h}%` }}
-                                    ></div>
-                                </div>
-                            ))}
+                            {last7Days.map((day, i) => {
+                                const heightPercent = Math.max((day.volume / maxVolume) * 100, 5); // min 5% height for visibility
+                                return (
+                                    <div key={i} className="flex-1 bg-brand-primary/10 rounded-t-lg relative group transition-all hover:bg-brand-primary/20">
+                                        <div
+                                            className="absolute bottom-0 left-0 w-full bg-brand-primary rounded-t-lg transition-all flex flex-col items-center justify-start text-[8px] text-white font-bold pt-1"
+                                            style={{ height: `${heightPercent}%` }}
+                                        >
+                                            {day.volume > 0 ? (day.volume > 999 ? `${(day.volume / 1000).toFixed(1)}k` : day.volume) : ''}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                         <div className="flex justify-between mt-4 px-2">
-                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                                <span key={d} className="text-[10px] font-bold text-slate-400 uppercase">{d}</span>
+                            {last7Days.map((d, i) => (
+                                <span key={i} className="text-[10px] font-bold text-slate-400 uppercase">{d.label}</span>
                             ))}
                         </div>
                     </div>

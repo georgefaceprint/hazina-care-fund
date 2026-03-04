@@ -58,7 +58,7 @@ const ProfileSettings = () => {
                 <div className="space-y-3">
                     <h3 className="font-black text-[10px] uppercase tracking-widest text-slate-400 ml-2">Account</h3>
                     <div className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 divide-y divide-slate-50">
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100">
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={() => navigate('/complete-profile')}>
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-brand-50 text-brand-primary rounded-xl">
                                     <User className="w-5 h-5" />
@@ -70,7 +70,7 @@ const ProfileSettings = () => {
                             </div>
                             <ChevronRight className="w-5 h-5 text-slate-300" />
                         </div>
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100">
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={() => navigate('/topup')}>
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-amber-50 text-amber-500 rounded-xl">
                                     <Shield className="w-5 h-5" />
@@ -82,7 +82,7 @@ const ProfileSettings = () => {
                             </div>
                             <ChevronRight className="w-5 h-5 text-slate-300" />
                         </div>
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100">
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={() => navigate('/topup')}>
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-emerald-50 text-emerald-500 rounded-xl">
                                     <CreditCard className="w-5 h-5" />
@@ -101,7 +101,7 @@ const ProfileSettings = () => {
                 <div className="space-y-3">
                     <h3 className="font-black text-[10px] uppercase tracking-widest text-slate-400 ml-2">Preferences</h3>
                     <div className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 divide-y divide-slate-50">
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100">
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={() => toast.info('Notification preferences coming in V2.')}>
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-indigo-50 text-indigo-500 rounded-xl">
                                     <Bell className="w-5 h-5" />
