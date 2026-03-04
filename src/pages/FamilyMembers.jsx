@@ -48,6 +48,7 @@ const FamilyMembers = () => {
 
     const handleAddDependent = async (e) => {
         e.preventDefault();
+        if (dependents.length >= 7) return;
         setFormLoading(true);
 
         try {
@@ -103,7 +104,7 @@ const FamilyMembers = () => {
                     </button>
                     <h1 className="text-2xl font-bold font-heading text-slate-900">{t('family_members')}</h1>
                 </div>
-                {!isAdding && (
+                {!isAdding && dependents.length < 7 ? (
                     <button
                         onClick={() => setIsAdding(true)}
                         className="p-3 bg-brand-primary text-white rounded-2xl shadow-md hover:bg-brand-primary/90 transition-transform active:scale-95 flex items-center gap-2"
@@ -111,6 +112,11 @@ const FamilyMembers = () => {
                         <PlusCircle className="w-5 h-5" />
                         <span className="text-sm font-bold">{t('add')}</span>
                     </button>
+                ) : !isAdding && dependents.length >= 7 && (
+                    <div className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-2 rounded-xl flex items-center gap-2 border border-amber-200 shadow-sm animate-in fade-in slide-in-from-right-4">
+                        <AlertCircle className="w-4 h-4" />
+                        {t('max_dependents_reached')}
+                    </div>
                 )}
             </div>
 

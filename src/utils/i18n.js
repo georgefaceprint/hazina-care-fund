@@ -95,6 +95,7 @@ const translations = {
         add: "Add",
         added_on: "Added",
         example_name: "e.g. John Doe",
+        max_dependents_reached: "Max 7 Dependents Reached",
 
         // Crisis Claim
         shield_not_matured: "Shield Not Matured",
@@ -221,6 +222,7 @@ const translations = {
         add: "Ongeza",
         added_on: "Imeongezwa",
         example_name: "Mfano: John Doe",
+        max_dependents_reached: "Upeo wa Wategemezi 7 Umefikiwa",
 
         // Crisis Claim
         shield_not_matured: "Kinga Haijakomaa",
