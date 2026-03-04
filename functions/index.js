@@ -48,6 +48,14 @@ exports.calculateDailyDeduction = onSchedule({
             type: "daily-burn",
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        // Update global analytics
+        const statsRef = db.collection("totals").doc("liquidity");
+        batch.set(statsRef, {
+            total_fund: admin.firestore.FieldValue.increment(-totalDeduction),
+            total_burn: admin.firestore.FieldValue.increment(totalDeduction),
+            last_updated: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
     }
 
     await batch.commit();
@@ -223,6 +231,14 @@ exports.mpesaCallback = onRequest(async (req, res) => {
             });
 
             await batch.commit();
+
+            // 4. Update global analytics
+            await db.collection("totals").doc("liquidity").set({
+                total_fund: admin.firestore.FieldValue.increment(amount),
+                total_topups: admin.firestore.FieldValue.increment(amount),
+                last_updated: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
             console.log(`Payment successful for user: ${requestInfo.userId}, Amount: ${amount}`);
         } else {
             // Payment failed or cancelled
@@ -292,6 +308,13 @@ exports.mpesaB2C = onRequest({
             b2c_conversation_id: response.data.ConversationID,
             status: "disbursing"
         });
+
+        // Update global analytics (decrement liquefaction)
+        await db.collection("totals").doc("liquidity").set({
+            total_fund: admin.firestore.FieldValue.increment(-Number(amount)),
+            total_claims_paid: admin.firestore.FieldValue.increment(Number(amount)),
+            last_updated: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
 
         res.status(200).send({ success: true, data: response.data });
     } catch (error) {

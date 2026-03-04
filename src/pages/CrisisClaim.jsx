@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../services/firebase';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, BookOpen, Skull, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Heart, BookOpen, Skull, AlertCircle, Upload, FileCheck, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const CrisisClaim = () => {
@@ -13,6 +15,8 @@ const CrisisClaim = () => {
     const [claimType, setClaimType] = useState('medical');
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
+    const [file, setFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('idle');
 
@@ -20,6 +24,7 @@ const CrisisClaim = () => {
     const now = new Date();
     const graceExpiry = profile?.grace_period_expiry?.toDate() || new Date();
     const isMatured = profile?.isDemoMode || graceExpiry <= now;
+    const daysRemaining = Math.ceil((graceExpiry - now) / (1000 * 60 * 60 * 24));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -45,11 +50,19 @@ const CrisisClaim = () => {
 
             if (!db) { throw new Error("Database not initialized"); }
 
+            let proofUrl = null;
+            if (file) {
+                const storageRef = ref(storage, `claims/${profile.id}/${Date.now()}_${file.name}`);
+                const uploadResult = await uploadBytes(storageRef, file);
+                proofUrl = await getDownloadURL(uploadResult.ref);
+            }
+
             await addDoc(collection(db, 'claims'), {
                 guardian_id: profile.id,
                 type: claimType,
                 amount: Number(amount),
                 description,
+                proof_url: proofUrl,
                 status: 'pending_review',
                 tier_at_claim: profile.active_tier,
                 createdAt: serverTimestamp()
@@ -89,6 +102,10 @@ const CrisisClaim = () => {
                     <p className="text-red-700 text-sm leading-relaxed mb-6">
                         {t('cannot_file_claim')}<br />
                         {t('shield_matures_on_date')} <strong className="whitespace-nowrap">{profile.grace_period_expiry?.toDate().toLocaleDateString()}</strong>.
+                        <br />
+                        <span className="inline-block mt-4 px-4 py-2 bg-red-100 rounded-full font-black text-xl animate-pulse">
+                            {daysRemaining} {t('days_left') || "DAYS LEFT"}
+                        </span>
                     </p>
                     <button onClick={() => navigate('/dashboard')} className="btn-primary w-full bg-red-600 hover:bg-red-700">
                         {t('return_to_dashboard')}
@@ -166,6 +183,46 @@ const CrisisClaim = () => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all resize-none h-32 uppercase"
                                 placeholder={t('brief_description_placeholder')}
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('proof_of_crisis') || "Proof of Crisis (Optional)"}</label>
+                            <div className="relative">
+                                {!file ? (
+                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-brand-primary transition-all">
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                            <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{t('upload_evidence') || "Upload Evidence (JPG/PNG)"}</p>
+                                        </div>
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={(e) => setFile(e.target.files[0])}
+                                        />
+                                    </label>
+                                ) : (
+                                    <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                                                <FileCheck className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-emerald-900 truncate max-w-[200px]">{file.name}</p>
+                                                <p className="text-[10px] text-emerald-600 uppercase font-black">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFile(null)}
+                                            className="p-2 hover:bg-emerald-100 rounded-full text-emerald-600 transition-colors"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-tight font-bold">{t('proof_desc') || "PDF, JPG OR PNG (MAX 5MB)"}</p>
                         </div>
 
                         <button

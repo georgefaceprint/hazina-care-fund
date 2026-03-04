@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
+import { getStorage } from 'firebase/storage';
 
 // Use Vite environment variables
 const firebaseConfig = {
@@ -23,9 +24,10 @@ try {
     auth = getAuth(app);
     db = getFirestore(app);
     functions = getFunctions(app);
+    storage = getStorage(app);
 } catch (error) {
     console.error("Firebase initialization failed:", error);
 }
 
-export { auth, db, functions };
+export { auth, db, functions, storage };
 export default app;

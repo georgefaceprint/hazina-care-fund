@@ -22,6 +22,7 @@ const AdminPanel = () => {
     const [activeTab, setActiveTab] = useState('claims'); // 'claims' | 'users' | 'transactions' | 'analytics'
     const [transactions, setTransactions] = useState([]);
     const [actionLoading, setActionLoading] = useState(null);
+    const [globalStats, setGlobalStats] = useState({ total_fund: 0, total_burn: 0, total_topups: 0, total_claims_paid: 0 });
 
 
     // Hardcode admin role check for MVP purposes (In production this should be a role in Firestore/Custom Claims)
@@ -49,11 +50,17 @@ const AdminPanel = () => {
             setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
-        const transUnsubscribe = onSnapshot(query(collection(db, 'transactions'), orderBy('createdAt', 'desc')), (snapshot) => {
+        const transUnsubscribe = onSnapshot(query(collection(db, 'transactions'), orderBy('createdAt', 'desc'), limit(50)), (snapshot) => {
             setTransactions(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
-        return () => { unsubscribe(); usersUnsubscribe(); transUnsubscribe(); };
+        const statsUnsubscribe = onSnapshot(doc(db, 'totals', 'liquidity'), (docSnap) => {
+            if (docSnap.exists()) {
+                setGlobalStats(docSnap.data());
+            }
+        });
+
+        return () => { unsubscribe(); usersUnsubscribe(); transUnsubscribe(); statsUnsubscribe(); };
     }, [isAdmin, navigate]);
 
 
@@ -253,6 +260,18 @@ const AdminPanel = () => {
                                         "{claim.description}"
                                     </div>
 
+                                    {claim.proof_url && (
+                                        <a
+                                            href={claim.proof_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 mb-4 p-3 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            View Proof of Crisis (Evidence)
+                                        </a>
+                                    )}
+
                                     {claim.status === 'pending_review' && (
                                         <div className="flex gap-3 mt-4 pt-4 border-t border-slate-100">
                                             <button
@@ -373,7 +392,7 @@ const AdminPanel = () => {
                     <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white overflow-hidden relative">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary rounded-full blur-3xl opacity-20 -mr-16 -mt-16"></div>
                         <h4 className="text-sm font-bold opacity-60 mb-2">Total Fund Liquidity</h4>
-                        <p className="text-4xl font-black tracking-tight">KSh {transactions.reduce((acc, t) => acc + (t.type === 'top-up' ? t.amount : -t.amount), 0).toLocaleString()}</p>
+                        <p className="text-4xl font-black tracking-tight">KSh {(globalStats.total_fund || 0).toLocaleString()}</p>
                         <div className="mt-6 flex items-center gap-3">
                             <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/10">Community Trust Score: 98%</div>
                         </div>
