@@ -7,6 +7,7 @@ import { Shield, Phone, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
+    const navigate = useNavigate();
     const [phoneNumber, setPhoneNumber] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null);
