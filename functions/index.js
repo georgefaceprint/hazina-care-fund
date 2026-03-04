@@ -4,10 +4,16 @@ const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const axios = require("axios");
 
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
 admin.initializeApp();
 const db = admin.firestore();
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY_HERE";
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
 // 1. Daily Deduction Engine (Cron Job)
+
 // Runs every night at 2:00 AM EAT (+3:00 GMT)
 exports.calculateDailyDeduction = onSchedule({
     schedule: "0 2 * * *",
@@ -405,5 +411,96 @@ exports.ussd = onRequest(async (req, res) => {
         console.error("USSD error: ", error);
         res.set("Content-Type", "text/plain");
         res.send("END An error occurred. Please try again later.");
+    }
+});
+
+// 6. AI Assistant Hub (Sifuna AI)
+exports.chatWithSifuna = onRequest({
+    cors: true,
+}, async (req, res) => {
+    try {
+        if (req.method !== 'POST') {
+            res.status(405).send('Method Not Allowed');
+            return;
+        }
+
+        const { message, history, language = 'en', userId } = req.body;
+
+        if (!message) {
+            res.status(400).send({ error: "No message provided" });
+            return;
+        }
+
+        // --- SELF-LEARNING MECHANISM (Retrieval) ---
+        // Fetch long-term "learned" facts about this user from Firestore
+        let persistentContext = "";
+        if (userId) {
+            const memorySnap = await db.collection("users").doc(userId).collection("memory").get();
+            const learnedFacts = memorySnap.docs.map(doc => doc.data().fact);
+            if (learnedFacts.length > 0) {
+                persistentContext = `\nLEARNED FACTS ABOUT THIS USER:\n- ${learnedFacts.join('\n- ')}`;
+            }
+        }
+
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            systemInstruction: `
+                You are Sifuna, the official AI assistant for Hazina Care. Hazina is a community-driven protection platform in Kenya.
+                
+                KNOWLEDGE BASE:
+                - Tiers: 
+                    * Bronze: KSh 10/day, KSh 15,000 cover.
+                    * Silver: KSh 30/day, KSh 50,000 cover.
+                    * Gold: KSh 50/day, KSh 150,000 cover.
+                - Maturation: There is a 180-day grace period (waiting period) before a shield is fully active.
+                - Crisis Types covered: Medical emergency, Bereavement, School Fees.
+                - Payments: Handled via M-Pesa STK Push. Daily 'burn' is automatically deducted from the wallet.
+                - USSD: Users can dial *384# (testing) to access services.
+                - Philosophy: Community-driven, transparent, and built to protect families without the need for traditional insurance.
+                
+                ${persistentContext}
+
+                TONE & STYLE:
+                - Be helpful, empathetic, and professional.
+                - Use a mix of English and Swahili if appropriate (Sheng is welcome for a friendly vibe).
+                - Keep responses concise and formatted with bullet points if listing options.
+                - If you don't know something about the user specifically, ask them to check their dashboard.
+                - IF THE USER TELLS YOU A NEW PERSONAL FACT (e.g. "My name is John" or "I have 3 children"), acknowledge it.
+                
+                USER CONTEXT:
+                - Current User Language: ${language === 'sw' ? 'Swahili' : 'English'}.
+                - Always respond in the user's preferred language.
+            `
+        });
+
+        const chat = model.startChat({
+            history: history || [],
+            generationConfig: {
+                maxOutputTokens: 500,
+            },
+        });
+
+        const result = await chat.sendMessage(message);
+        const response = await result.response;
+        const text = response.text();
+
+        // --- SELF-LEARNING MECHANISM (Storage) ---
+        // Detect if the AI thinks it learned something new (Basic heuristic or secondary model call)
+        // For now, let's use a simple pattern check or just store specific types of info if the AI flags it.
+        // Dynamic "Learning" trigger: Search for "I'll remember that" or "Noted" in AI response to trigger storage.
+        if (userId && (text.includes("I'll remember that") || text.includes("Noted") || text.includes("Nitakumbuka"))) {
+            // We can extract the fact using another LLM call or just log the whole move for human review.
+            // For this beta, we'll log the "learned" interaction to a dedicated collection.
+            await db.collection("users").doc(userId).collection("memory").add({
+                fact: `Learned from user: "${message}"`,
+                ai_response: text,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        res.status(200).send({ text });
+    } catch (error) {
+        console.error("Gemini Error: ", error);
+        res.status(500).send({ error: "Sifuna is taking a short break. Please try again in a moment." });
     }
 });
