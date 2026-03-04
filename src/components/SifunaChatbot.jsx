@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, User, Bot, ChevronRight, HelpCircle, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useAuth } from '../context/AuthContext';
@@ -21,13 +22,48 @@ const SifunaChatbot = () => {
 
     const { profile, user, isDemoMode } = useAuth();
     const { t, language: appLanguage } = useLanguage();
+    const location = useLocation();
     const chatEndRef = useRef(null);
 
-    const prompts = [
-        { id: 'membership', label: t('membership') || "Membership", icon: HelpCircle },
-        { id: 'payments', label: t('payments') || "Payments", icon: HelpCircle },
-        { id: 'claims', label: t('claims') || "Claims", icon: HelpCircle }
-    ];
+    // Dynamic Prompts based on Route
+    const getDynamicPrompts = () => {
+        const path = location.pathname;
+        const basePrompts = [
+            { id: 'membership', label: t('membership') || "Membership", icon: HelpCircle },
+            { id: 'payments', label: t('payments') || "Payments", icon: HelpCircle },
+        ];
+
+        if (path === '/claim') {
+            return [
+                { id: 'file_claim', label: chatLanguage === 'sw' ? "Nitafunguaje dai?" : "How to file a claim?", icon: HelpCircle },
+                { id: 'claim_status', label: chatLanguage === 'sw' ? "Hali ya dai?" : "Claim status?", icon: HelpCircle },
+                ...basePrompts
+            ];
+        }
+
+        if (path === '/referrals') {
+            return [
+                { id: 'share_link', label: chatLanguage === 'sw' ? "Nitashiriki vipi?" : "How to share?", icon: HelpCircle },
+                { id: 'referral_bonus', label: chatLanguage === 'sw' ? "Zawadi za rufaa?" : "Referral bonuses?", icon: HelpCircle },
+                ...basePrompts
+            ];
+        }
+
+        if (path === '/family') {
+            return [
+                { id: 'add_dep', label: chatLanguage === 'sw' ? "Ongeza mtegemezi?" : "Add dependent?", icon: HelpCircle },
+                { id: 'dep_cover', label: chatLanguage === 'sw' ? "Ulinzi wa familia?" : "Family coverage?", icon: HelpCircle },
+                ...basePrompts
+            ];
+        }
+
+        return [
+            ...basePrompts,
+            { id: 'claims', label: t('claims') || "Claims", icon: HelpCircle }
+        ];
+    };
+
+    const currentPrompts = getDynamicPrompts();
 
     useEffect(() => {
         if (isOpen && chatHistory.length === 0 && !chatLanguage) {
@@ -59,7 +95,7 @@ const SifunaChatbot = () => {
 
     const handlePrompt = async (id) => {
         if (!chatLanguage) return;
-        const userMsg = prompts.find(p => p.id === id).label;
+        const userMsg = currentPrompts.find(p => p.id === id).label;
         await sendMessageToAI(userMsg);
     };
 
@@ -101,8 +137,11 @@ const SifunaChatbot = () => {
                     
                     USER CONTEXT:
                     - User Name: ${profile?.fullName || 'Member'}
-                    - User Language: ${chatLanguage === 'sw' ? 'Swahili' : 'English'}.
-                    - CRITICAL: You MUST respond in ${chatLanguage === 'sw' ? 'Swahili' : 'English'}.
+                    - User Language Choice: ${chatLanguage === 'sw' ? 'Swahili' : 'English'}.
+                    - STRICT LANGUAGE RULE: 
+                        * If User Language Choice is 'Swahili', you MUST respond ONLY in Swahili. Do not use English even if the user uses an English term.
+                        * If User Language Choice is 'English', you MUST respond ONLY in English.
+                        * DO NOT mix languages unless specifically asked for a translation.
                 `
             });
 
@@ -209,7 +248,7 @@ const SifunaChatbot = () => {
                                 <>
                                     <p className="text-[10px] font-black uppercase text-slate-400 mb-3 px-2 tracking-widest">Select Topic</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {prompts.map(p => (
+                                        {currentPrompts.map(p => (
                                             <button
                                                 key={p.id}
                                                 onClick={() => handlePrompt(p.id)}
