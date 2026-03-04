@@ -7,6 +7,8 @@ import { storage } from '../services/firebase';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, BookOpen, Skull, AlertCircle, Upload, FileCheck, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import CameraCapture from '../components/CameraCapture';
+
 
 const CrisisClaim = () => {
     const { profile, isDemoMode } = useAuth();
@@ -19,6 +21,8 @@ const CrisisClaim = () => {
     const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('idle');
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+
 
     // Maturation Check
     const now = new Date();
@@ -52,10 +56,21 @@ const CrisisClaim = () => {
 
             let proofUrl = null;
             if (file) {
-                const storageRef = ref(storage, `claims/${profile.id}/${Date.now()}_${file.name}`);
-                const uploadResult = await uploadBytes(storageRef, file);
+                const storageRef = ref(storage, `claims/${profile.id}/${Date.now()}_${file.name || 'camera_capture.jpg'}`);
+
+                let uploadResult;
+                if (typeof file === 'string' && file.startsWith('data:')) {
+                    // Handle data URL from camera
+                    const response = await fetch(file);
+                    const blob = await response.blob();
+                    uploadResult = await uploadBytes(storageRef, blob);
+                } else {
+                    uploadResult = await uploadBytes(storageRef, file);
+                }
+
                 proofUrl = await getDownloadURL(uploadResult.ref);
             }
+
 
             await addDoc(collection(db, 'claims'), {
                 guardian_id: profile.id,
@@ -189,28 +204,39 @@ const CrisisClaim = () => {
                             <label className="block text-sm font-bold text-slate-700 mb-2">{t('proof_of_crisis') || "Proof of Crisis (Optional)"}</label>
                             <div className="relative">
                                 {!file ? (
-                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-brand-primary transition-all">
-                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                            <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{t('upload_evidence') || "Upload Evidence (JPG/PNG)"}</p>
-                                        </div>
-                                        <input
-                                            type="file"
-                                            className="hidden"
-                                            accept="image/*"
-                                            capture="environment"
-                                            onChange={(e) => setFile(e.target.files[0])}
-                                        />
-                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCameraOpen(true)}
+                                            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-xl hover:bg-slate-50 hover:border-brand-primary transition-all group"
+                                        >
+                                            <Camera className="w-8 h-8 text-slate-400 mb-2 group-hover:text-brand-primary transition-colors" />
+                                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{t('take_photo') || "Take Photo"}</p>
+                                        </button>
+                                        <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-brand-primary transition-all group">
+                                            <Upload className="w-8 h-8 text-slate-400 mb-2 group-hover:text-brand-primary transition-colors" />
+                                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{t('upload_gallery') || "Gallery"}</p>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={(e) => setFile(e.target.files[0])}
+                                            />
+                                        </label>
+                                    </div>
                                 ) : (
                                     <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
                                                 <FileCheck className="w-5 h-5" />
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-emerald-900 truncate max-w-[200px]">{file.name}</p>
-                                                <p className="text-[10px] text-emerald-600 uppercase font-black">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                            <div className="overflow-hidden">
+                                                <p className="text-sm font-bold text-emerald-900 truncate max-w-[150px]">
+                                                    {typeof file === 'string' ? "Camera Capture" : file.name}
+                                                </p>
+                                                <p className="text-[10px] text-emerald-600 uppercase font-black">
+                                                    {typeof file === 'string' ? "JPEG" : `${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                                                </p>
                                             </div>
                                         </div>
                                         <button
@@ -226,6 +252,7 @@ const CrisisClaim = () => {
                             <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-tight font-bold">{t('proof_desc') || "PDF, JPG OR PNG (MAX 5MB)"}</p>
                         </div>
 
+
                         <button
                             type="submit"
                             disabled={loading || !amount || !description}
@@ -236,7 +263,15 @@ const CrisisClaim = () => {
                     </form>
                 </div>
             )}
+
+            {isCameraOpen && (
+                <CameraCapture
+                    onCapture={(img) => setFile(img)}
+                    onClose={() => setIsCameraOpen(false)}
+                />
+            )}
         </div>
+
     );
 };
 

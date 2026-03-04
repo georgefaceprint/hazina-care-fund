@@ -1,16 +1,28 @@
-# React + Vite
+# Hazina PWA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Hazina is a community-driven protection platform for guardians in Kenya. It provides a digital shield against medical emergencies, bereavement, and school fee crises through a sophisticated contribution and claim system.
 
-Currently, two official plugins are available:
+## Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Digital ID & Shield**: Every member gets a digital ID with real-time maturation tracking.
+- **Crisis Claims**: Dual-flow claim submission with native camera support and gallery upload.
+- **Wallet & M-Pesa Integration**: Seamless top-ups via M-Pesa for maintaining protection.
+- **Family Protection**: Add up to 7 dependents to your coverage shield.
+- **Community Growth**: Referral system with Hazina Points and payment holiday rewards.
+- **Multi-language Support**: Fully localized in English and Swahili.
+- **Admin Panel**: Robust management interface for reviewing claims and user roles.
 
-## React Compiler
+## Technical Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: React + Vite + Tailwind CSS
+- **Backend**: Firebase (Auth, Firestore, Storage)
+- **Icons**: Lucide React
+- **PWA**: Powered by `vite-plugin-pwa`
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Clone the repository.
+2. Install dependencies: `npm install`
+3. Create a `.env` file with your Firebase configuration.
+4. Run development server: `npm run dev`
+
