@@ -233,6 +233,67 @@ exports.mpesaCallback = onRequest(async (req, res) => {
     }
 });
 
+/**
+ * 4.5 M-Pesa B2C Disbursement (Disburse funds to member)
+ * Triggered by Admin approval in the frontend
+ */
+exports.mpesaB2C = onRequest({
+    cors: true,
+    secrets: [darajaConsumerKey, darajaConsumerSecret, darajaShortcode, darajaPasskey]
+}, async (req, res) => {
+    try {
+        if (req.method !== 'POST') {
+            res.status(405).send('Method Not Allowed');
+            return;
+        }
+
+        const { phoneNumber, amount, claimId, userId } = req.body;
+
+        if (!phoneNumber || !amount || !claimId) {
+            res.status(400).send({ error: "Missing required fields" });
+            return;
+        }
+
+        const consumerKey = darajaConsumerKey.value();
+        const consumerSecret = darajaConsumerSecret.value();
+
+        // Use a B2C specific shortcode/initiator name here in production
+        // For Sandbox, we often use the same test credentials
+        const initiatorName = "testapi";
+        const securityCredential = "SecurityCredentialPlaceholder"; // Usually encrypted initiator password
+
+        const token = await generateAccessToken(consumerKey, consumerSecret);
+
+        const b2cData = {
+            InitiatorName: initiatorName,
+            SecurityCredential: securityCredential,
+            CommandID: "BusinessPayment", // or SalaryPayment/PromotionPayment
+            Amount: amount,
+            PartyA: darajaShortcode.value(),
+            PartyB: phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber,
+            Remarks: `Hazina Claim Approval: ${claimId.substring(0, 8)}`,
+            QueueTimeOutURL: darajaCallbackUrl.value(),
+            ResultURL: darajaCallbackUrl.value(),
+            Occasion: "Crisis Fund Disbursement"
+        };
+
+        const response = await axios.post("https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest", b2cData, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        // Update claim with B2C conversation ID
+        await db.collection("claims").doc(claimId).update({
+            b2c_conversation_id: response.data.ConversationID,
+            status: "disbursing"
+        });
+
+        res.status(200).send({ success: true, data: response.data });
+    } catch (error) {
+        console.error("B2C Disbursement error: ", error.response?.data || error.message);
+        res.status(500).send({ error: "Failed to initiate B2C disbursement" });
+    }
+});
+
 // 5. Africa's Talking USSD Webhook Handler
 exports.ussd = onRequest(async (req, res) => {
     try {

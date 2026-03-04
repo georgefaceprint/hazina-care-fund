@@ -1,10 +1,13 @@
 import React from 'react';
 import { Home, Users, CreditCard, User, ShieldCheck } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const AppLayout = () => {
     const { profile } = useAuth();
+    const { t } = useLanguage();
+    const navigate = useNavigate();
     const isAdmin = profile?.role === 'admin';
 
     return (
@@ -24,13 +27,16 @@ const AppLayout = () => {
                 <div className="flex justify-around items-center h-12">
                     <NavLink to="/dashboard" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <Home className="w-6 h-6" />
-                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">Home</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('home')}</span>
                     </NavLink>
                     <NavLink to="/family" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <Users className="w-6 h-6" />
-                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">Family</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('family')}</span>
                     </NavLink>
-                    <div className="relative -mt-16 bg-white p-3 rounded-full shadow-2xl border-2 border-slate-50 group active:scale-90 transition-all cursor-pointer">
+                    <div
+                        onClick={() => navigate('/claim')}
+                        className="relative -mt-16 bg-white p-3 rounded-full shadow-2xl border-2 border-slate-50 group active:scale-90 transition-all cursor-pointer"
+                    >
                         <div className="bg-gradient-to-br from-brand-primary to-emerald-600 p-4 rounded-full text-white shadow-[0_10px_20px_rgba(16,185,129,0.3)]">
                             <Zap className="w-8 h-8" />
                         </div>
@@ -38,17 +44,17 @@ const AppLayout = () => {
                     {isAdmin ? (
                         <NavLink to="/admin" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                             <ShieldCheck className="w-6 h-6" />
-                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">Admin</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('admin')}</span>
                         </NavLink>
                     ) : (
                         <NavLink to="/topup" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                             <CreditCard className="w-6 h-6" />
-                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">Wallet</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('wallet')}</span>
                         </NavLink>
                     )}
                     <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <User className="w-6 h-6" />
-                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">Profile</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('profile')}</span>
                     </NavLink>
                 </div>
             </nav>

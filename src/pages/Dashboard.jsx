@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle } from 'lucide-react';
+import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle, Globe } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import TierUpgradeModal from '../components/TierUpgradeModal';
 import RecentActivity from '../components/RecentActivity';
+import { useLanguage } from '../context/LanguageContext';
 
 const Dashboard = () => {
     const { profile, user, isDemoMode } = useAuth();
+    const { t, language, toggleLanguage } = useLanguage();
     const navigate = useNavigate();
     const [dependents, setDependents] = useState([]);
     const [activities, setActivities] = useState([]);
@@ -91,13 +93,17 @@ const Dashboard = () => {
                             <Shield className="w-8 h-8 text-brand-primary" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold font-heading">Hazina Guardian</h2>
+                            <h2 className="text-xl font-bold font-heading">{t('dashboard')}</h2>
                             <p className="text-white/60 text-sm">Community Member Since {format(joinedDate, 'MMM yyyy')}</p>
                         </div>
                     </div>
-                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
-                        <Users className="w-6 h-6 text-white" />
-                    </div>
+                    <button
+                        onClick={toggleLanguage}
+                        className="flex items-center gap-2 p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 hover:bg-white/20 transition-all font-bold text-xs uppercase"
+                    >
+                        <Globe className="w-5 h-5 text-white" />
+                        <span>{language === 'en' ? 'SW' : 'EN'}</span>
+                    </button>
                 </div>
 
                 {/* Digital ID Card */}
@@ -151,12 +157,19 @@ const Dashboard = () => {
                             <div className="p-3 bg-amber-400 text-amber-950 rounded-2xl">
                                 <AlertCircle className="w-6 h-6" />
                             </div>
-                            <div>
-                                <h4 className="font-bold text-amber-900 text-sm">Action Required</h4>
-                                <p className="text-xs text-amber-800 opacity-80 mt-0.5">Deposit funds to activate your shield and start coverage.</p>
-                                <button onClick={() => navigate('/topup')} className="mt-2 text-xs font-black uppercase text-amber-950 flex items-center gap-1">
-                                    Fund Now <ChevronRight className="w-4 h-4" />
-                                </button>
+                            <div className="p-4 bg-amber-50 rounded-[2rem] border border-amber-200 shadow-lg animate-in fade-in slide-in-from-top-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-amber-400 text-amber-950 rounded-2xl">
+                                        <AlertCircle className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-amber-900 text-sm">{t('action_required')}</h4>
+                                        <p className="text-xs text-amber-800 opacity-80 mt-0.5">{t('activate_shield')}</p>
+                                        <button onClick={() => navigate('/topup')} className="mt-2 text-xs font-black uppercase text-amber-950 flex items-center gap-1">
+                                            {t('fund_now')} <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -170,7 +183,7 @@ const Dashboard = () => {
                             <div className="p-2 bg-brand-primary/10 rounded-xl">
                                 <TrendingUp className="w-5 h-5 text-brand-primary" />
                             </div>
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Daily Burn</span>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">{t('daily_burn')}</span>
                         </div>
                         <p className="text-3xl font-black text-slate-900">KSh {dailyBurn}</p>
                         <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
@@ -183,7 +196,7 @@ const Dashboard = () => {
                             <div className="p-2 bg-blue-500/10 rounded-xl">
                                 <CreditCard className="w-5 h-5 text-blue-500" />
                             </div>
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Your Fund</span>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">{t('your_fund')}</span>
                         </div>
                         <p className="text-3xl font-black text-slate-900">KSh {profile.balance || 0}</p>
                         <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
@@ -198,8 +211,8 @@ const Dashboard = () => {
                         <div className="flex items-center gap-3">
                             <Shield className={`w-6 h-6 ${isMatured ? 'text-brand-primary' : 'text-yellow-500 animate-pulse'}`} />
                             <div>
-                                <h4 className="font-bold text-slate-900">Shield Growth</h4>
-                                <p className="text-xs text-slate-400">{isMatured ? 'Fully Protected' : 'Maturing toward full coverage'}</p>
+                                <h4 className="font-bold text-slate-900">{t('shield_growth')}</h4>
+                                <p className="text-xs text-slate-400">{isMatured ? t('fully_protected') : t('maturing')}</p>
                             </div>
                         </div>
                         <span className="text-2xl font-black text-brand-primary">{progressPercent}%</span>
@@ -228,7 +241,7 @@ const Dashboard = () => {
 
                 {/* Quick Actions */}
                 <div className="space-y-3">
-                    <h4 className="font-black text-xs uppercase tracking-widest text-slate-400 ml-1">Guardian Services</h4>
+                    <h4 className="font-black text-xs uppercase tracking-widest text-slate-400 ml-1">{t('guardian_services')}</h4>
                     <div className="grid grid-cols-2 gap-4">
                         <button
                             onClick={() => navigate('/claim')}
@@ -237,7 +250,7 @@ const Dashboard = () => {
                             <div className="p-4 bg-red-50 text-red-500 rounded-2xl group-hover:bg-red-500 group-hover:text-white transition-colors duration-500">
                                 <Heart className="w-6 h-6" />
                             </div>
-                            <span className="text-sm font-bold text-slate-700">Crisis Claim</span>
+                            <span className="text-sm font-bold text-slate-700">{t('crisis_claim')}</span>
                         </button>
                         <button
                             onClick={() => setIsUpgradeModalOpen(true)}
@@ -246,7 +259,7 @@ const Dashboard = () => {
                             <div className="p-4 bg-amber-50 text-amber-500 rounded-2xl group-hover:bg-amber-500 group-hover:text-white transition-colors duration-500">
                                 <Zap className="w-6 h-6" />
                             </div>
-                            <span className="text-sm font-bold text-slate-700">Upgrade Tier</span>
+                            <span className="text-sm font-bold text-slate-700">{t('upgrade_tier')}</span>
                         </button>
                     </div>
                 </div>
@@ -292,7 +305,7 @@ const Dashboard = () => {
                     <div className="flex justify-between items-center mb-6">
                         <h4 className="font-black text-slate-900 flex items-center gap-2">
                             <Users className="w-5 h-5 text-brand-primary" />
-                            Dependents <span className="text-sm text-slate-400 font-normal">({dependents.length})</span>
+                            {t('dependents')} <span className="text-sm text-slate-400 font-normal">({dependents.length})</span>
                         </h4>
                         <button
                             onClick={() => navigate('/family')}

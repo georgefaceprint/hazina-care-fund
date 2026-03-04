@@ -3,12 +3,14 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 
-import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, HelpCircle, Download, FileText } from 'lucide-react';
+import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, HelpCircle, Download, FileText, Globe } from 'lucide-react';
 import { generateWorkflowPDF } from '../utils/pdfGenerator';
+import { useLanguage } from '../context/LanguageContext';
 
 
 const ProfileSettings = () => {
     const { user, profile, logout } = useAuth();
+    const { t, language, setLanguage } = useLanguage();
     const navigate = useNavigate();
     const toast = useToast();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -33,7 +35,7 @@ const ProfileSettings = () => {
             <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary rounded-full -mr-32 -mt-32 blur-3xl opacity-10 pointer-events-none"></div>
 
             <div className="relative z-10 mb-8 mt-2">
-                <h1 className="text-3xl font-bold font-heading text-slate-900">Settings</h1>
+                <h1 className="text-3xl font-bold font-heading text-slate-900">{t('profile')}</h1>
                 <p className="text-sm font-medium text-slate-500 mt-1">Manage your account & preferences</p>
             </div>
 
@@ -133,16 +135,20 @@ const ProfileSettings = () => {
                         <div className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-orange-50 text-orange-500 rounded-xl">
-                                    <HelpCircle className="w-5 h-5" />
+                                    <Globe className="w-5 h-5" />
                                 </div>
                                 <div>
                                     <p className="font-bold text-slate-800 text-sm">Language</p>
-                                    <p className="text-xs text-slate-500">Current: English</p>
+                                    <p className="text-xs text-slate-500">Current: {language === 'en' ? 'English' : 'Kiswahili'}</p>
                                 </div>
                             </div>
-                            <select className="bg-transparent text-sm font-bold text-slate-700 outline-none">
+                            <select
+                                value={language}
+                                onChange={(e) => setLanguage(e.target.value)}
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold text-slate-700 outline-none"
+                            >
                                 <option value="en">English</option>
-                                <option value="sw">Swahili</option>
+                                <option value="sw">Kiswahili</option>
                             </select>
                         </div>
 

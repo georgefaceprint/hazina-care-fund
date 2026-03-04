@@ -13,6 +13,7 @@ const FamilyMembers = lazy(() => import('./pages/FamilyMembers'));
 const CrisisClaim = lazy(() => import('./pages/CrisisClaim'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
+const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -28,36 +29,41 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+import { LanguageProvider } from './context/LanguageContext';
+
 const App = () => {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
+      <LanguageProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
 
-            <Route element={
-              <ProtectedRoute>
-                <Suspense fallback={
-                  <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                    <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                }>
-                  <AppLayout />
-                </Suspense>
-              </ProtectedRoute>
-            }>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/topup" element={<TopUp />} />
-              <Route path="/family" element={<FamilyMembers />} />
-              <Route path="/claim" element={<CrisisClaim />} />
-              <Route path="/admin" element={<AdminPanel />} />
-              <Route path="/settings" element={<ProfileSettings />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            </Route>
-          </Routes>
-        </AuthProvider>
-      </ToastProvider>
+              <Route element={
+                <ProtectedRoute>
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                      <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  }>
+                    <AppLayout />
+                  </Suspense>
+                </ProtectedRoute>
+              }>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/topup" element={<TopUp />} />
+                <Route path="/family" element={<FamilyMembers />} />
+                <Route path="/claim" element={<CrisisClaim />} />
+                <Route path="/admin" element={<AdminPanel />} />
+                <Route path="/settings" element={<ProfileSettings />} />
+                <Route path="/complete-profile" element={<CompleteProfile />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              </Route>
+            </Routes>
+          </AuthProvider>
+        </ToastProvider>
+      </LanguageProvider>
     </BrowserRouter>
 
   );

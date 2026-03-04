@@ -67,11 +67,18 @@ const LoginPage = () => {
                     tier_joined_date: serverTimestamp(),
                     balance: 0,
                     createdAt: serverTimestamp(),
+                    profile_completed: false, // track KYC status
                     grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 180 days from now
                 });
+                navigate('/complete-profile');
+            } else {
+                const userData = userSnap.data();
+                if (!userData.profile_completed) {
+                    navigate('/complete-profile');
+                } else {
+                    navigate('/dashboard');
+                }
             }
-
-            navigate('/dashboard');
         } catch (error) {
             console.error('Verification code error:', error);
             setError('Invalid verification code. Please try again.');
