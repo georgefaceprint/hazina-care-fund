@@ -14,7 +14,7 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-let app, auth, db, functions;
+let app, auth, db, functions, storage;
 
 try {
     if (!firebaseConfig.apiKey) {
