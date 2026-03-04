@@ -163,7 +163,8 @@ exports.stkPush = onRequest({
         res.status(200).send({ success: true, data: response.data });
     } catch (error) {
         console.error("STK Push error: ", error.response?.data || error.message);
-        res.status(500).send({ error: "Failed to initiate STK Push" });
+        const errorMsg = error.response?.data?.errorMessage || error.message || "Failed to initiate STK Push";
+        res.status(500).send({ error: `Safaricom API Error: ${errorMsg}` });
     }
 });
 

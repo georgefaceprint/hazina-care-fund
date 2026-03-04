@@ -60,7 +60,9 @@ const TopUp = () => {
         } catch (error) {
             console.error('Top up error:', error);
             setStatus('error');
-            setErrorMsg(error.message || 'Failed to connect to M-Pesa. Please try again later.');
+            setErrorMsg(error.message.includes('upstream') || error.message.includes('timeout')
+                ? 'Safaricom Sandbox is currently offline/timing out. Please try again later.'
+                : error.message || 'Failed to connect to M-Pesa. Please try again later.');
         } finally {
             if (!isDemoMode) setLoading(false);
         }
@@ -108,16 +110,6 @@ const TopUp = () => {
                                     {val}
                                 </button>
                             ))}
-                            <div className="relative col-span-1">
-                                <input
-                                    type="number"
-                                    min="10"
-                                    placeholder="Other"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="w-full h-full py-3 px-2 border-2 border-slate-100 rounded-xl outline-none focus:border-brand-primary text-center font-bold text-slate-700 bg-white"
-                                />
-                            </div>
                         </div>
                     </div>
 
