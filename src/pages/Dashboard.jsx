@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle, Globe, FileText } from 'lucide-react';
+import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle, Globe, FileText, User } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -119,9 +119,32 @@ const Dashboard = () => {
                     <div className="bg-gradient-to-br from-brand-primary via-emerald-600 to-brand-secondary p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden transform-gpu hover:rotate-y-6 transition-all duration-700">
                         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                         <div className="flex justify-between items-start mb-10">
-                            <div>
-                                <p className="text-xs uppercase tracking-widest text-emerald-100 font-bold mb-1 opacity-70">Official Digital ID</p>
-                                <h3 className="text-2xl font-black font-heading tracking-tight">{profile.id.substring(0, 10).toUpperCase()}</h3>
+                            <div className="flex items-center gap-4">
+                                {profile.id_photo_url ? (
+                                    <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/20 shadow-inner flex-shrink-0 relative">
+                                        <img
+                                            src={profile.id_photo_url}
+                                            alt="ID Photo"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.style.display = 'none';
+                                                e.target.nextElementSibling.style.display = 'flex';
+                                            }}
+                                        />
+                                        <div className="absolute inset-0 bg-brand-primary text-white flex items-center justify-center font-bold text-2xl hidden fallback-icon">
+                                            {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : '?'}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-16 h-16 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center shadow-inner flex-shrink-0">
+                                        <User className="w-8 h-8 text-white/50" />
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="text-xs uppercase tracking-widest text-emerald-100 font-bold mb-1 opacity-70">Official Digital ID</p>
+                                    <h3 className="text-2xl font-black font-heading tracking-tight">{profile.national_id || profile.id.substring(0, 10).toUpperCase()}</h3>
+                                </div>
                             </div>
                             <div className="bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
                                 {!isMatured && (
