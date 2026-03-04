@@ -15,11 +15,18 @@ const CrisisClaim = () => {
     const [status, setStatus] = useState('idle');
 
     // Maturation Check
-    const isMatured = profile?.grace_period_expiry && profile.grace_period_expiry.toDate() <= new Date();
+    const now = new Date();
+    const graceExpiry = profile?.grace_period_expiry?.toDate() || new Date();
+    const isMatured = profile?.isDemoMode || graceExpiry <= now;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!isMatured) return;
+
+        // Prevent submission if not matured
+        if (!isMatured) {
+            setStatus('error');
+            return;
+        }
 
         setLoading(true);
         setStatus('pending');

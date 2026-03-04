@@ -34,7 +34,7 @@ const Dashboard = () => {
 
             try {
                 if (!db) { setLoading(false); return; }
-                
+
                 // Fetch Dependents
                 const depQ = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
                 const depSnap = await getDocs(depQ);
@@ -145,6 +145,23 @@ const Dashboard = () => {
 
             {/* Stats and Info Area */}
             <div className="px-6 -mt-10 space-y-6 relative">
+                {profile.status === 'pending_payment' && (
+                    <div className="p-4 bg-amber-50 rounded-[2rem] border border-amber-200 shadow-lg animate-in fade-in slide-in-from-top-4">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-amber-400 text-amber-950 rounded-2xl">
+                                <AlertCircle className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-amber-900 text-sm">Action Required</h4>
+                                <p className="text-xs text-amber-800 opacity-80 mt-0.5">Deposit funds to activate your shield and start coverage.</p>
+                                <button onClick={() => navigate('/topup')} className="mt-2 text-xs font-black uppercase text-amber-950 flex items-center gap-1">
+                                    Fund Now <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Daily Burn Card */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="card bg-white border-none shadow-md overflow-hidden relative group">
@@ -231,6 +248,42 @@ const Dashboard = () => {
                             </div>
                             <span className="text-sm font-bold text-slate-700">Upgrade Tier</span>
                         </button>
+                    </div>
+                </div>
+
+                {/* Activity Feed */}
+                <div className="card bg-white shadow-md border-none overflow-hidden">
+                    <div className="flex justify-between items-center mb-6">
+                        <h4 className="font-black text-slate-900 flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-brand-primary" />
+                            Recent Activity
+                        </h4>
+                    </div>
+                    <div className="space-y-1">
+                        {[
+                            { id: 1, type: 'topup', amount: 500, date: '2 hours ago', status: 'completed' },
+                            { id: 2, type: 'claim', amount: 15000, date: '1 day ago', status: 'pending_review' }
+                        ].map(activity => (
+                            <div key={activity.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-2 rounded-xl ${activity.type === 'topup' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                        {activity.type === 'topup' ? <CreditCard className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-800 text-sm">
+                                            {activity.type === 'topup' ? 'Wallet Top-up' : 'Crisis Claim'}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{activity.date}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-black text-slate-900 text-sm">KSh {activity.amount}</p>
+                                    <p className={`text-[9px] font-black uppercase tracking-widest ${activity.status === 'completed' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                        {activity.status.replace('_', ' ')}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 

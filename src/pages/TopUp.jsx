@@ -38,8 +38,12 @@ const TopUp = () => {
                 return;
             }
 
-            // In a real app, point this to your deployed Firebase Function URL
-            const cloudFunctionUrl = "http://localhost:5001/YOUR_PROJECT_ID/your-region/stkPush";
+            // Use environment variable for the M-Pesa Cloud Function
+            const cloudFunctionUrl = import.meta.env.VITE_MPESA_URL;
+
+            if (!cloudFunctionUrl) {
+                throw new Error('M-Pesa service URL not configured. Please check your .env file.');
+            }
 
             const response = await fetch(cloudFunctionUrl, {
                 method: 'POST',
@@ -49,26 +53,23 @@ const TopUp = () => {
                 body: JSON.stringify({
                     phoneNumber: profile.phoneNumber,
                     amount: Number(amount),
-                    userId: profile.id
+                    userId: profile.id,
+                    timestamp: new Date().toISOString()
                 })
             });
 
             if (!response.ok) {
-                throw new Error('Failed to initiate M-Pesa STK Push');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to initiate M-Pesa STK Push');
             }
 
-            const data = await response.json();
-            console.log('STK initiated:', data);
-
-            // Since it's an STK push, the user needs to enter their PIN on their phone
-            // The callback will update Firestore when done. We just show success message for initiating.
             setStatus('success');
         } catch (error) {
             console.error('Top up error:', error);
             setStatus('error');
-            setErrorMsg('Failed to connect to M-Pesa. Please try again later.');
+            setErrorMsg(error.message || 'Failed to connect to M-Pesa. Please try again later.');
         } finally {
-            setLoading(false);
+            if (!isDemoMode) setLoading(false);
         }
     };
 

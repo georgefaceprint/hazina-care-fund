@@ -111,6 +111,41 @@ const ProfileSettings = () => {
                             </div>
                             <ChevronRight className="w-5 h-5 text-slate-300" />
                         </div>
+
+                        <div className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-slate-100 text-slate-700 rounded-xl">
+                                    <HelpCircle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-800 text-sm">Dark Mode</p>
+                                    <p className="text-xs text-slate-500">Toggle dark theme</p>
+                                </div>
+                            </div>
+                            <div className="w-12 h-6 bg-slate-200 rounded-full relative p-1 cursor-pointer" onClick={() => {
+                                const isDark = document.documentElement.classList.toggle('dark');
+                                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                            }}>
+                                <div className="w-4 h-4 bg-white rounded-full transition-all duration-300 ml-0 dark:ml-6 shadow-sm"></div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-orange-50 text-orange-500 rounded-xl">
+                                    <HelpCircle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-800 text-sm">Language</p>
+                                    <p className="text-xs text-slate-500">Current: English</p>
+                                </div>
+                            </div>
+                            <select className="bg-transparent text-sm font-bold text-slate-700 outline-none">
+                                <option value="en">English</option>
+                                <option value="sw">Swahili</option>
+                            </select>
+                        </div>
+
                         <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={generateWorkflowPDF}>
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-brand-50 text-brand-primary rounded-xl">

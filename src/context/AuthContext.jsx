@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 
 const AuthContext = createContext();
@@ -51,15 +51,33 @@ export const AuthProvider = ({ children }) => {
         const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
             if (authUser) {
                 setUser(authUser);
-                // Real-time profile updates
+
+                // Fetch or Initialize Profile in Firestore
                 const profileRef = doc(db, 'users', authUser.uid);
-                const unsubProfile = onSnapshot(profileRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        setProfile({ id: docSnap.id, ...docSnap.data() });
-                    } else {
-                        setProfile(null);
+                const docSnap = await getDoc(profileRef);
+
+                if (!docSnap.exists()) {
+                    // Initialize default profile for new user
+                    const newProfile = {
+                        phoneNumber: authUser.phoneNumber || '',
+                        role: 'user',
+                        active_tier: 'bronze',
+                        balance: 0,
+                        status: 'pending_payment',
+                        tier_joined_date: new Date(),
+                        grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 180 days
+                    };
+                    await setDoc(profileRef, newProfile);
+                    setProfile({ id: authUser.uid, ...newProfile });
+                }
+
+                // Real-time profile updates
+                const unsubProfile = onSnapshot(profileRef, (snap) => {
+                    if (snap.exists()) {
+                        setProfile({ id: snap.id, ...snap.data() });
                     }
                 });
+
                 setLoading(false);
                 return () => unsubProfile();
             } else {
