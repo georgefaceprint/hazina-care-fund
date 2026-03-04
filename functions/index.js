@@ -9,10 +9,10 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 admin.initializeApp();
 const db = admin.firestore();
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA_V468F9lzmWx6EAc9D-ZCTYyzqvwrDh8";
 
 if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
-    console.error("❌ ERROR: GEMINI_API_KEY is not set in Firebase environment variables.");
+    console.error("❌ ERROR: GEMINI_API_KEY is not set. Using fallback (if provided).");
 }
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || "");
