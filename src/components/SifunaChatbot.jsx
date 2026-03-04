@@ -13,7 +13,7 @@ const SifunaChatbot = () => {
     const [chatLanguage, setChatLanguage] = useState(null); // 'en' or 'sw'
 
     // chatHistory is the source of truth for the conversation
-    // Format: [{ role: 'user' | 'model', parts: [{ text: string }] }]
+    // Gemini format: [{ role: 'user' | 'model', parts: [{ text: string }] }]
     const [chatHistory, setChatHistory] = useState([]);
 
     const { profile, isDemoMode } = useAuth();
@@ -56,9 +56,8 @@ const SifunaChatbot = () => {
     };
 
     const sendMessageToAI = async (text) => {
-        if (!text.trim() || isTyping) return;
-
         const userMsg = text.trim();
+        if (!userMsg || isTyping) return;
 
         // Optimistically add user message to history
         setChatHistory(prev => [...prev, { role: 'user', parts: [{ text: userMsg }] }]);
@@ -145,7 +144,7 @@ const SifunaChatbot = () => {
                                         ? 'bg-orange-500 text-white rounded-tr-none shadow-orange-500/10'
                                         : 'bg-white text-slate-700 shadow-sm border border-slate-100 rounded-tl-none font-medium'
                                         }`}>
-                                        {msg.parts[0].text}
+                                        {msg.parts?.[0]?.text || ""}
                                     </div>
                                 </div>
                             ))}
@@ -167,8 +166,8 @@ const SifunaChatbot = () => {
                                 <>
                                     <p className="text-[10px] font-black uppercase text-slate-400 mb-3 px-2 tracking-widest">Select Language</p>
                                     <div className="flex gap-2">
-                                        <button onClick={() => selectLanguage('en')} className="flex-1 py-3 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-2xl text-xs font-bold transition-all border border-slate-100">English</button>
-                                        <button onClick={() => selectLanguage('sw')} className="flex-1 py-3 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-2xl text-xs font-bold transition-all border border-slate-100">Kiswahili</button>
+                                        <button onClick={() => selectLanguage('en')} className="flex-1 py-3 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-2xl text-xs font-bold transition-all border border-slate-100 font-black">English</button>
+                                        <button onClick={() => selectLanguage('sw')} className="flex-1 py-3 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-2xl text-xs font-bold transition-all border border-slate-100 font-black">Kiswahili</button>
                                     </div>
                                 </>
                             ) : (
