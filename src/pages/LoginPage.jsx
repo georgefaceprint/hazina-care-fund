@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Phone, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { formatKenyanPhone } from '../utils/phoneUtils';
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -26,7 +27,7 @@ const LoginPage = () => {
         setError('');
         setLoading(true);
 
-        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+254${phoneNumber.replace(/^0/, '')}`;
+        const formatPhone = formatKenyanPhone(phoneNumber);
 
         try {
             // Because Firebase requires Recaptcha for real SMS, and the user requested to remove it for testing,
@@ -123,7 +124,7 @@ const LoginPage = () => {
                     <button
                         type="button"
                         onClick={() => {
-                            const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+254${phoneNumber.replace(/^0/, '')}`;
+                            const formatPhone = formatKenyanPhone(phoneNumber);
                             enableDemoMode(phoneNumber ? formatPhone : '+254712345678');
                         }}
                         className="w-full py-4 text-sm font-bold text-slate-500 hover:text-brand-primary bg-slate-100/80 rounded-2xl transition-colors shadow-inner"

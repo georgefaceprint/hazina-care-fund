@@ -4,8 +4,9 @@ import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../services/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Shield, User, CreditCard, ArrowRight, CheckCircle2, Upload } from 'lucide-react';
+import { Shield, User, ArrowRight, Upload, Image as ImageIcon } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { uploadProfilePhoto } from '../services/storage';
 
 const CompleteProfile = () => {
     const { user, profile } = useAuth();
@@ -15,17 +16,30 @@ const CompleteProfile = () => {
 
     const [fullName, setFullName] = useState('');
     const [nationalId, setNationalId] = useState('');
+    const [idPhoto, setIdPhoto] = useState(null);
+    const [uploadingState, setUploadingState] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!idPhoto) {
+            toast.error("Please upload your ID photo for verification.");
+            return;
+        }
+
         setLoading(true);
 
         try {
+            setUploadingState('Uploading ID...');
+            const photoUrl = await uploadProfilePhoto(user.uid, idPhoto);
+
+            setUploadingState('Finalizing profile...');
             const userRef = doc(db, 'users', user.uid);
             await updateDoc(userRef, {
                 fullName,
                 national_id: nationalId,
+                id_photo_url: photoUrl,
                 profile_completed: true,
                 updatedAt: serverTimestamp()
             });
@@ -80,10 +94,27 @@ const CompleteProfile = () => {
 
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">Identity Verification (KYC)</label>
-                        <div className="border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 group">
-                            <Upload className="w-10 h-10 text-slate-300 mx-auto mb-3 group-hover:text-brand-primary transition-colors" />
-                            <p className="text-sm font-bold text-slate-700">Upload ID Front Photo</p>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-tighter mt-1">JPG or PNG (Max 5MB)</p>
+                        <div className="relative border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 group overflow-hidden">
+                            <input
+                                type="file"
+                                accept="image/jpeg, image/png"
+                                onChange={(e) => setIdPhoto(e.target.files[0])}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                required
+                            />
+                            {idPhoto ? (
+                                <div className="flex flex-col items-center justify-center">
+                                    <ImageIcon className="w-10 h-10 text-brand-primary mb-3" />
+                                    <p className="text-sm font-bold text-slate-700 truncate w-full px-4">{idPhoto.name}</p>
+                                    <p className="text-[10px] text-brand-primary uppercase tracking-tighter mt-1 font-bold">Image Selected</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center">
+                                    <Upload className="w-10 h-10 text-slate-300 mx-auto mb-3 group-hover:text-brand-primary transition-colors" />
+                                    <p className="text-sm font-bold text-slate-700">Upload ID Front Photo</p>
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-tighter mt-1">JPG or PNG (Max 5MB)</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -99,7 +130,7 @@ const CompleteProfile = () => {
                         disabled={loading}
                         className="w-full py-4 bg-brand-primary text-white font-bold rounded-2xl shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                        {loading ? 'Processing...' : (
+                        {loading ? uploadingState || 'Processing...' : (
                             <>Confirm & Activate <ArrowRight className="w-5 h-5" /></>
                         )}
                     </button>
