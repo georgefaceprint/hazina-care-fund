@@ -134,9 +134,9 @@ const FamilyMembers = () => {
                                 type="text"
                                 required
                                 value={newDepName}
-                                onChange={(e) => setNewDepName(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all"
-                                placeholder="e.g. John Doe"
+                                onChange={(e) => setNewDepName(e.target.value.toUpperCase())}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all uppercase"
+                                placeholder="E.G. JOHN DOE"
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -157,8 +157,8 @@ const FamilyMembers = () => {
                                     type="text"
                                     required
                                     value={newDepIdNumber}
-                                    onChange={(e) => setNewDepIdNumber(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none transition-all"
+                                    onChange={(e) => setNewDepIdNumber(e.target.value.toUpperCase())}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none transition-all uppercase"
                                     placeholder="12345678"
                                 />
                             </div>

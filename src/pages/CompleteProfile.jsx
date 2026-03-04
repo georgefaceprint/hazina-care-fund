@@ -72,10 +72,10 @@ const CompleteProfile = () => {
                         <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">Full Name (As per ID)</label>
                         <input
                             type="text"
-                            placeholder="John Doe"
-                            className="w-full bg-slate-50 border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-slate-900 font-medium"
+                            placeholder="JOHN DOE"
+                            className="w-full bg-slate-50 border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-slate-900 font-medium uppercase"
                             value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
+                            onChange={(e) => setFullName(e.target.value.toUpperCase())}
                             required
                         />
                     </div>
@@ -85,9 +85,9 @@ const CompleteProfile = () => {
                         <input
                             type="text"
                             placeholder="12345678"
-                            className="w-full bg-slate-50 border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-slate-900 font-medium"
+                            className="w-full bg-slate-50 border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-slate-900 font-medium uppercase"
                             value={nationalId}
-                            onChange={(e) => setNationalId(e.target.value)}
+                            onChange={(e) => setNationalId(e.target.value.toUpperCase())}
                             required
                         />
                     </div>

@@ -97,9 +97,9 @@ const LoginPage = () => {
                             <input
                                 type="tel"
                                 placeholder="07XX XXX XXX"
-                                className="w-full bg-slate-100 border-none rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-lg"
+                                className="w-full bg-slate-100 border-none rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-lg uppercase"
                                 value={phoneNumber}
-                                onChange={(e) => setPhoneNumber(e.target.value)}
+                                onChange={(e) => setPhoneNumber(e.target.value.toUpperCase())}
                                 required
                             />
                         </div>

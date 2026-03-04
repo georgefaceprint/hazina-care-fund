@@ -160,9 +160,9 @@ const CrisisClaim = () => {
                             <textarea
                                 required
                                 value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all resize-none h-32"
-                                placeholder="Please provide brief details about the crisis..."
+                                onChange={(e) => setDescription(e.target.value.toUpperCase())}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all resize-none h-32 uppercase"
+                                placeholder="PLEASE PROVIDE BRIEF DETAILS ABOUT THE CRISIS..."
                             />
                         </div>
 
