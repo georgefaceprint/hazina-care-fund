@@ -42,7 +42,11 @@ const LoginPage = () => {
             const userRef = doc(db, 'users', user.uid);
             const userSnap = await getDoc(userRef);
 
+            // Check if user profile exists
             if (!userSnap.exists()) {
+                // Get referrer if any
+                const referrerId = sessionStorage.getItem('hazina_referrer');
+
                 // Create initial profile
                 await setDoc(userRef, {
                     phoneNumber: formatPhone,
@@ -54,7 +58,8 @@ const LoginPage = () => {
                     balance: 0,
                     createdAt: serverTimestamp(),
                     profile_completed: false,
-                    grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000)
+                    grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
+                    referrer_id: referrerId || null
                 });
                 navigate('/complete-profile');
             } else {
@@ -72,7 +77,6 @@ const LoginPage = () => {
             setLoading(false);
         }
     };
-    // Removed onCodeSubmit and confirmationResult state since we are bypassing SMS for testing
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">

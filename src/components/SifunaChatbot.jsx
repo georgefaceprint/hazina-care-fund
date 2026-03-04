@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, User, Bot, ChevronRight, HelpCircle } from 'lucide-react';
+import { MessageCircle, X, Send, User, Bot, ChevronRight, HelpCircle, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { functions } from '../services/firebase';
@@ -47,6 +47,11 @@ const SifunaChatbot = () => {
             { role: 'user', parts: [{ text: lang === 'sw' ? 'Kiswahili' : 'English' }] },
             { role: 'model', parts: [{ text: welcome }] }
         ]);
+    };
+
+    const resetChat = () => {
+        setChatHistory([]);
+        setChatLanguage(null);
     };
 
     const handlePrompt = async (id) => {
@@ -131,9 +136,14 @@ const SifunaChatbot = () => {
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                                <X className="w-6 h-6" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                                <button onClick={resetChat} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Reset Chat">
+                                    <RotateCcw className="w-5 h-5" />
+                                </button>
+                                <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Messages */}

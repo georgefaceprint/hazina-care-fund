@@ -10,21 +10,23 @@ const Referrals = () => {
     const navigate = useNavigate();
     const [copied, setCopied] = useState(false);
 
-    const referralCode = profile?.referral_code || `HAZINA-${profile?.id?.slice(0, 4).toUpperCase() || 'PROMO'}`;
+    const referralCode = profile?.id || 'PROMO';
     const referralCount = profile?.referral_count || 0;
     const hazinaPoints = profile?.hazina_points || 0;
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(referralCode);
+        const shareUrl = `${window.location.origin}/signup?ref=${referralCode}`;
+        navigator.clipboard.writeText(shareUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
     const handleShare = async () => {
+        const shareUrl = `${window.location.origin}/signup?ref=${referralCode}`;
         const shareData = {
             title: 'Join Hazina Protection',
-            text: `Join me on Hazina and get instant crisis protection for your family! Use my code: ${referralCode}`,
-            url: window.location.origin,
+            text: `Join me on Hazina and get instant crisis protection for your family!`,
+            url: shareUrl,
         };
 
         try {

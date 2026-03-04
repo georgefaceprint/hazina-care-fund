@@ -34,6 +34,16 @@ const ProtectedRoute = ({ children }) => {
 import { LanguageProvider } from './context/LanguageContext';
 
 const App = () => {
+  React.useEffect(() => {
+    // Capture referral code from URL
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      console.log("📍 Captured referral code:", ref);
+      sessionStorage.setItem('hazina_referrer', ref);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <LanguageProvider>
