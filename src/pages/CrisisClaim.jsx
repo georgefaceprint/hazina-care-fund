@@ -198,6 +198,7 @@ const CrisisClaim = () => {
                                             type="file"
                                             className="hidden"
                                             accept="image/*"
+                                            capture="environment"
                                             onChange={(e) => setFile(e.target.files[0])}
                                         />
                                     </label>

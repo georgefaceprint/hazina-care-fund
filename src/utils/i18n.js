@@ -7,6 +7,15 @@ const translations = {
         wallet: "Wallet",
         profile: "Profile",
         admin: "Admin",
+        package_info: "Shield Packages",
+        referrals: "Community Referrals",
+        membership: "Membership",
+        payments: "Payments",
+        claims: "Claims",
+        days_left: "Days Left",
+        proof_of_crisis: "Proof of Crisis",
+        upload_evidence: "Upload Evidence (JPG/PNG)",
+        proof_desc: "PDF, JPG OR PNG (MAX 5MB)",
 
         // Dashboard
         daily_burn: "Daily Burn",
@@ -139,6 +148,15 @@ const translations = {
         wallet: "Pochi",
         profile: "Wasifu",
         admin: "Usimamizi",
+        package_info: "Vifurushi vya Kinga",
+        referrals: "Rufaa za Jamii",
+        membership: "Uanachama",
+        payments: "Malipo",
+        claims: "Madai",
+        days_left: "Siku Zimebaki",
+        proof_of_crisis: "Uthibitisho wa Dharura",
+        upload_evidence: "Pakia Uthibitisho (JPG/PNG)",
+        proof_desc: "PDF, JPG AU PNG (UPEO 5MB)",
 
         // Dashboard
         daily_burn: "Gharama / Siku",

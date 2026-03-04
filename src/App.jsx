@@ -11,6 +11,8 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const TopUp = lazy(() => import('./pages/TopUp'));
 const FamilyMembers = lazy(() => import('./pages/FamilyMembers'));
 const CrisisClaim = lazy(() => import('./pages/CrisisClaim'));
+const Benefits = lazy(() => import('./pages/Benefits'));
+const Referrals = lazy(() => import('./pages/Referrals'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
@@ -55,6 +57,8 @@ const App = () => {
                 <Route path="/topup" element={<TopUp />} />
                 <Route path="/family" element={<FamilyMembers />} />
                 <Route path="/claim" element={<CrisisClaim />} />
+                <Route path="/benefits" element={<Benefits />} />
+                <Route path="/referrals" element={<Referrals />} />
                 <Route path="/admin" element={<AdminPanel />} />
                 <Route path="/settings" element={<ProfileSettings />} />
                 <Route path="/complete-profile" element={<CompleteProfile />} />

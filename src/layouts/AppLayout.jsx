@@ -3,6 +3,7 @@ import { Home, Users, CreditCard, User, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import SifunaChatbot from '../components/SifunaChatbot';
 
 const AppLayout = () => {
     const { profile } = useAuth();
@@ -21,6 +22,8 @@ const AppLayout = () => {
             <main className="relative z-0 max-w-md mx-auto min-h-screen pb-24 border-x border-slate-100/50 bg-white/40 shadow-2xl backdrop-blur-3xl">
                 <Outlet />
             </main>
+
+            <SifunaChatbot />
 
             {/* Bottom Navigation */}
             <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white p-4 border-t border-slate-100 z-50 rounded-t-[2.5rem] shadow-[0_-10px_30px_rgba(16,185,129,0.08)]">

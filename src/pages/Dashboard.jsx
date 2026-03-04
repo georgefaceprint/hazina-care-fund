@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle, Globe, FileText, User } from 'lucide-react';
+import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle, Globe, FileText, User, Gift, Info } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -330,6 +330,24 @@ const Dashboard = () => {
                                 <Zap className="w-6 h-6" />
                             </div>
                             <span className="text-sm font-bold text-slate-700">{t('upgrade_tier')}</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/benefits')}
+                            className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
+                        >
+                            <div className="p-4 bg-blue-50 text-blue-500 rounded-2xl group-hover:bg-blue-500 group-hover:text-white transition-colors duration-500">
+                                <Info className="w-6 h-6" />
+                            </div>
+                            <span className="text-sm font-bold text-slate-700">{t('package_info')}</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/referrals')}
+                            className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
+                        >
+                            <div className="p-4 bg-emerald-50 text-emerald-500 rounded-2xl group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-500">
+                                <Gift className="w-6 h-6" />
+                            </div>
+                            <span className="text-sm font-bold text-slate-700">{t('referrals')}</span>
                         </button>
                     </div>
                 </div>

@@ -32,6 +32,13 @@ exports.calculateDailyDeduction = onSchedule({
             totalDeduction += TIER_COSTS[dep.active_tier] || 0;
         });
 
+        // Check for Payment Holiday
+        const holidayUntil = profile.payment_holiday_until?.toDate();
+        if (holidayUntil && holidayUntil > new Date()) {
+            console.log(`User ${userDoc.id} is on payment holiday until ${holidayUntil}`);
+            continue;
+        }
+
         // Deduct from Balance
         const newBalance = (profile.balance || 0) - totalDeduction;
         batch.update(userDoc.ref, {
