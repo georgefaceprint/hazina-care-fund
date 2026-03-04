@@ -4,9 +4,11 @@ import { db } from '../services/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { Users, Shield, ArrowLeft, PlusCircle, AlertCircle } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const FamilyMembers = () => {
     const { profile, isDemoMode } = useAuth();
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const [dependents, setDependents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -99,7 +101,7 @@ const FamilyMembers = () => {
                     >
                         <ArrowLeft className="w-6 h-6 text-slate-700" />
                     </button>
-                    <h1 className="text-2xl font-bold font-heading text-slate-900">Family Members</h1>
+                    <h1 className="text-2xl font-bold font-heading text-slate-900">{t('family_members')}</h1>
                 </div>
                 {!isAdding && (
                     <button
@@ -107,7 +109,7 @@ const FamilyMembers = () => {
                         className="p-3 bg-brand-primary text-white rounded-2xl shadow-md hover:bg-brand-primary/90 transition-transform active:scale-95 flex items-center gap-2"
                     >
                         <PlusCircle className="w-5 h-5" />
-                        <span className="text-sm font-bold">Add</span>
+                        <span className="text-sm font-bold">{t('add')}</span>
                     </button>
                 )}
             </div>
@@ -117,42 +119,42 @@ const FamilyMembers = () => {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-xl"></div>
                 <div className="flex items-center gap-3 mb-2 relative">
                     <Shield className="w-5 h-5 text-brand-primary" />
-                    <h3 className="font-bold">Guardian Responsibility</h3>
+                    <h3 className="font-bold">{t('guardian_responsibility')}</h3>
                 </div>
                 <p className="text-sm text-white/80 leading-relaxed font-light relative">
-                    Adding a dependent will instantly increase your <strong>Daily Burn</strong>. Their coverage matures 180 days after being added.
+                    {t('adding_dependent_impact')}
                 </p>
             </div>
 
             {isAdding ? (
                 <div className="card animate-in slide-in-from-bottom-4 fade-in">
-                    <h3 className="text-lg font-bold mb-4 font-heading text-slate-900">Add Dependent</h3>
+                    <h3 className="text-lg font-bold mb-4 font-heading text-slate-900">{t('add_dependent')}</h3>
                     <form onSubmit={handleAddDependent} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('full_name_label')}</label>
                             <input
                                 type="text"
                                 required
                                 value={newDepName}
                                 onChange={(e) => setNewDepName(e.target.value.toUpperCase())}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all uppercase"
-                                placeholder="E.G. JOHN DOE"
+                                placeholder={t('example_name').toUpperCase()}
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">ID Type</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('id_type')}</label>
                                 <select
                                     value={newDepIdType}
                                     onChange={(e) => setNewDepIdType(e.target.value)}
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none"
                                 >
-                                    <option value="national_id">National ID</option>
-                                    <option value="birth_certificate">Birth Cert (&lt;18)</option>
+                                    <option value="national_id">{t('national_id')}</option>
+                                    <option value="birth_certificate">{t('birth_cert')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">ID/Cert Number</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('id_cert_number')}</label>
                                 <input
                                     type="text"
                                     required
@@ -165,7 +167,7 @@ const FamilyMembers = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Sex</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('sex')}</label>
                                 <select
                                     value={newDepSex}
                                     onChange={(e) => setNewDepSex(e.target.value)}
@@ -173,12 +175,12 @@ const FamilyMembers = () => {
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none"
                                 >
                                     <option value="" disabled>Select</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
+                                    <option value="Male">{t('male')}</option>
+                                    <option value="Female">{t('female')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Relationship</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('relationship')}</label>
                                 <select
                                     value={newDepRelation}
                                     onChange={(e) => setNewDepRelation(e.target.value)}
@@ -186,16 +188,16 @@ const FamilyMembers = () => {
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none"
                                 >
                                     <option value="" disabled>Select</option>
-                                    <option value="Spouse">Spouse</option>
-                                    <option value="Child">Child</option>
-                                    <option value="Parent">Parent</option>
-                                    <option value="Sibling">Sibling</option>
-                                    <option value="Other">Other</option>
+                                    <option value="Spouse">{t('spouse')}</option>
+                                    <option value="Child">{t('child')}</option>
+                                    <option value="Parent">{t('parent')}</option>
+                                    <option value="Sibling">{t('sibling')}</option>
+                                    <option value="Other">{t('other')}</option>
                                 </select>
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Coverage Tier</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('coverage_tier')}</label>
                             <div className="grid grid-cols-3 gap-3">
                                 {['bronze', 'silver', 'gold'].map((tier) => (
                                     <button
@@ -213,7 +215,7 @@ const FamilyMembers = () => {
                             </div>
                             <p className="text-[10px] text-slate-400 mt-2 italic flex items-center gap-1">
                                 <AlertCircle className="w-3 h-3" />
-                                Daily impact: +KSh {newDepTier === 'bronze' ? 10 : newDepTier === 'silver' ? 30 : 50}
+                                {t('daily_impact')} {newDepTier === 'bronze' ? 10 : newDepTier === 'silver' ? 30 : 50}
                             </p>
                         </div>
                         <div className="flex gap-3 pt-4 border-t border-slate-100">
@@ -222,14 +224,14 @@ const FamilyMembers = () => {
                                 onClick={() => setIsAdding(false)}
                                 className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
                             >
-                                Cancel
+                                {t('cancel')}
                             </button>
                             <button
                                 type="submit"
                                 disabled={formLoading}
                                 className="flex-1 btn-primary py-3"
                             >
-                                {formLoading ? 'Adding...' : 'Confirm'}
+                                {formLoading ? t('adding') : t('confirm')}
                             </button>
                         </div>
                     </form>
@@ -241,15 +243,15 @@ const FamilyMembers = () => {
                             <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 border-8 border-white shadow-sm">
                                 <Users className="w-8 h-8 text-slate-400" />
                             </div>
-                            <h3 className="font-bold text-lg text-slate-800 mb-2 font-heading">No Dependents Yet</h3>
+                            <h3 className="font-bold text-lg text-slate-800 mb-2 font-heading">{t('no_dependents_yet')}</h3>
                             <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-                                Extend your Hazina shield to protect your spouse, children, or elderly parents.
+                                {t('protect_family')}
                             </p>
                             <button
                                 onClick={() => setIsAdding(true)}
                                 className="btn-primary w-full max-w-xs mx-auto"
                             >
-                                Add Family Member
+                                {t('add_family_member')}
                             </button>
                         </div>
                     ) : (
@@ -260,7 +262,7 @@ const FamilyMembers = () => {
                                 <div key={dep.id} className="card p-5 group hover:shadow-lg transition-all border border-slate-100 relative overflow-hidden">
                                     {!isMatured && (
                                         <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-950 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl shadow-sm z-10 flex items-center gap-1">
-                                            <AlertCircle className="w-3 h-3" /> In Waiting
+                                            <AlertCircle className="w-3 h-3" /> {t('in_waiting')}
                                         </div>
                                     )}
                                     <div className="flex items-center gap-4">
@@ -278,7 +280,7 @@ const FamilyMembers = () => {
                                                     {dep.active_tier}
                                                 </span>
                                                 <span className="text-xs text-slate-400 flex items-center gap-1 border-l border-slate-200 pl-2">
-                                                    Added {new Date(dep.createdAt?.toDate() || Date.now()).toLocaleDateString()}
+                                                    {t('added_on')} {new Date(dep.createdAt?.toDate() || Date.now()).toLocaleDateString()}
                                                 </span>
                                             </div>
                                         </div>

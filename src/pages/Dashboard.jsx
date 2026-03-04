@@ -18,6 +18,7 @@ const Dashboard = () => {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+    const [burnPeriod, setBurnPeriod] = useState('daily');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -88,7 +89,12 @@ const Dashboard = () => {
     const isMatured = daysPassed >= totalDays;
 
     const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
-    const dailyBurn = TIER_COSTS[profile.active_tier] || 0;
+    const baseDailyBurn = TIER_COSTS[profile.active_tier] || 0;
+    const dependentBurn = dependents.reduce((sum, dep) => sum + (TIER_COSTS[dep.active_tier] || 0), 0);
+    const totalDailyBurn = baseDailyBurn + dependentBurn;
+
+    const multipliers = { daily: 1, weekly: 7, monthly: 30, yearly: 365 };
+    const calculatedBurn = totalDailyBurn * multipliers[burnPeriod];
 
     return (
         <div className="min-h-screen bg-slate-50 pb-24">
@@ -142,7 +148,7 @@ const Dashboard = () => {
                                     </div>
                                 )}
                                 <div>
-                                    <p className="text-xs uppercase tracking-widest text-emerald-100 font-bold mb-1 opacity-70">Official Digital ID</p>
+                                    <p className="text-xs uppercase tracking-widest text-emerald-100 font-bold mb-1 opacity-70">{t('official_digital_id')}</p>
                                     <h3 className="text-2xl font-black font-heading tracking-tight">{profile.national_id || profile.id.substring(0, 10).toUpperCase()}</h3>
                                 </div>
                             </div>
@@ -150,7 +156,7 @@ const Dashboard = () => {
                                 {!isMatured && (
                                     <div className="bg-yellow-400 absolute -top-8 -right-4 px-4 py-2 rounded-full flex items-center gap-2 shadow-lg animate-pulse border-4 border-slate-50">
                                         <Clock className="w-4 h-4 text-emerald-900" />
-                                        <span className="text-xs font-black text-emerald-900 uppercase tracking-tighter">In Waiting</span>
+                                        <span className="text-xs font-black text-emerald-900 uppercase tracking-tighter">{t('in_waiting')}</span>
                                     </div>
                                 )}
                             </div>
@@ -168,7 +174,7 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] uppercase font-bold text-emerald-200/60 mb-1">Phone Number</p>
+                                    <p className="text-[10px] uppercase font-bold text-emerald-200/60 mb-1">{t('phone_number')}</p>
                                     <p className="font-bold font-mono tracking-widest">{profile.phoneNumber}</p>
                                 </div>
                             </div>
@@ -210,15 +216,26 @@ const Dashboard = () => {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="card bg-white border-none shadow-md overflow-hidden relative group">
                         <div className="absolute top-0 right-0 w-16 h-16 bg-brand-primary/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="p-2 bg-brand-primary/10 rounded-xl">
-                                <TrendingUp className="w-5 h-5 text-brand-primary" />
+                        <div className="flex items-center justify-between mb-3 relative z-10">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 bg-brand-primary/10 rounded-xl">
+                                    <TrendingUp className="w-5 h-5 text-brand-primary" />
+                                </div>
+                                <select
+                                    value={burnPeriod}
+                                    onChange={(e) => setBurnPeriod(e.target.value)}
+                                    className="text-xs font-bold text-slate-500 uppercase tracking-tighter bg-transparent border-none p-0 pr-4 focus:ring-0 cursor-pointer outline-none"
+                                >
+                                    <option value="daily">{t('daily_burn')}</option>
+                                    <option value="weekly">{t('weekly_burn')}</option>
+                                    <option value="monthly">{t('monthly_burn')}</option>
+                                    <option value="yearly">{t('yearly_burn')}</option>
+                                </select>
                             </div>
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">{t('daily_burn')}</span>
                         </div>
-                        <p className="text-3xl font-black text-slate-900">KSh {dailyBurn}</p>
-                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
-                            <AlertCircle className="w-3 h-3" /> Auto-deducted
+                        <p className="text-3xl font-black text-slate-900 relative z-10">KSh {calculatedBurn.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic relative z-10">
+                            <AlertCircle className="w-3 h-3" /> {t('auto_deducted')}
                         </p>
                     </div>
                     <div className="card bg-white border-none shadow-md overflow-hidden relative group cursor-pointer" onClick={() => navigate('/topup')}>
@@ -231,7 +248,7 @@ const Dashboard = () => {
                         </div>
                         <p className="text-3xl font-black text-slate-900">KSh {profile.balance || 0}</p>
                         <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
-                            Top up via M-Pesa <ChevronRight className="w-3 h-3" />
+                            {t('top_up_via_mpesa')} <ChevronRight className="w-3 h-3" />
                         </p>
                     </div>
                 </div>
@@ -263,8 +280,8 @@ const Dashboard = () => {
                         <div className="mt-6 p-4 bg-yellow-50/50 rounded-2xl border border-yellow-100/50 text-xs text-slate-600 flex gap-4 items-center">
                             <Clock className="w-10 h-10 text-yellow-600" />
                             <p className="leading-relaxed">
-                                Your <strong className="text-yellow-700">Shield</strong> will be fully matured on <strong className="text-yellow-700">{format(graceExpiry, 'PP')}</strong>.
-                                Daily contributions build your future protection.
+                                {t('shield_matured_on')} <strong className="text-yellow-700">{format(graceExpiry, 'PP')}</strong>.
+                                {t('daily_contributions')}
                             </p>
                         </div>
                     )}
@@ -300,7 +317,7 @@ const Dashboard = () => {
                     <div className="flex justify-between items-center mb-6">
                         <h4 className="font-black text-slate-900 flex items-center gap-2">
                             <Clock className="w-5 h-5 text-brand-primary" />
-                            Recent Activity
+                            {t('recent_activity')}
                         </h4>
                     </div>
                     <div className="space-y-1">
@@ -313,7 +330,7 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <p className="font-bold text-slate-800 text-sm">
-                                                {activity.type === 'topup' ? 'Wallet Top-up' : 'Crisis Claim'}
+                                                {activity.type === 'topup' ? t('wallet_topup') : t('crisis_claim')}
                                             </p>
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
                                                 {activity.date ? format(activity.date, 'MMM d, yyyy') : 'Recently'}
@@ -330,7 +347,7 @@ const Dashboard = () => {
                             ))
                         ) : (
                             <div className="text-center py-6 text-slate-400 text-sm font-bold italic">
-                                No recent activity
+                                {t('no_recent_activity')}
                             </div>
                         )}
                     </div>
@@ -375,7 +392,7 @@ const Dashboard = () => {
                                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <Users className="w-8 h-8 text-slate-300" />
                                 </div>
-                                <p className="text-xs text-slate-400 italic">Protect your spouse, children or elderly parents.</p>
+                                <p className="text-xs text-slate-400 italic">{t('protect_family')}</p>
                             </div>
                         )}
                     </div>
@@ -384,8 +401,8 @@ const Dashboard = () => {
                 {/* Recent Activity */}
                 <div className="space-y-3">
                     <div className="flex justify-between items-center px-1">
-                        <h4 className="font-black text-xs uppercase tracking-widest text-slate-400">Activity Timeline</h4>
-                        <button onClick={() => navigate('/topup')} className="text-[10px] font-black text-brand-primary uppercase tracking-tighter">View All</button>
+                        <h4 className="font-black text-xs uppercase tracking-widest text-slate-400">{t('activity_timeline')}</h4>
+                        <button onClick={() => navigate('/topup')} className="text-[10px] font-black text-brand-primary uppercase tracking-tighter">{t('view_all')}</button>
                     </div>
                     <RecentActivity activities={activities} />
                 </div>

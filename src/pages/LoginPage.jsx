@@ -6,12 +6,14 @@ import { useNavigate } from 'react-router-dom';
 import { Shield, Phone, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatKenyanPhone } from '../utils/phoneUtils';
+import { useLanguage } from '../context/LanguageContext';
 
 const LoginPage = () => {
     const navigate = useNavigate();
     const [phoneNumber, setPhoneNumber] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null);
+    const { t } = useLanguage();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { enableDemoMode, isDemoMode, user } = useAuth();
@@ -79,8 +81,8 @@ const LoginPage = () => {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-primary/10 rounded-2xl mb-4">
                         <Shield className="w-8 h-8 text-brand-primary" />
                     </div>
-                    <h1 className="text-3xl font-bold font-heading text-slate-900">Hazina Care</h1>
-                    <p className="text-slate-500 mt-2">Secure community-based care fund</p>
+                    <h1 className="text-3xl font-bold font-heading text-slate-900">{t('hazina_care')}</h1>
+                    <p className="text-slate-500 mt-2">{t('secure_community')}</p>
                 </div>
 
                 {error && (
@@ -91,7 +93,7 @@ const LoginPage = () => {
 
                 <form onSubmit={onSignInSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">{t('phone_number')}</label>
                         <div className="relative">
                             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                             <input
@@ -103,7 +105,7 @@ const LoginPage = () => {
                                 required
                             />
                         </div>
-                        <p className="text-xs text-slate-400 mt-2 italic px-2">Example: 0712 345 678</p>
+                        <p className="text-xs text-slate-400 mt-2 italic px-2">{t('example_phone')}</p>
                     </div>
 
                     <button
@@ -111,7 +113,7 @@ const LoginPage = () => {
                         disabled={loading}
                         className="btn-primary w-full py-4 text-lg"
                     >
-                        {loading ? 'Entering...' : 'Enter App (Test Mode)'}
+                        {loading ? 'Entering...' : t('enter_app')}
                         <ArrowRight className="w-5 h-5" />
                     </button>
 
@@ -129,7 +131,7 @@ const LoginPage = () => {
                         }}
                         className="w-full py-4 text-sm font-bold text-slate-500 hover:text-brand-primary bg-slate-100/80 rounded-2xl transition-colors shadow-inner"
                     >
-                        View App Demo (Bypass Authentication)
+                        {t('view_app_demo')}
                     </button>
                 </form>
 
@@ -137,7 +139,7 @@ const LoginPage = () => {
 
                 <div className="pt-8 border-t border-slate-100 text-center">
                     <p className="text-xs text-slate-400">
-                        By continuing, you participate in the community fund based on trust and transparency.
+                        {t('by_continuing')}
                     </p>
                 </div>
             </div>

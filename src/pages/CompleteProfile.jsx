@@ -31,10 +31,10 @@ const CompleteProfile = () => {
         setLoading(true);
 
         try {
-            setUploadingState('Uploading ID...');
+            setUploadingState(t('processing_upload'));
             const photoUrl = await uploadProfilePhoto(user.uid, idPhoto);
 
-            setUploadingState('Finalizing profile...');
+            setUploadingState(t('processing_finalize'));
             const userRef = doc(db, 'users', user.uid);
             await updateDoc(userRef, {
                 fullName,
@@ -63,13 +63,13 @@ const CompleteProfile = () => {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-primary/10 rounded-2xl mb-4">
                         <User className="w-8 h-8 text-brand-primary" />
                     </div>
-                    <h1 className="text-2xl font-bold font-heading text-slate-900">Complete Your Profile</h1>
-                    <p className="text-slate-500 mt-2 text-sm italic">Verification required to activate your shield.</p>
+                    <h1 className="text-2xl font-bold font-heading text-slate-900">{t('complete_profile')}</h1>
+                    <p className="text-slate-500 mt-2 text-sm italic">{t('verification_required')}</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">Full Name (As per ID)</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">{t('full_name')}</label>
                         <input
                             type="text"
                             placeholder="JOHN DOE"
@@ -81,7 +81,7 @@ const CompleteProfile = () => {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">National ID Number</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">{t('national_id_number')}</label>
                         <input
                             type="text"
                             placeholder="12345678"
@@ -93,7 +93,7 @@ const CompleteProfile = () => {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">Identity Verification (KYC)</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">{t('identity_verification')}</label>
                         <div className="relative border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 group overflow-hidden">
                             <input
                                 type="file"
@@ -106,13 +106,13 @@ const CompleteProfile = () => {
                                 <div className="flex flex-col items-center justify-center">
                                     <ImageIcon className="w-10 h-10 text-brand-primary mb-3" />
                                     <p className="text-sm font-bold text-slate-700 truncate w-full px-4">{idPhoto.name}</p>
-                                    <p className="text-[10px] text-brand-primary uppercase tracking-tighter mt-1 font-bold">Image Selected</p>
+                                    <p className="text-[10px] text-brand-primary uppercase tracking-tighter mt-1 font-bold">{t('image_selected')}</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center">
                                     <Upload className="w-10 h-10 text-slate-300 mx-auto mb-3 group-hover:text-brand-primary transition-colors" />
-                                    <p className="text-sm font-bold text-slate-700">Upload ID Front Photo</p>
-                                    <p className="text-[10px] text-slate-400 uppercase tracking-tighter mt-1">JPG or PNG (Max 5MB)</p>
+                                    <p className="text-sm font-bold text-slate-700">{t('upload_id_front')}</p>
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-tighter mt-1">{t('jpg_png_max')}</p>
                                 </div>
                             )}
                         </div>
@@ -121,7 +121,7 @@ const CompleteProfile = () => {
                     <div className="bg-emerald-50 rounded-2xl p-4 flex gap-4 items-center">
                         <Shield className="w-10 h-10 text-brand-primary" />
                         <p className="text-xs text-emerald-800 leading-relaxed italic">
-                            Your documents are encrypted and only used for community verification.
+                            {t('documents_encrypted')}
                         </p>
                     </div>
 
@@ -130,8 +130,8 @@ const CompleteProfile = () => {
                         disabled={loading}
                         className="w-full py-4 bg-brand-primary text-white font-bold rounded-2xl shadow-lg hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                        {loading ? uploadingState || 'Processing...' : (
-                            <>Confirm & Activate <ArrowRight className="w-5 h-5" /></>
+                        {loading ? uploadingState || t('processing') : (
+                            <>{t('confirm_activate')} <ArrowRight className="w-5 h-5" /></>
                         )}
                     </button>
                 </form>
