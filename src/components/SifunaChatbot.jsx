@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, User, Bot, ChevronRight, HelpCircle, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
-import { functions } from '../services/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useAuth } from '../context/AuthContext';
 
 const SifunaChatbot = () => {
@@ -12,11 +11,15 @@ const SifunaChatbot = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [chatLanguage, setChatLanguage] = useState(null); // 'en' or 'sw'
 
+    // AI Initialization - Frontend Fallback
+    const GEMINI_API_KEY = "AIzaSyA_V468F9lzmWx6EAc9D-ZCTYyzqvwrDh8";
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
     // chatHistory is the source of truth for the conversation
     // Gemini format: [{ role: 'user' | 'model', parts: [{ text: string }] }]
     const [chatHistory, setChatHistory] = useState([]);
 
-    const { profile, isDemoMode } = useAuth();
+    const { profile, user, isDemoMode } = useAuth();
     const { t, language: appLanguage } = useLanguage();
     const chatEndRef = useRef(null);
 
@@ -81,15 +84,37 @@ const SifunaChatbot = () => {
                 return;
             }
 
-            const chatWithSifuna = httpsCallable(functions, 'chatWithSifuna');
-            const result = await chatWithSifuna({
-                message: userMsg,
-                history: chatHistory, // Pass current history for context
-                language: chatLanguage || appLanguage,
-                userId: profile?.id
+            // Direct Frontend AI Call
+            const model = genAI.getGenerativeModel({
+                model: "gemini-1.5-flash",
+                systemInstruction: `
+                    You are Sifuna, the official AI assistant for Hazina Care. Hazina is a community-driven protection platform in Kenya.
+                    
+                    KNOWLEDGE BASE:
+                    - Tiers: 
+                        * Bronze: KSh 10/day, KSh 15,000 cover.
+                        * Silver: KSh 30/day, KSh 50,000 cover.
+                        * Gold: KSh 50/day, KSh 150,000 cover.
+                    - Maturation: There is a 180-day grace period (waiting period) before a shield is fully active.
+                    - Crisis Types covered: Medical emergency, Bereavement, School Fees.
+                    - Philosophy: Community-driven, transparent, and built to protect families.
+                    
+                    USER CONTEXT:
+                    - User Name: ${profile?.fullName || 'Member'}
+                    - User Language: ${chatLanguage === 'sw' ? 'Swahili' : 'English'}.
+                    - CRITICAL: You MUST respond in ${chatLanguage === 'sw' ? 'Swahili' : 'English'}.
+                `
             });
 
-            const botResponse = result.data.text;
+            const chat = model.startChat({
+                history: chatHistory.map(h => ({
+                    role: h.role === 'model' ? 'model' : 'user',
+                    parts: h.parts
+                }))
+            });
+
+            const result = await chat.sendMessage(userMsg);
+            const botResponse = result.response.text();
 
             setChatHistory(prev => [
                 ...prev,
