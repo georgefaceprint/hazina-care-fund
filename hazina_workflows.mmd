@@ -1,0 +1,43 @@
+graph TD
+    %% Styling
+    classDef primary fill:#10b981,stroke:#064e3b,stroke-width:2px,color:#fff;
+    classDef secondary fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;
+    classDef neutral fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#1e293b;
+    classDef error fill:#ef4444,stroke:#991b1b,stroke-width:2px,color:#fff;
+
+    subgraph Authentication_Onboarding ["Authentication & Onboarding"]
+        A[User Access App]:::neutral --> B{Has Account?}:::neutral
+        B -- Yes --> C[Login via Phone/OTP]:::primary
+        B -- No --> D[Signup & KYC]:::primary
+        D --> E[Select Tier Bronze/Silver/Gold]:::secondary
+        E --> F[Pay Initial Fee via M-Pesa]:::secondary
+        F --> G[Start 180-day Grace Period]:::secondary
+    end
+
+    subgraph Wallet_TopUp ["Wallet Top-Up"]
+        C --> H[Dashboard]:::neutral
+        G --> H
+        H --> I[Fund Wallet Click]:::neutral
+        I --> J[Select Amount]:::neutral
+        J --> K[Enter M-Pesa PIN STK Push]:::primary
+        K --> L{M-Pesa Callback}:::neutral
+        L -- Success --> M[Update Balance & Daily Burn]:::primary
+        L -- Failed --> N[Show Error]:::error
+    end
+
+    subgraph Claims_Management ["Claims Management"]
+        H --> O[Crisis Claim Click]:::neutral
+        O --> P{Is Shield Matured?}:::neutral
+        P -- No --> Q[Reject Claim Grace Period Active]:::error
+        P -- Yes --> R[Select Claim Type]:::primary
+        R --> S[Submit Evidence & Request]:::primary
+        S --> T[Admin Review]:::secondary
+        T -- Approved --> U[Disburse Funds to M-Pesa]:::primary
+        T -- Denied --> V[Notify User & Reasons]:::error
+    end
+
+    subgraph Dependent_Management ["Dependent Management"]
+        H --> W[Add Dependent]:::neutral
+        W --> X[Pay Dependent Extra Premium]:::secondary
+        X --> Y[Dependent Shield Activated]:::primary
+    end

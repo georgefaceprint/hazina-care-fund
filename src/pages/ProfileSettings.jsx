@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, HelpCircle } from 'lucide-react';
+
+import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, HelpCircle, Download, FileText } from 'lucide-react';
+import { generateWorkflowPDF } from '../utils/pdfGenerator';
+
 
 const ProfileSettings = () => {
     const { user, profile, logout } = useAuth();
     const navigate = useNavigate();
+    const toast = useToast();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -15,8 +21,9 @@ const ProfileSettings = () => {
             navigate('/login');
         } catch (error) {
             console.error("Failed to log out:", error);
-            alert("Error logging out.");
+            toast.error("Error logging out.");
             setIsLoggingOut(false);
+
         }
     };
 
@@ -104,17 +111,17 @@ const ProfileSettings = () => {
                             </div>
                             <ChevronRight className="w-5 h-5 text-slate-300" />
                         </div>
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100">
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={generateWorkflowPDF}>
                             <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-blue-50 text-blue-500 rounded-xl">
-                                    <HelpCircle className="w-5 h-5" />
+                                <div className="p-2.5 bg-brand-50 text-brand-primary rounded-xl">
+                                    <FileText className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-slate-800 text-sm">Help & Support</p>
-                                    <p className="text-xs text-slate-500">FAQs & Contact</p>
+                                    <p className="font-bold text-slate-800 text-sm">System Workflows</p>
+                                    <p className="text-xs text-slate-500">Download PDF documentation</p>
                                 </div>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-slate-300" />
+                            <Download className="w-5 h-5 text-slate-300" />
                         </div>
                     </div>
                 </div>

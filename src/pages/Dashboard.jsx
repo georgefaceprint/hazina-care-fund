@@ -4,38 +4,64 @@ import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import TierUpgradeModal from '../components/TierUpgradeModal';
+import RecentActivity from '../components/RecentActivity';
 
 const Dashboard = () => {
     const { profile, user, isDemoMode } = useAuth();
     const navigate = useNavigate();
     const [dependents, setDependents] = useState([]);
+    const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
     useEffect(() => {
-        const fetchDependents = async () => {
+        const fetchData = async () => {
             if (!profile) return;
+
+            // Fetch Dependents
             if (isDemoMode) {
                 setDependents([{ id: 'demo-1', name: 'Demo Dependent', active_tier: 'gold', is_matured: false }]);
+                setActivities([
+                    { id: '1', type: 'topup', amount: 500, status: 'success', date: new Date() },
+                    { id: '2', type: 'claim', amount: 3000, status: 'pending_review', date: new Date(Date.now() - 86400000) }
+                ]);
                 setLoading(false);
                 return;
             }
 
             try {
                 if (!db) { setLoading(false); return; }
-                const q = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
-                const querySnap = await getDocs(q);
-                const docs = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setDependents(docs);
+                
+                // Fetch Dependents
+                const depQ = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
+                const depSnap = await getDocs(depQ);
+                setDependents(depSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+                // Fetch Activities
+                const claimsQ = query(collection(db, 'claims'), where('guardian_id', '==', profile.id), orderBy('createdAt', 'desc'), limit(5));
+                const claimsSnap = await getDocs(claimsQ);
+                const claimsData = claimsSnap.docs.map(doc => ({
+                    id: doc.id,
+                    type: 'claim',
+                    ...doc.data(),
+                    date: doc.data().createdAt?.toDate()
+                }));
+
+                // Topups (In production, these come from 'topups' collection)
+                // For MVP, we'll just show claims as activity or a placeholder
+                setActivities(claimsData);
+
             } catch (error) {
-                console.error("Error fetching dependents:", error);
+                console.error("Error fetching data:", error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchDependents();
+        fetchData();
     }, [profile, isDemoMode]);
 
     if (!profile) return null;
@@ -46,7 +72,9 @@ const Dashboard = () => {
     const graceExpiry = profile.grace_period_expiry?.toDate() || new Date();
     const totalDays = differenceInDays(graceExpiry, joinedDate);
     const daysPassed = differenceInDays(now, joinedDate);
-    const progressPercent = Math.min(Math.round((daysPassed / totalDays) * 100), 100);
+    const progressPercent = totalDays > 0
+        ? Math.min(Math.max(Math.round((daysPassed / totalDays) * 100), 0), 100)
+        : (daysPassed >= totalDays ? 100 : 0);
     const isMatured = daysPassed >= totalDays;
 
     const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
@@ -194,7 +222,10 @@ const Dashboard = () => {
                             </div>
                             <span className="text-sm font-bold text-slate-700">Crisis Claim</span>
                         </button>
-                        <button className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group">
+                        <button
+                            onClick={() => setIsUpgradeModalOpen(true)}
+                            className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
+                        >
                             <div className="p-4 bg-amber-50 text-amber-500 rounded-2xl group-hover:bg-amber-500 group-hover:text-white transition-colors duration-500">
                                 <Zap className="w-6 h-6" />
                             </div>
@@ -247,7 +278,27 @@ const Dashboard = () => {
                         )}
                     </div>
                 </div>
+
+                {/* Recent Activity */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                        <h4 className="font-black text-xs uppercase tracking-widest text-slate-400">Activity Timeline</h4>
+                        <button className="text-[10px] font-black text-brand-primary uppercase tracking-tighter">View All</button>
+                    </div>
+                    <RecentActivity activities={activities} />
+                </div>
             </div>
+
+            <TierUpgradeModal
+                isOpen={isUpgradeModalOpen}
+                onClose={() => setIsUpgradeModalOpen(false)}
+                currentTier={profile.active_tier}
+                profileId={profile.id}
+                isDemoMode={isDemoMode}
+                onUpgradeSuccess={(newTier) => {
+                    // Refresh data or update local state if needed
+                }}
+            />
         </div>
     );
 };

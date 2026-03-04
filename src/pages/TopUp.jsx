@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, CheckCircle2, AlertCircle, Phone } from 'lucide-react';
+import { db } from '../services/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const TopUp = () => {
     const { profile, user, isDemoMode } = useAuth();
@@ -21,7 +23,15 @@ const TopUp = () => {
 
         try {
             if (isDemoMode) {
-                setTimeout(() => {
+                setTimeout(async () => {
+                    await addDoc(collection(db, 'transactions'), {
+                        userId: profile.id,
+                        type: 'topup',
+                        amount: Number(amount),
+                        status: 'completed',
+                        source: 'demo_topup',
+                        createdAt: serverTimestamp()
+                    });
                     setStatus('success');
                     setLoading(false);
                 }, 1500);

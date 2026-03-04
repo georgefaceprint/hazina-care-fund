@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      // Only allow user to update their own profile, but prevent them from changing their role or balance directly
+      allow update: if isOwner(userId) && 
+                    (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance'])) 
+                    || isAdmin();
+      allow create: if isSignedIn(); // Allow initial signup
+    }
+
+    // Claims Collection
+    match /claims/{claimId} {
+      allow read: if isSignedIn() && (resource.data.guardian_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.guardian_id == request.auth.uid;
+      allow update: if isAdmin(); // Only admins can approve/reject
+    }
+
+    // Dependents Collection
+    match /dependents/{dependentId} {
+      allow read: if isSignedIn() && (resource.data.guardian_id == request.auth.uid || isAdmin());
+      allow write: if isSignedIn() && request.resource.data.guardian_id == request.auth.uid;
+    }
+
+    // Transactions Collection
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if false; // Transactions should only be created by Cloud Functions or Admin (for payout recording)
+      allow create: if isAdmin(); // Allow admin to record payout as seen in AdminPanel.jsx logic
+      allow update, delete: if false;
+    }
+
+    // STK Requests (Internal for callback matching)
+    match /stk_requests/{requestId} {
+      allow read, write: if false; // Only accessible via Admin SDK in Cloud Functions
+    }
+  }
+}
