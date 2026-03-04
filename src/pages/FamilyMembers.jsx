@@ -14,6 +14,10 @@ const FamilyMembers = () => {
     // Form State
     const [isAdding, setIsAdding] = useState(false);
     const [newDepName, setNewDepName] = useState('');
+    const [newDepIdType, setNewDepIdType] = useState('national_id');
+    const [newDepIdNumber, setNewDepIdNumber] = useState('');
+    const [newDepSex, setNewDepSex] = useState('');
+    const [newDepRelation, setNewDepRelation] = useState('');
     const [newDepTier, setNewDepTier] = useState('bronze');
     const [formLoading, setFormLoading] = useState(false);
 
@@ -48,6 +52,10 @@ const FamilyMembers = () => {
             const docRef = await addDoc(collection(db, 'dependents'), {
                 guardian_id: profile.id,
                 name: newDepName,
+                id_type: newDepIdType,
+                id_number: newDepIdNumber,
+                sex: newDepSex,
+                relationship: newDepRelation,
                 active_tier: newDepTier,
                 eligible_tier: 'none',
                 tier_joined_date: serverTimestamp(),
@@ -67,6 +75,10 @@ const FamilyMembers = () => {
             setDependents([...dependents, newDep]);
             setIsAdding(false);
             setNewDepName('');
+            setNewDepIdType('national_id');
+            setNewDepIdNumber('');
+            setNewDepSex('');
+            setNewDepRelation('');
             setNewDepTier('bronze');
         } catch (error) {
             console.error("Error adding dependent: ", error);
@@ -126,6 +138,61 @@ const FamilyMembers = () => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all"
                                 placeholder="e.g. John Doe"
                             />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">ID Type</label>
+                                <select
+                                    value={newDepIdType}
+                                    onChange={(e) => setNewDepIdType(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none"
+                                >
+                                    <option value="national_id">National ID</option>
+                                    <option value="birth_certificate">Birth Cert (&lt;18)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">ID/Cert Number</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={newDepIdNumber}
+                                    onChange={(e) => setNewDepIdNumber(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none transition-all"
+                                    placeholder="12345678"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Sex</label>
+                                <select
+                                    value={newDepSex}
+                                    onChange={(e) => setNewDepSex(e.target.value)}
+                                    required
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none"
+                                >
+                                    <option value="" disabled>Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Relationship</label>
+                                <select
+                                    value={newDepRelation}
+                                    onChange={(e) => setNewDepRelation(e.target.value)}
+                                    required
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary outline-none"
+                                >
+                                    <option value="" disabled>Select</option>
+                                    <option value="Spouse">Spouse</option>
+                                    <option value="Child">Child</option>
+                                    <option value="Parent">Parent</option>
+                                    <option value="Sibling">Sibling</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Coverage Tier</label>
