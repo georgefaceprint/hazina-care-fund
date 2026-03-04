@@ -95,7 +95,7 @@ const TopUp = () => {
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-3">Select Amount (KSh)</label>
                         <div className="grid grid-cols-3 gap-3 mb-4">
-                            {[100, 300, 500, 1000, 1500].map(val => (
+                            {[300, 600, 1000, 3000, 5000, 10000].map(val => (
                                 <button
                                     key={val}
                                     type="button"
