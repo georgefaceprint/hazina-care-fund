@@ -155,13 +155,13 @@ const Dashboard = () => {
                 </div>
 
                 {/* Digital ID Card */}
-                <div className="relative group perspective-1000">
-                    <div className="bg-gradient-to-br from-brand-primary via-brand-secondary to-[#2d060a] p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden transform-gpu hover:rotate-y-6 transition-all duration-700">
+                <div className="relative group perspective-1000 -mt-2">
+                    <div className="bg-gradient-to-br from-brand-primary via-brand-secondary to-[#1a0406] p-8 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative overflow-hidden transform-gpu hover:rotate-y-3 transition-all duration-700">
                         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                         <div className="flex justify-between items-start mb-10">
                             <div className="flex items-center gap-4">
                                 {profile.id_photo_url ? (
-                                    <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/20 shadow-inner flex-shrink-0 relative">
+                                    <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl flex-shrink-0 relative">
                                         <img
                                             src={profile.id_photo_url}
                                             alt="ID Photo"
@@ -177,21 +177,21 @@ const Dashboard = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="w-16 h-16 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center shadow-inner flex-shrink-0">
-                                        <User className="w-8 h-8 text-white/50" />
+                                    <div className="w-16 h-16 rounded-2xl bg-white/5 border-2 border-white/10 flex items-center justify-center shadow-inner flex-shrink-0">
+                                        <User className="w-8 h-8 text-brand-accent/40" />
                                     </div>
                                 )}
                                 <div>
-                                    <p className="text-xs uppercase tracking-widest text-brand-accent/70 font-bold mb-1">{t('official_digital_id')}</p>
-                                    <h3 className="text-lg font-black text-white mb-0.5 tracking-tight">{profile.fullName || 'Member'}</h3>
-                                    <p className="text-[10px] font-bold text-brand-accent/50 uppercase tracking-widest">ID: {profile.national_id || profile.id.substring(0, 8).toUpperCase()}</p>
+                                    <p className="text-[10px] uppercase font-black tracking-[0.2em] text-brand-accent/80 mb-1">{t('official_digital_id')}</p>
+                                    <h3 className="text-xl font-black text-white leading-tight tracking-tight">{profile.fullName || 'Member'}</h3>
+                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">ID: {profile.national_id || profile.id.substring(0, 8).toUpperCase()}</p>
                                 </div>
                             </div>
                             <div className="relative">
                                 {!isMatured && (
-                                    <div className="bg-brand-accent text-brand-secondary px-4 py-1.5 rounded-full flex items-center gap-2 shadow-lg animate-pulse border-2 border-white/20">
+                                    <div className="bg-brand-accent/10 backdrop-blur-md text-brand-accent px-4 py-1.5 rounded-full flex items-center gap-2 shadow-xl border border-brand-accent/30 scale-90 translate-x-2 -translate-y-2">
                                         <Clock className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-black uppercase tracking-tight">{t('in_waiting')}</span>
+                                        <span className="text-[9px] font-black uppercase tracking-widest">{t('in_waiting')}</span>
                                     </div>
                                 )}
                             </div>
@@ -209,12 +209,12 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] uppercase font-bold text-brand-accent/40 mb-1">{t('phone_number')}</p>
-                                    <p className="font-bold font-mono tracking-widest text-white">{profile.phoneNumber}</p>
+                                    <p className="text-[10px] uppercase font-bold text-brand-accent/50 mb-1 tracking-widest">{t('phone_number')}</p>
+                                    <p className="font-bold font-mono tracking-[0.3em] text-white underline decoration-brand-accent/20 underline-offset-4">{profile.phoneNumber}</p>
                                 </div>
                             </div>
-                            <div className="bg-white p-2.5 rounded-2xl shadow-xl transform group-hover:scale-110 transition-transform duration-500">
-                                <QRCodeSVG value={profile.id} size={70} fgColor="#3d080e" />
+                            <div className="bg-white p-3 rounded-[1.5rem] shadow-[0_15px_30px_rgba(0,0,0,0.3)] border border-brand-accent/20">
+                                <QRCodeSVG value={profile.id} size={65} fgColor="#3d080e" />
                             </div>
                         </div>
                     </div>
