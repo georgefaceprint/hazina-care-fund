@@ -179,7 +179,7 @@ const AdminPanel = () => {
         setIsGenerating(true);
         toast.success('🤖 Sifuna is generating Q&A pairs...');
         try {
-            const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD8zWheYt-GwnUS4MaYQ7pMoIrxmfXYGM0";
+            const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
             const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 

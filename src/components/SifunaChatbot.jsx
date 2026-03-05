@@ -187,7 +187,7 @@ const SifunaChatbot = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [chatLanguage, setChatLanguage] = useState(null);
 
-    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD8zWheYt-GwnUS4MaYQ7pMoIrxmfXYGM0";
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
     const genAI = useMemo(() => new GoogleGenerativeAI(GEMINI_API_KEY), [GEMINI_API_KEY]);
 
     const [chatHistory, setChatHistory] = useState([]);
