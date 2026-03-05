@@ -108,7 +108,7 @@ const Dashboard = () => {
     const progressPercent = totalDays > 0
         ? Math.min(Math.max(Math.round((daysPassed / totalDays) * 100), 0), 100)
         : (daysPassed >= totalDays ? 100 : 0);
-    const isMatured = daysPassed >= totalDays;
+    const isMatured = daysPassed >= totalDays && totalDays > 0;
 
     const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
     const baseDailyBurn = TIER_COSTS[profile.active_tier] || 0;
@@ -130,7 +130,7 @@ const Dashboard = () => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold font-heading">{t('dashboard')}</h2>
-                            <p className="text-white/60 text-sm">Community Member Since {format(joinedDate, 'MMM yyyy')}</p>
+                            <p className="text-white/60 text-sm">Community Member Since {joinedDate instanceof Date && !isNaN(joinedDate) ? format(joinedDate, 'MMM yyyy') : '...'}</p>
                         </div>
                     </div>
                     <button
@@ -210,25 +210,18 @@ const Dashboard = () => {
 
             {/* Stats and Info Area */}
             <div className="px-6 -mt-10 space-y-6 relative">
-                {profile.status === 'pending_payment' && (
+                {profile?.status === 'pending_payment' && (
                     <div className="p-4 bg-amber-50 rounded-[2rem] border border-amber-200 shadow-lg animate-in fade-in slide-in-from-top-4">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-amber-400 text-amber-950 rounded-2xl">
                                 <AlertCircle className="w-6 h-6" />
                             </div>
-                            <div className="p-4 bg-amber-50 rounded-[2rem] border border-amber-200 shadow-lg animate-in fade-in slide-in-from-top-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-amber-400 text-amber-950 rounded-2xl">
-                                        <AlertCircle className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-amber-900 text-sm">{t('action_required')}</h4>
-                                        <p className="text-xs text-amber-800 opacity-80 mt-0.5">{t('activate_shield')}</p>
-                                        <button onClick={() => navigate('/topup')} className="mt-2 text-xs font-black uppercase text-amber-950 flex items-center gap-1">
-                                            {t('fund_now')} <ChevronRight className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
+                            <div>
+                                <h4 className="font-bold text-amber-900 text-sm">{t('action_required')}</h4>
+                                <p className="text-xs text-amber-800 opacity-80 mt-0.5">{t('activate_shield')}</p>
+                                <button onClick={() => navigate('/topup')} className="mt-2 text-xs font-black uppercase text-amber-950 flex items-center gap-1">
+                                    {t('fund_now')} <ChevronRight className="w-4 h-4" />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -302,7 +295,7 @@ const Dashboard = () => {
                         <div className="mt-6 p-4 bg-yellow-50/50 rounded-2xl border border-yellow-100/50 text-xs text-slate-600 flex gap-4 items-center">
                             <Clock className="w-10 h-10 text-yellow-600" />
                             <p className="leading-relaxed">
-                                {t('shield_matured_on')} <strong className="text-yellow-700">{format(graceExpiry, 'PP')}</strong>.
+                                {t('shield_matured_on')} <strong className="text-yellow-700">{graceExpiry instanceof Date && !isNaN(graceExpiry) ? format(graceExpiry, 'PP') : '...'}</strong>.
                                 {t('daily_contributions')}
                             </p>
                         </div>
@@ -413,7 +406,7 @@ const Dashboard = () => {
                             <div key={dep.id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center font-bold text-slate-500">
-                                        {dep.name[0]}
+                                        {dep.name?.[0] || '?'}
                                     </div>
                                     <div>
                                         <p className="font-bold text-slate-800 text-sm">{dep.name}</p>

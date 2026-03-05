@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 
 const AuthContext = createContext();
@@ -56,24 +56,32 @@ export const AuthProvider = ({ children }) => {
 
                 // Fetch Profile - Use Phone number as primary ID for persistence if available
                 const sessionPhone = sessionStorage.getItem('hazina_temp_phone');
+                let profileRef = null;
 
-                let profileRef;
+                // 1. Try Phone-based ID
                 if (authUser.phoneNumber) {
                     profileRef = doc(db, 'users', authUser.phoneNumber);
                 } else if (sessionPhone) {
                     profileRef = doc(db, 'users', sessionPhone);
-                } else {
-                    profileRef = doc(db, 'users', authUser.uid);
                 }
 
-                let docSnap = await getDoc(profileRef);
-
-                if (!docSnap.exists()) {
-                    // Try to find if a profile exists with this UID mapping (legacy or fallback)
-                    // If not, we stay with the initial ref
+                if (profileRef) {
+                    const snap = await getDoc(profileRef);
+                    if (!snap.exists()) profileRef = null;
                 }
 
-                // Real-time profile updates
+                // 2. Query Fallback by UID
+                if (!profileRef) {
+                    const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
+                    const querySnap = await getDocs(q);
+                    if (!querySnap.empty) {
+                        profileRef = doc(db, 'users', querySnap.docs[0].id);
+                    }
+                }
+
+                // 3. Fallback to UID ID
+                if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
+
                 const unsubProfile = onSnapshot(profileRef, (snap) => {
                     if (snap.exists()) {
                         setProfile({ id: snap.id, ...snap.data() });
