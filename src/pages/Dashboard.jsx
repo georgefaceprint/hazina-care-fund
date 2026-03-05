@@ -159,9 +159,9 @@ const Dashboard = () => {
                     <div className="bg-gradient-to-br from-brand-primary via-brand-secondary to-[#1a0406] p-8 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative overflow-hidden transform-gpu hover:rotate-y-3 transition-all duration-700">
                         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                         <div className="flex justify-between items-start mb-10">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-5">
                                 {profile.id_photo_url ? (
-                                    <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl flex-shrink-0 relative">
+                                    <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl flex-shrink-0 relative">
                                         <img
                                             src={profile.id_photo_url}
                                             alt="ID Photo"
@@ -177,8 +177,8 @@ const Dashboard = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="w-16 h-16 rounded-2xl bg-white/5 border-2 border-white/10 flex items-center justify-center shadow-inner flex-shrink-0">
-                                        <User className="w-8 h-8 text-brand-accent/40" />
+                                    <div className="w-20 h-20 rounded-2xl bg-white/5 border-2 border-white/10 flex items-center justify-center shadow-inner flex-shrink-0">
+                                        <User className="w-10 h-10 text-brand-accent/40" />
                                     </div>
                                 )}
                                 <div>
@@ -213,8 +213,8 @@ const Dashboard = () => {
                                     <p className="font-bold font-mono tracking-[0.3em] text-white underline decoration-brand-accent/20 underline-offset-4">{profile.phoneNumber}</p>
                                 </div>
                             </div>
-                            <div className="bg-white p-3 rounded-[1.5rem] shadow-[0_15px_30px_rgba(0,0,0,0.3)] border border-brand-accent/20">
-                                <QRCodeSVG value={profile.id} size={65} fgColor="#3d080e" />
+                            <div className="bg-white p-3.5 rounded-[1.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-brand-accent/20">
+                                <QRCodeSVG value={profile.id} size={85} fgColor="#3d080e" />
                             </div>
                         </div>
                     </div>
