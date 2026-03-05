@@ -28,6 +28,13 @@ const CompleteProfile = () => {
             return;
         }
 
+        // Validate two or more names
+        const nameParts = fullName.trim().split(/\s+/);
+        if (nameParts.length < 2) {
+            toast.error(t('name_min_words'));
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -35,7 +42,8 @@ const CompleteProfile = () => {
             const photoUrl = await uploadProfilePhoto(user.uid, idPhoto);
 
             setUploadingState(t('processing_finalize'));
-            const userRef = doc(db, 'users', user.uid);
+            // Use the profile ID which is now phone-based for persistence
+            const userRef = doc(db, 'users', profile?.id || user.uid);
             await updateDoc(userRef, {
                 fullName,
                 national_id: nationalId,
@@ -78,6 +86,9 @@ const CompleteProfile = () => {
                             onChange={(e) => setFullName(e.target.value.toUpperCase())}
                             required
                         />
+                        <p className="text-[10px] text-brand-primary mt-2 italic px-1 font-bold">
+                            {t('official_name_reminder')}
+                        </p>
                     </div>
 
                     <div>

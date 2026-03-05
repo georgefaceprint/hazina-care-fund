@@ -49,6 +49,17 @@ const FamilyMembers = () => {
     const handleAddDependent = async (e) => {
         e.preventDefault();
         if (dependents.length >= 7) return;
+
+        // Validate two or more names
+        const nameParts = newDepName.trim().split(/\s+/);
+        if (nameParts.length < 2) {
+            // We use standard alert or toast if available, but here we can just return or use a local state.
+            // Since this is a form, let's just use alert for now or assume a global toast is accessible if we want to import it.
+            // But let's check if toast exists. (It doesn't in this file yet).
+            alert(t('name_min_words'));
+            return;
+        }
+
         setFormLoading(true);
 
         try {
@@ -146,6 +157,9 @@ const FamilyMembers = () => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all uppercase"
                                 placeholder={t('example_name').toUpperCase()}
                             />
+                            <p className="text-[10px] text-brand-primary mt-2 italic font-bold">
+                                {t('official_name_reminder')}
+                            </p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
