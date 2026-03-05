@@ -115,6 +115,18 @@ const ProfileSettings = () => {
                             </div>
                             <ChevronRight className="w-5 h-5 text-slate-300" />
                         </div>
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={() => navigate('/referrals')}>
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-teal-50 text-teal-500 rounded-xl">
+                                    <Gift className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-800 text-sm">Target & Referrals</p>
+                                    <p className="text-xs text-slate-500">Invite friends, earn points</p>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-slate-300" />
+                        </div>
                     </div>
                 </div>
 

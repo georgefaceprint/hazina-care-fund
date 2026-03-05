@@ -317,6 +317,24 @@ const Dashboard = () => {
                     )}
                 </div>
 
+                {/* Referrals Banner */}
+                <div onClick={() => navigate('/referrals')} className="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-[2rem] p-6 shadow-lg shadow-emerald-500/20 relative overflow-hidden cursor-pointer group transform hover:-translate-y-1 transition-all">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-duration-700"></div>
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div className="flex-1">
+                            <h4 className="text-white font-black text-lg mb-1 flex items-center gap-2">
+                                <Gift className="w-5 h-5 text-yellow-300" /> {t('refer_and_earn') || 'Refer & Earn'}
+                            </h4>
+                            <p className="text-emerald-50 text-xs font-medium opacity-90 max-w-[200px]">
+                                {t('invite_friends_desc') || 'Invite friends and get up to 14 days of free protection!'}
+                            </p>
+                        </div>
+                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 group-hover:bg-white group-hover:text-emerald-600 transition-colors">
+                            <ChevronRight className="w-6 h-6 text-white group-hover:text-emerald-600" />
+                        </div>
+                    </div>
+                </div>
+
                 {/* Quick Actions */}
                 <div className="space-y-3">
                     <h4 className="font-black text-xs uppercase tracking-widest text-slate-400 ml-1">{t('guardian_services')}</h4>
