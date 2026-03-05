@@ -92,7 +92,7 @@ const InstallBanner = ({ isIOS, onInstall, onDismiss, canInstall }) => (
                 {!isIOS && (
                     <button onClick={onInstall}
                         className={`text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors active:scale-95 ${canInstall ? 'bg-brand-primary hover:bg-emerald-500' : 'bg-slate-700 opacity-50 cursor-not-allowed'}`}>
-                        {canInstall ? 'Install' : 'Checking...'}
+                        Install
                     </button>
                 )}
                 <button onClick={onDismiss}

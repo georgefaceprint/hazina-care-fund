@@ -475,6 +475,31 @@ Return ONLY a valid JSON array, no markdown, no explanation:
 
                 {activeTab === 'sifuna' && (
                     <div className="space-y-6">
+                        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-black flex items-center gap-2 mb-1">
+                                    <Bot className="w-5 h-5 text-orange-500" />
+                                    Global Chatbot Status
+                                </h3>
+                                <p className="text-xs text-slate-500">Enable or disable Sifuna across the entire platform.</p>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const docRef = doc(db, 'config', 'sifuna');
+                                        const docSnap = await getDoc(docRef);
+                                        const currentStatus = docSnap.exists() ? docSnap.data().isActive : true; // default true
+                                        await setDoc(docRef, { isActive: !currentStatus }, { merge: true });
+                                        toast.success(!currentStatus ? "Sifuna Activated!" : "Sifuna Deactivated!");
+                                    } catch (e) {
+                                        toast.error("Failed to update status");
+                                    }
+                                }}
+                                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
+                            >
+                                Toggle Status
+                            </button>
+                        </div>
                         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-black flex items-center gap-2">

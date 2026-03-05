@@ -202,6 +202,7 @@ const SifunaChatbot = () => {
         silver: { cost: 30, limit: 50000 },
         gold: { cost: 50, limit: 150000 }
     });
+    const [isGlobalActive, setIsGlobalActive] = useState(true);
 
     useEffect(() => {
         if (isDemoMode) return;
@@ -211,7 +212,12 @@ const SifunaChatbot = () => {
         const unsubTiers = onSnapshot(doc(db, 'config', 'tiers'), (docSnap) => {
             if (docSnap.exists()) setTiers(docSnap.data());
         });
-        return () => { unsubKb(); unsubTiers(); };
+        const unsubConfig = onSnapshot(doc(db, 'config', 'sifuna'), (docSnap) => {
+            if (docSnap.exists()) {
+                setIsGlobalActive(docSnap.data().isActive !== false);
+            }
+        });
+        return () => { unsubKb(); unsubTiers(); unsubConfig(); };
     }, [isDemoMode]);
 
     const currentTopics = useMemo(() =>
@@ -349,6 +355,8 @@ RULES:
         e.preventDefault();
         sendMessageToAI(inputValue);
     };
+
+    if (!isGlobalActive) return null;
 
     return (
         <div className="fixed bottom-28 right-6 z-[60]">
