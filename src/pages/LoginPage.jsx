@@ -24,9 +24,14 @@ const LoginPage = () => {
         }
     }, [isDemoMode, user, navigate]);
 
-    // Setup invisible recaptcha
     useEffect(() => {
         if (!window.recaptchaVerifier) {
+            // Disable app verification if we're on localhost to bypass CORS/AppCheck issues
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                auth.settings.appVerificationDisabledForTesting = true;
+                console.log("Firebase App Verification disabled for local testing.");
+            }
+
             window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
                 'size': 'invisible',
                 'callback': (response) => {
