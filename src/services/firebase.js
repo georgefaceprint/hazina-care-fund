@@ -24,7 +24,7 @@ try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
-    functions = getFunctions(app);
+    functions = getFunctions(app, 'us-central1');
     storage = getStorage(app);
     // Initialize Messaging only if supported by the browser to prevent crashing
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {

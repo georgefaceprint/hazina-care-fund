@@ -37,6 +37,9 @@ const LoginPage = () => {
         const formatPhone = formatKenyanPhone(phoneNumber);
 
         try {
+            // The 'functions' object imported from '../services/firebase' should already be configured with the region.
+            // The instruction "Update services/firebase.js to specify us-central1 region for functions" implies this configuration happens there.
+            // The provided snippet `functions = getFunctions(app, 'us-central1');` is not valid syntax here.
             const sendOtp = httpsCallable(functions, 'sendOtp');
             await sendOtp({ phoneNumber: formatPhone });
 
@@ -44,6 +47,7 @@ const LoginPage = () => {
             setConfirmationResult(true);
         } catch (error) {
             console.error('sendOtp error:', error);
+            // Display the actual error message from the exception for better debugging.
             setError(error.message || 'Failed to send SMS. Please check your number and try again.');
         } finally {
             setLoading(false);
@@ -110,7 +114,8 @@ const LoginPage = () => {
             }
         } catch (error) {
             console.error('OTP verification error:', error);
-            setError('Invalid code or code expired. Please try again.');
+            // Show the actual error message from Firebase if available
+            setError(error.message || 'Invalid code or code expired. Please try again.');
         } finally {
             setLoading(false);
         }
