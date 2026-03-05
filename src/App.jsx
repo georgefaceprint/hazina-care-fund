@@ -22,11 +22,21 @@ const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, profile, loading } = useAuth();
 
+  // Wait for initial auth loading
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
+
+  // Still loading profile if user exists but profile is null
+  if (user && profile === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <Navigate to={requireAdmin ? "/admin/login" : "/login"} replace />;
