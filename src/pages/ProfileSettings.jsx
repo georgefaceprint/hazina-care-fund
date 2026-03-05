@@ -3,9 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 
-import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, Globe, Gift } from 'lucide-react';
+import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, Globe, Gift, Smartphone, Moon } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { requestNotificationPermission, disableNotifications } from '../services/pushNotifications';
+import { useInstall } from '../components/InstallPrompt';
 
 
 const ProfileSettings = () => {
@@ -15,6 +16,7 @@ const ProfileSettings = () => {
     const toast = useToast();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isPushEnabling, setIsPushEnabling] = useState(false);
+    const { triggerInstall, canInstall, isIOS, isInstalled } = useInstall() || {};
 
     const handleNotificationToggle = async () => {
         if (!user?.uid) return;
@@ -155,7 +157,7 @@ const ProfileSettings = () => {
                         <div className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-slate-100 text-slate-700 rounded-xl">
-                                    <HelpCircle className="w-5 h-5" />
+                                    <Moon className="w-5 h-5" />
                                 </div>
                                 <div>
                                     <p className="font-bold text-slate-800 text-sm">Dark Mode</p>
@@ -169,6 +171,29 @@ const ProfileSettings = () => {
                                 <div className="w-4 h-4 bg-white rounded-full transition-all duration-300 ml-0 dark:ml-6 shadow-sm"></div>
                             </div>
                         </div>
+
+                        {/* Install App */}
+                        {!isInstalled && (canInstall || isIOS) && (
+                            <div
+                                className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100"
+                                onClick={!isIOS ? triggerInstall : undefined}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 bg-brand-primary/10 text-brand-primary rounded-xl">
+                                        <Smartphone className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-800 text-sm">Install Hazina App</p>
+                                        {isIOS ? (
+                                            <p className="text-xs text-slate-500">Share ↑ → Add to Home Screen</p>
+                                        ) : (
+                                            <p className="text-xs text-slate-500">Add to your home screen</p>
+                                        )}
+                                    </div>
+                                </div>
+                                {!isIOS && <ChevronRight className="w-5 h-5 text-slate-300" />}
+                            </div>
+                        )}
 
                         <div className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-4">

@@ -1,98 +1,106 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 
-const InstallPrompt = () => {
+// Context so other components (like ProfileSettings) can trigger install
+const InstallContext = createContext(null);
+export const useInstall = () => useContext(InstallContext);
+
+export const InstallProvider = ({ children }) => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [showPrompt, setShowPrompt] = useState(false);
+    const [showBanner, setShowBanner] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
+    const [isInstalled, setIsInstalled] = useState(false);
 
     useEffect(() => {
-        // Basic iOS detection
-        const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        // Check if the app is already in standalone mode
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false;
+        // Check if already installed
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+        if (standalone) { setIsInstalled(true); return; }
 
-        if (isIosDevice && !isStandalone) {
+        const dismissed = localStorage.getItem('hazina_install_dismissed');
+        const lastDismissed = dismissed ? parseInt(dismissed) : 0;
+        const daysSinceDismissed = (Date.now() - lastDismissed) / (1000 * 60 * 60 * 24);
+
+        // iOS detection
+        const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIosDevice) {
             setIsIOS(true);
-            setShowPrompt(true);
+            // Only show if not dismissed recently (within 3 days)
+            if (daysSinceDismissed > 3) {
+                setTimeout(() => setShowBanner(true), 4000);
+            }
         }
 
-        // Android/Chrome beforeinstallprompt event
-        const handleBeforeInstallPrompt = (e) => {
-            // Prevent the mini-infobar from appearing on mobile
+        // Android/Chrome beforeinstallprompt
+        const handler = (e) => {
             e.preventDefault();
-            // Stash the event so it can be triggered later.
             setDeferredPrompt(e);
-            // Update UI notify the user they can install the PWA
-            setShowPrompt(true);
+            if (daysSinceDismissed > 3) {
+                setTimeout(() => setShowBanner(true), 4000);
+            }
         };
-
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-        return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
-    const handleInstallClick = async () => {
+    const triggerInstall = async () => {
         if (deferredPrompt) {
-            // Show the install prompt
             deferredPrompt.prompt();
-            // Wait for the user to respond to the prompt
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
-                console.log('User accepted the install prompt');
                 setDeferredPrompt(null);
-                setShowPrompt(false);
-            } else {
-                console.log('User dismissed the install prompt');
+                setShowBanner(false);
+                setIsInstalled(true);
             }
         }
     };
 
-    const handleDismiss = () => {
-        setShowPrompt(false);
+    const dismiss = () => {
+        localStorage.setItem('hazina_install_dismissed', Date.now().toString());
+        setShowBanner(false);
     };
 
-    if (!showPrompt) return null;
-
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 bg-white border-t border-slate-200 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] flex items-center justify-between gap-3 safe-bottom animate-slide-up">
-            <div className="flex-1 flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-sm">
-                    <img src="/pwa-192x192.png" alt="Hazina Logo" className="w-10 h-10 object-contain rounded-lg" onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.innerText = 'H'; }} />
-                </div>
-                <div>
-                    <h4 className="text-sm font-bold text-slate-800">Install Hazina App</h4>
-                    {isIOS ? (
-                        <p className="text-xs text-slate-500 leading-snug mt-0.5">
-                            Tap <span className="inline-block mx-0.5 font-medium text-slate-700"><svg className="w-4 h-4 inline align-bottom" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg> Share</span> then "Add to Home Screen"
-                        </p>
-                    ) : (
-                        <p className="text-xs text-slate-500 leading-snug mt-0.5">Add to home screen for a better, faster experience</p>
-                    )}
-                </div>
-            </div>
-
-            {!isIOS && (
-                <button
-                    onClick={handleInstallClick}
-                    className="flex-shrink-0 bg-green-600 text-white text-xs font-bold px-4 py-2.5 rounded-full hover:bg-green-700 transition-colors shadow-sm active:scale-95 transform"
-                >
-                    Install
-                </button>
+        <InstallContext.Provider value={{ triggerInstall, isIOS, isInstalled, canInstall: !!deferredPrompt || isIOS }}>
+            {children}
+            {showBanner && !isInstalled && (
+                <InstallBanner isIOS={isIOS} onInstall={triggerInstall} onDismiss={dismiss} canInstall={!!deferredPrompt} />
             )}
-
-            <button
-                onClick={handleDismiss}
-                className="flex-shrink-0 text-slate-400 hover:text-slate-600 p-2 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors ml-1"
-                aria-label="Close"
-            >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
+        </InstallContext.Provider>
     );
 };
 
-export default InstallPrompt;
+const InstallBanner = ({ isIOS, onInstall, onDismiss, canInstall }) => (
+    <div className="fixed bottom-20 left-4 right-4 z-[200] animate-slide-up max-w-md mx-auto">
+        <div className="bg-slate-900 text-white rounded-[2rem] p-5 shadow-2xl shadow-slate-900/40 border border-white/10 flex items-center gap-4">
+            <div className="w-14 h-14 bg-brand-primary rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-primary/30">
+                <img src="/pwa-192x192.png" alt="Hazina" className="w-12 h-12 rounded-xl object-cover"
+                    onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.innerText = 'H'; }} />
+            </div>
+            <div className="flex-1 min-w-0">
+                <h4 className="font-black text-sm text-white">Install Hazina App</h4>
+                {isIOS ? (
+                    <p className="text-[11px] text-white/60 mt-0.5 leading-snug">
+                        Tap <strong className="text-white">Share ↑</strong> then <strong className="text-white">"Add to Home Screen"</strong>
+                    </p>
+                ) : (
+                    <p className="text-[11px] text-white/60 mt-0.5 leading-snug">
+                        Get instant access right from your home screen
+                    </p>
+                )}
+            </div>
+            <div className="flex flex-col gap-2 flex-shrink-0">
+                {canInstall && !isIOS && (
+                    <button onClick={onInstall}
+                        className="bg-brand-primary text-white text-[11px] font-black px-4 py-2 rounded-xl hover:bg-emerald-500 transition-colors active:scale-95">
+                        Install
+                    </button>
+                )}
+                <button onClick={onDismiss}
+                    className="text-white/40 hover:text-white/70 text-[11px] font-bold text-center transition-colors">
+                    Later
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
+export default InstallProvider;

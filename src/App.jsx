@@ -18,7 +18,8 @@ const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
-import InstallPrompt from './components/InstallPrompt';
+import InstallProvider from './components/InstallPrompt';
+import UpdatePrompt from './components/UpdatePrompt';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, profile, loading } = useAuth();
@@ -73,46 +74,47 @@ const App = () => {
       <LanguageProvider>
         <ToastProvider>
           <AuthProvider>
-            <Suspense fallback={
-              <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            }>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/admin/login" element={<AdminLogin />} />
+            <InstallProvider>
+              <Suspense fallback={
+                <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                  <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              }>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/admin/login" element={<AdminLogin />} />
 
-                {/* Independent Admin Portal */}
-                <Route path="/admin" element={
-                  <ProtectedRoute requireAdmin={true}>
-                    <AdminPanel />
-                  </ProtectedRoute>
-                } />
+                  {/* Independent Admin Portal */}
+                  <Route path="/admin" element={
+                    <ProtectedRoute requireAdmin={true}>
+                      <AdminPanel />
+                    </ProtectedRoute>
+                  } />
 
-                {/* Mobile App Layout */}
-                <Route element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/topup" element={<TopUp />} />
-                  <Route path="/family" element={<FamilyMembers />} />
-                  <Route path="/claim" element={<CrisisClaim />} />
-                  <Route path="/benefits" element={<Benefits />} />
-                  <Route path="/referrals" element={<Referrals />} />
-                  <Route path="/settings" element={<ProfileSettings />} />
-                  <Route path="/complete-profile" element={<CompleteProfile />} />
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                </Route>
-              </Routes>
-            </Suspense>
-            <InstallPrompt />
+                  {/* Mobile App Layout */}
+                  <Route element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/topup" element={<TopUp />} />
+                    <Route path="/family" element={<FamilyMembers />} />
+                    <Route path="/claim" element={<CrisisClaim />} />
+                    <Route path="/benefits" element={<Benefits />} />
+                    <Route path="/referrals" element={<Referrals />} />
+                    <Route path="/settings" element={<ProfileSettings />} />
+                    <Route path="/complete-profile" element={<CompleteProfile />} />
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  </Route>
+                </Routes>
+              </Suspense>
+              <UpdatePrompt />
+            </InstallProvider>
           </AuthProvider>
         </ToastProvider>
       </LanguageProvider>
     </BrowserRouter>
-
   );
 };
 
