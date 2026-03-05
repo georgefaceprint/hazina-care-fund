@@ -138,38 +138,59 @@ const SifunaChatbot = () => {
                 systemInstruction: `
                     You are Sifuna, the official AI assistant for Hazina Care. Hazina is a community-driven protection platform in Kenya.
                     
-                    KNOWLEDGE BASE:
-                    - Tiers: 
-                        * Bronze: KSh 10/day, KSh 15,000 cover.
-                        * Silver: KSh 30/day, KSh 50,000 cover.
-                        * Gold: KSh 50/day, KSh 150,000 cover.
-                    - Maturation: There is a 180-day grace period (waiting period) before a shield is fully active.
-                    - Crisis Types covered: Medical emergency, Bereavement, School Fees.
-                    - Philosophy: Community-driven, transparent, and built to protect families.
+                    REFRESHED KNOWLEDGE BASE:
+                    - Tiers & Benefits: 
+                        * Bronze: KSh 10/day, Max Cover KSh 15,000.
+                        * Silver: KSh 30/day, Max Cover KSh 50,000.
+                        * Gold: KSh 50/day, Max Cover KSh 150,000.
+                    - Maturation (Waiting Period): 180-day grace period for new shields.
+                    - Daily Burn: Calculated as User Tier Cost + Dependent Tier Costs.
+                    - Crisis Types: Medical Emergencies, Bereavement/Funeral, School Fees gaps.
+                    - Referral Program: 
+                        * Users get unique IDs used as referral codes.
+                        * Rewards at 10 and 30 successful referrals.
+                        * Link format: hazina.vercel.app/signup?ref=YOUR_ID.
+                    - USSD Access: Dial *384# for the USSD menu.
                     
                     USER CONTEXT:
-                    - User Name: ${profile?.fullName || 'Unknown (Ask for their name if not provided)'}
+                    - User Name: ${profile?.fullName || user?.displayName || 'Unknown (Always greet and ask for their name if not found in context)'}
                     - User Language Choice: ${chatLanguage === 'sw' ? 'Swahili' : 'English'}.
                     - STRICT LANGUAGE RULE: 
-                        * If User Language Choice is 'Swahili', you MUST respond ONLY in Swahili.
-                        * If User Language Choice is 'English', you MUST respond ONLY in English.
+                        * Respond ONLY in the User Language Choice (${chatLanguage === 'sw' ? 'Swahili' : 'English'}).
                     - PERSONALIZATION:
-                        * If the User Name is known, use it naturally in conversation.
-                        * If the user introduces themselves with a name, remember it and use it.
+                        * Greet with "Hello [Name]" or "Habari [Name]".
+                        * Use the user's name naturally across the conversation.
                 `
             });
 
-            // Gemini requires history to start with a 'user' message.
-            // Our first message is often a 'model' greeting.
-            const validHistory = chatHistory
-                .filter((h, idx) => !(idx === 0 && h.role === 'model'))
-                .map(h => ({
-                    role: h.role === 'model' ? 'model' : 'user',
-                    parts: h.parts
-                }));
+            // COMPREHENSIVE HISTORY CLEANER FOR GEMINI
+            // 1. Must alternate User -> Model -> User
+            // 2. Must start with 'user'
+            // 3. Must not have empty parts
+            let cleanedHistory = [];
+            let lastRole = null;
+
+            chatHistory.forEach((h) => {
+                if (!h.parts?.[0]?.text) return; // Skip empty
+                const currentRole = h.role === 'model' ? 'model' : 'user';
+
+                // Gemini Rule: Must alternate and start with User
+                if (cleanedHistory.length === 0) {
+                    if (currentRole === 'user') {
+                        cleanedHistory.push({ role: 'user', parts: h.parts });
+                        lastRole = 'user';
+                    }
+                } else if (currentRole !== lastRole) {
+                    cleanedHistory.push({ role: currentRole, parts: h.parts });
+                    lastRole = currentRole;
+                }
+            });
+
+            // If we ended up with an empty history (e.g. only model greeting), 
+            // the first user message is current userMsg anyway.
 
             const chat = model.startChat({
-                history: validHistory
+                history: cleanedHistory
             });
 
             const result = await chat.sendMessage(userMsg);
@@ -182,9 +203,10 @@ const SifunaChatbot = () => {
 
         } catch (error) {
             console.error("Chat error:", error);
+            const errorDetail = error.message?.substring(0, 100) || "Connection failure";
             setChatHistory(prev => [...prev, {
                 role: 'model',
-                parts: [{ text: "I'm having trouble connecting. Check your internet or try again later." }]
+                parts: [{ text: `Pole! I'm having trouble connecting to my AI brain. (Error: ${errorDetail}). Please try again shortly.` }]
             }]);
         } finally {
             setIsTyping(false);
