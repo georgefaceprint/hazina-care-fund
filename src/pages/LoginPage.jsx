@@ -38,6 +38,9 @@ const LoginPage = () => {
             const result = await signInAnonymously(auth);
             const user = result.user;
 
+            // Store phone in session for AuthContext to pick up (since anonymous auth has no phone)
+            sessionStorage.setItem('hazina_temp_phone', formatPhone);
+
             // Check if user profile exists using phone number as the ID for persistence
             const userRef = doc(db, 'users', formatPhone);
             const userSnap = await getDoc(userRef);
@@ -65,6 +68,9 @@ const LoginPage = () => {
                 navigate('/complete-profile');
             } else {
                 const userData = userSnap.data();
+                // Update existing profile with current UID (important for session linking if UID changed)
+                await setDoc(userRef, { uid: user.uid }, { merge: true });
+
                 if (!userData.profile_completed) {
                     navigate('/complete-profile');
                 } else {

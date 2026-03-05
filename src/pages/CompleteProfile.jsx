@@ -42,8 +42,11 @@ const CompleteProfile = () => {
             const photoUrl = await uploadProfilePhoto(user.uid, idPhoto);
 
             setUploadingState(t('processing_finalize'));
-            // Use the profile ID which is now phone-based for persistence
-            const userRef = doc(db, 'users', profile?.id || user.uid);
+
+            // Critical fix: Ensure we use the best available ID (prioritizing phone-based profile ID)
+            const targetId = profile?.id || sessionStorage.getItem('hazina_temp_phone') || user.uid;
+            const userRef = doc(db, 'users', targetId);
+
             await updateDoc(userRef, {
                 fullName,
                 national_id: nationalId,
@@ -56,7 +59,9 @@ const CompleteProfile = () => {
             navigate('/dashboard');
         } catch (error) {
             console.error("Error updating profile:", error);
-            toast.error("Failed to update profile.");
+            // Log the attempted ID for better debugging
+            const attemptId = profile?.id || sessionStorage.getItem('hazina_temp_phone') || user.uid;
+            toast.error(`Failed to update profile (Ref: ${attemptId})`);
         } finally {
             setLoading(false);
         }

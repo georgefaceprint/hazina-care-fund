@@ -55,14 +55,14 @@ export const AuthProvider = ({ children }) => {
                 setUser(authUser);
 
                 // Fetch Profile - Use Phone number as primary ID for persistence if available
-                // If the user signed in anonymously with a phone number, we use that.
-                // Note: In our current LoginPage, we store profiles by phone number.
+                const sessionPhone = sessionStorage.getItem('hazina_temp_phone');
+
                 let profileRef;
                 if (authUser.phoneNumber) {
                     profileRef = doc(db, 'users', authUser.phoneNumber);
+                } else if (sessionPhone) {
+                    profileRef = doc(db, 'users', sessionPhone);
                 } else {
-                    // Fallback to searching for a profile by UID if phone isn't in authUser
-                    // Or for now, just use the UID if no phone is found (e.g. social login)
                     profileRef = doc(db, 'users', authUser.uid);
                 }
 
