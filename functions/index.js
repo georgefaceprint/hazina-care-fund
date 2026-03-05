@@ -464,20 +464,22 @@ const africastalking = require('africastalking')({
     username: process.env.VITE_AT_USERNAME || 'sandbox' // or hazina production username
 });
 
-exports.sendOtp = onCall({ cors: true }, async (request) => {
+exports.sendOtp = onCall(async (request) => {
     try {
         const { phoneNumber } = request.data;
+        console.log("SEND_OTP_CALLED for:", phoneNumber);
+
         if (!phoneNumber) {
             throw new HttpsError('invalid-argument', 'Phone number is required.');
         }
 
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        console.log("Formatted Phone:", formatPhone);
 
-        // Generate 6 digit code
-        // For the next 100 testers, we use a global code 123456 as requested
+        // ALWAYS USE 123456 for testing as requested
         const code = "123456";
 
-        // Save to Firestore with expiration (1 hour for testing ease)
+        // Save to Firestore with 1 hour expiration
         const expiry = new Date();
         expiry.setHours(expiry.getHours() + 1);
 
@@ -487,18 +489,9 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        try {
-            const sms = africastalking.SMS;
-            const result = await sms.send({
-                to: [formatPhone],
-                message: `Your Hazina Care verification code is: ${code}. Do not share this with anyone.`
-            });
-            console.log("AT SMS Result:", JSON.stringify(result));
-        } catch (atError) {
-            console.warn("Africa's Talking failed, but code 123456 is set in DB for user:", atError.message);
-        }
+        console.log("OTP code 123456 saved to Firestore for:", formatPhone);
 
-        return { success: true, message: "OTP Sent (Testing Mode: 123456)" };
+        return { success: true, message: "OTP Ready: 123456" };
 
     } catch (error) {
         console.error("sendOtp error:", error);
@@ -506,9 +499,10 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
     }
 });
 
-exports.verifyOtp = onCall({ cors: true }, async (request) => {
+exports.verifyOtp = onCall(async (request) => {
     try {
         const { phoneNumber, validationCode } = request.data;
+        console.log("VERIFY_OTP_CALLED for:", phoneNumber, "with code:", validationCode);
 
         if (!phoneNumber || !validationCode) {
             throw new HttpsError('invalid-argument', 'Phone number and code are required.');
@@ -520,25 +514,29 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         const docSnap = await docRef.get();
 
         if (!docSnap.exists) {
-            throw new HttpsError('not-found', 'No pending OTP verification found.');
+            console.warn("No OTP code found in DB for:", formatPhone);
+            throw new HttpsError('not-found', 'No pending verification found for this number.');
         }
 
         const data = docSnap.data();
+        console.log("Found DB matching code:", data.code);
 
         if (data.expiresAt.toDate() < new Date()) {
             await docRef.delete();
             throw new HttpsError('deadline-exceeded', 'OTP has expired.');
         }
 
-        if (data.code !== validationCode) {
+        if (data.code !== String(validationCode)) {
+            console.warn("Code mismatch! Entered:", validationCode, "Expected:", data.code);
             throw new HttpsError('invalid-argument', 'Invalid OTP code.');
         }
 
-        // OTP is valid. Delete the code.
+        // OTP is valid.
         await docRef.delete();
 
-        // Generate a Firebase Custom Token so the frontend can authenticate natively
+        // Use Phone number as UID for consistency with our rules
         const token = await admin.auth().createCustomToken(formatPhone);
+        console.log("Custom Token generated successfully for UID:", formatPhone);
 
         return { token };
 
