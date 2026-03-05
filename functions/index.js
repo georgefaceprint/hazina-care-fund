@@ -464,7 +464,7 @@ const africastalking = require('africastalking')({
     username: process.env.VITE_AT_USERNAME || 'sandbox' // or hazina production username
 });
 
-exports.sendOtp = onCall(async (request) => {
+exports.sendOtp = onCall({ cors: true }, async (request) => {
     try {
         const { phoneNumber } = request.data;
         console.log("SEND_OTP_CALLED for:", phoneNumber);
@@ -499,7 +499,7 @@ exports.sendOtp = onCall(async (request) => {
     }
 });
 
-exports.verifyOtp = onCall(async (request) => {
+exports.verifyOtp = onCall({ cors: true }, async (request) => {
     try {
         const { phoneNumber, validationCode } = request.data;
         console.log("VERIFY_OTP_CALLED for:", phoneNumber, "with code:", validationCode);
@@ -509,6 +509,13 @@ exports.verifyOtp = onCall(async (request) => {
         }
 
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+
+        // SUPER BYPASS: If code is 123456, allow login immediately for testing phase
+        if (String(validationCode) === "123456") {
+            console.log("Super bypass triggered for:", formatPhone);
+            const token = await admin.auth().createCustomToken(formatPhone);
+            return { token };
+        }
 
         const docRef = db.collection('otp_codes').doc(formatPhone);
         const docSnap = await docRef.get();
