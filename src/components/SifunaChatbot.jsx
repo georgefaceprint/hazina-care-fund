@@ -145,11 +145,17 @@ const SifunaChatbot = () => {
                 `
             });
 
-            const chat = model.startChat({
-                history: chatHistory.map(h => ({
+            // Gemini requires history to start with a 'user' message.
+            // Our first message is often a 'model' greeting.
+            const validHistory = chatHistory
+                .filter((h, idx) => !(idx === 0 && h.role === 'model'))
+                .map(h => ({
                     role: h.role === 'model' ? 'model' : 'user',
                     parts: h.parts
-                }))
+                }));
+
+            const chat = model.startChat({
+                history: validHistory
             });
 
             const result = await chat.sendMessage(userMsg);
@@ -162,17 +168,9 @@ const SifunaChatbot = () => {
 
         } catch (error) {
             console.error("Chat error:", error);
-            const errorMsg = error.message || "Unknown error";
-            const isAuthError = errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('403') || errorMsg.includes('401');
-
-            let displayMsg = "I'm having trouble connecting. Check your internet or try again later.";
-            if (isAuthError) displayMsg = "AI Brain connection failed: Invalid API Key. Please verify your GEMINI_API_KEY.";
-            if (errorMsg.includes('CORS')) displayMsg = "Connection blocked by browser (CORS). Try a different browser.";
-            if (errorMsg.includes('quota')) displayMsg = "I'm a bit overwhelmed right now (Quota exceeded). Try again in a minute!";
-
             setChatHistory(prev => [...prev, {
                 role: 'model',
-                parts: [{ text: `${displayMsg} (Debug info: ${errorMsg.substring(0, 50)}...)` }]
+                parts: [{ text: "I'm having trouble connecting. Check your internet or try again later." }]
             }]);
         } finally {
             setIsTyping(false);
