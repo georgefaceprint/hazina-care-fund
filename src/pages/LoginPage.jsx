@@ -27,6 +27,8 @@ const LoginPage = () => {
 
 
 
+
+
     const onSignInSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -57,10 +59,10 @@ const LoginPage = () => {
 
         try {
             const formatPhone = formatKenyanPhone(phoneNumber);
-            const verifyOtp = httpsCallable(functions, 'verifyOtp');
+            const verifyOtpFunc = httpsCallable(functions, 'verifyOtp');
 
             // Validate code and get custom token
-            const result = await verifyOtp({
+            const result = await verifyOtpFunc({
                 phoneNumber: formatPhone,
                 validationCode: verificationCode
             });
@@ -107,7 +109,7 @@ const LoginPage = () => {
                 }
             }
         } catch (error) {
-            console.error('OTP confirmation error:', error);
+            console.error('OTP verification error:', error);
             setError('Invalid code or code expired. Please try again.');
         } finally {
             setLoading(false);
@@ -130,6 +132,8 @@ const LoginPage = () => {
                         {error}
                     </div>
                 )}
+
+
 
                 {!confirmationResult ? (
                     <form onSubmit={onSignInSubmit} className="space-y-6">

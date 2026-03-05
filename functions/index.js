@@ -474,11 +474,12 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
 
         // Generate 6 digit code
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        // For the next 100 testers, we use a global code 123456 as requested
+        const code = "123456";
 
-        // Save to Firestore with expiration (5 mins)
+        // Save to Firestore with expiration (1 hour for testing ease)
         const expiry = new Date();
-        expiry.setMinutes(expiry.getMinutes() + 5);
+        expiry.setHours(expiry.getHours() + 1);
 
         await db.collection('otp_codes').doc(formatPhone).set({
             code: code,
@@ -486,20 +487,22 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        const sms = africastalking.SMS;
-        const result = await sms.send({
-            to: [formatPhone],
-            message: `Your Hazina Care verification code is: ${code}. Do not share this with anyone.`,
-            from: 'HazinaCare' // Replace with your approved alphanumeric sender ID if not in sandbox
-        });
+        try {
+            const sms = africastalking.SMS;
+            const result = await sms.send({
+                to: [formatPhone],
+                message: `Your Hazina Care verification code is: ${code}. Do not share this with anyone.`
+            });
+            console.log("AT SMS Result:", JSON.stringify(result));
+        } catch (atError) {
+            console.warn("Africa's Talking failed, but code 123456 is set in DB for user:", atError.message);
+        }
 
-        console.log("AT SMS Result:", JSON.stringify(result));
-
-        return { success: true, message: "OTP Sent" };
+        return { success: true, message: "OTP Sent (Testing Mode: 123456)" };
 
     } catch (error) {
         console.error("sendOtp error:", error);
-        throw new HttpsError('internal', 'Failed to send OTP.');
+        throw new HttpsError('internal', error.message || 'Failed to initiate OTP.');
     }
 });
 
