@@ -551,6 +551,6 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         console.error("verifyOtp error:", error);
         // We throw http errors directly to frontend so don't mask valid specific ones.
         if (error instanceof HttpsError) { throw error; }
-        throw new HttpsError('internal', 'Verification failed.');
+        throw new HttpsError('internal', `Verification failed: ${error.message || 'Unknown error'}`);
     }
 });
