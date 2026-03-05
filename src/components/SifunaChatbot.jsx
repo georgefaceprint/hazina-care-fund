@@ -111,35 +111,6 @@ const SifunaChatbot = () => {
         await sendMessageToAI(userMsg);
     };
 
-    // Robust Retry Helper
-    const callAIWithRetry = async (chat, message, retries = 3, delay = 1000) => {
-        for (let i = 0; i < retries; i++) {
-            try {
-                return await chat.sendMessage(message);
-            } catch (err) {
-                const isNetworkError = err.message?.includes('fetch') || err instanceof TypeError;
-                if (i === retries - 1 || !isNetworkError) throw err;
-                console.warn(`AI attempt ${i + 1} failed. Retrying in ${delay}ms...`);
-                await new Promise(res => setTimeout(res, delay));
-                delay *= 2; // Exponential backoff
-            }
-        }
-    };
-
-    // Network Health Check
-    const checkNetworkHealth = async () => {
-        try {
-            // Ping a lightweight Google endpoint to check connectivity
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
-            await fetch('https://generativelanguage.googleapis.com/favicon.ico', { mode: 'no-cors', signal: controller.signal });
-            clearTimeout(timeoutId);
-            return true;
-        } catch (e) {
-            return false;
-        }
-    };
-
     const sendMessageToAI = async (text) => {
         const userMsg = text.trim();
         if (!userMsg || isTyping) return;
@@ -163,7 +134,7 @@ const SifunaChatbot = () => {
 
             // Direct Frontend AI Call
             const model = genAI.getGenerativeModel({
-                model: "gemini-2.0-flash",
+                model: "gemini-1.5-flash",
                 systemInstruction: `
                     You are Sifuna, the official AI assistant for Hazina Care. Hazina is a community-driven protection platform in Kenya.
                     
@@ -222,7 +193,7 @@ const SifunaChatbot = () => {
                 history: cleanedHistory
             });
 
-            const result = await callAIWithRetry(chat, userMsg);
+            const result = await chat.sendMessage(userMsg);
             const botResponse = result.response.text();
 
             setChatHistory(prev => [
@@ -232,27 +203,10 @@ const SifunaChatbot = () => {
 
         } catch (error) {
             console.error("Chat error:", error);
-
-            const isFetchError = error.message?.toLowerCase().includes('fetch') || error instanceof TypeError;
-            const isQuotaError = error.message?.toLowerCase().includes('429');
-
-            let userFriendlyError = "Pole! I'm having trouble connecting to my AI brain.";
-
-            if (isFetchError) {
-                const isOnline = await checkNetworkHealth();
-                if (!isOnline) {
-                    userFriendlyError = "It looks like your internet is disconnected or the Google API is blocked by your network/Adblocker.";
-                } else {
-                    userFriendlyError = "I'm having a connection hiccup with Google. Please try one more time.";
-                }
-            } else if (isQuotaError) {
-                userFriendlyError = "I'm a bit overwhelmed with requests right now. Hang on a moment and try again.";
-            }
-
             const errorDetail = error.message?.substring(0, 100) || "Connection failure";
             setChatHistory(prev => [...prev, {
                 role: 'model',
-                parts: [{ text: `${userFriendlyError} (Error: ${errorDetail})` }]
+                parts: [{ text: `Pole! I'm having trouble connecting to my AI brain. (Error: ${errorDetail}). Please try again shortly.` }]
             }]);
         } finally {
             setIsTyping(false);
