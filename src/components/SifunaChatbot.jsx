@@ -77,9 +77,20 @@ const SifunaChatbot = () => {
 
     const selectLanguage = (lang) => {
         setChatLanguage(lang);
-        const welcome = lang === 'sw'
-            ? "Vizuri! Nitazungumza nawe kwa Kiswahili. Nawezaje kukusaidia leo?"
-            : "Great! I'll speak with you in English. How can I help you today?";
+
+        // Get first name if available
+        const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : null;
+
+        let welcome;
+        if (lang === 'sw') {
+            welcome = firstName
+                ? `Habari ${firstName}! Mimi ni Sifuna. Nawezaje kukusaidia leo?`
+                : "Jambo! Mimi ni Sifuna. Nawezaje kukusaidia leo? Ningependa kujua jina lako tafadhali.";
+        } else {
+            welcome = firstName
+                ? `Hello ${firstName}! I am Sifuna. How can I help you today?`
+                : "Hello! I am Sifuna. How can I help you today? May I know your name?";
+        }
 
         setChatHistory(prev => [
             ...prev,
@@ -136,12 +147,14 @@ const SifunaChatbot = () => {
                     - Philosophy: Community-driven, transparent, and built to protect families.
                     
                     USER CONTEXT:
-                    - User Name: ${profile?.fullName || 'Member'}
+                    - User Name: ${profile?.fullName || 'Unknown (Ask for their name if not provided)'}
                     - User Language Choice: ${chatLanguage === 'sw' ? 'Swahili' : 'English'}.
                     - STRICT LANGUAGE RULE: 
-                        * If User Language Choice is 'Swahili', you MUST respond ONLY in Swahili. Do not use English even if the user uses an English term.
+                        * If User Language Choice is 'Swahili', you MUST respond ONLY in Swahili.
                         * If User Language Choice is 'English', you MUST respond ONLY in English.
-                        * DO NOT mix languages unless specifically asked for a translation.
+                    - PERSONALIZATION:
+                        * If the User Name is known, use it naturally in conversation.
+                        * If the user introduces themselves with a name, remember it and use it.
                 `
             });
 
