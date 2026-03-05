@@ -7,7 +7,6 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc,
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Download, Bot, TrendingUp, Zap, LogOut } from 'lucide-react';
 import { generateWorkflowPDF } from '../utils/pdfGenerator';
-import { generateWorkflowPDF } from '../utils/pdfGenerator';
 import { format, subDays, startOfDay } from 'date-fns';
 
 const getSafeDate = (dateVal) => {

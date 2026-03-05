@@ -152,18 +152,6 @@ const ProfileSettings = () => {
                             </select>
                         </div>
 
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={generateWorkflowPDF}>
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-brand-50 text-brand-primary rounded-xl">
-                                    <FileText className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-slate-800 text-sm">System Workflows</p>
-                                    <p className="text-xs text-slate-500">Download PDF documentation</p>
-                                </div>
-                            </div>
-                            <Download className="w-5 h-5 text-slate-300" />
-                        </div>
                     </div>
                 </div>
 
