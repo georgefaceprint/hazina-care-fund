@@ -287,7 +287,9 @@ const Dashboard = () => {
                             <Shield className={`w-6 h-6 ${isMatured ? 'text-brand-primary' : 'text-yellow-500 animate-pulse'}`} />
                             <div>
                                 <h4 className="font-bold text-slate-900">{t('shield_growth')}</h4>
-                                <p className="text-xs text-slate-400">{isMatured ? t('fully_protected') : t('maturing')}</p>
+                                <p className="text-xs text-slate-400">
+                                    {isMatured ? t('fully_protected') : `${tierConfig[profile.active_tier]?.maturation || 180} ${t('days')} ${t('maturation_desc')}`}
+                                </p>
                             </div>
                         </div>
                         <span className="text-2xl font-black text-brand-primary">{progressPercent}%</span>

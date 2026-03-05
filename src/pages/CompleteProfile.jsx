@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../services/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Shield, User, ArrowRight, Upload, Image as ImageIcon } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { uploadProfilePhoto } from '../services/storage';
 
@@ -78,6 +79,32 @@ const CompleteProfile = () => {
                     </div>
                     <h1 className="text-2xl font-bold font-heading text-slate-900">{t('complete_profile')}</h1>
                     <p className="text-slate-500 mt-2 text-sm italic">{t('verification_required')}</p>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                    <div className="flex justify-between items-end px-1">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Profile Completion</span>
+                        <span className="text-sm font-black text-brand-primary">
+                            {Math.round(
+                                (fullName.trim().split(/\s+/).length >= 2 ? 33 : 0) +
+                                (nationalId ? 33 : 0) +
+                                (idPhoto ? 34 : 0)
+                            )}%
+                        </span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{
+                                width: `${(fullName.trim().split(/\s+/).length >= 2 ? 33 : 0) +
+                                    (nationalId ? 33 : 0) +
+                                    (idPhoto ? 34 : 0)}%`
+                            }}
+                            className="h-full bg-gradient-to-r from-brand-primary to-emerald-500"
+                            transition={{ type: "spring", stiffness: 50, damping: 15 }}
+                        />
+                    </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">

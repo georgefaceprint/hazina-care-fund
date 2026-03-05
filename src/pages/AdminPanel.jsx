@@ -73,9 +73,9 @@ const AdminPanel = () => {
             } else {
                 // Seed default tiers if they don't exist
                 const defaultTiers = {
-                    bronze: { cost: 10, limit: 15000, name: 'Bronze Shield' },
-                    silver: { cost: 30, limit: 50000, name: 'Silver Shield' },
-                    gold: { cost: 50, limit: 150000, name: 'Gold Shield' }
+                    bronze: { cost: 10, limit: 15000, name: 'Bronze Shield', maturation: 180 },
+                    silver: { cost: 30, limit: 50000, name: 'Silver Shield', maturation: 180 },
+                    gold: { cost: 50, limit: 150000, name: 'Gold Shield', maturation: 180 }
                 };
                 setDoc(doc(db, 'config', 'tiers'), defaultTiers);
                 setTiers(defaultTiers);
@@ -511,6 +511,18 @@ const AdminPanel = () => {
                                                         className="w-full bg-white p-4 pl-14 rounded-2xl border border-slate-200 font-black text-slate-900 focus:ring-2 focus:ring-brand-primary outline-none transition-all"
                                                         defaultValue={data.limit}
                                                         onBlur={e => handleUpdateTiers(key, 'limit', e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Maturation (Days)</label>
+                                                <div className="relative">
+                                                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                                                    <input
+                                                        type="number"
+                                                        className="w-full bg-white p-4 pl-12 rounded-2xl border border-slate-200 font-black text-slate-900 focus:ring-2 focus:ring-brand-primary outline-none transition-all"
+                                                        defaultValue={data.maturation || 180}
+                                                        onBlur={e => handleUpdateTiers(key, 'maturation', e.target.value)}
                                                     />
                                                 </div>
                                             </div>

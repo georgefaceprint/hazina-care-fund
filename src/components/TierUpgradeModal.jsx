@@ -104,6 +104,9 @@ const TierUpgradeModal = ({ isOpen, onClose, currentTier, profileId, isDemoMode,
                                                         <span className="text-xs font-black text-brand-primary uppercase">KSh {data.cost}/day</span>
                                                     </div>
                                                     <p className="text-xs text-slate-500">Up to KSh {data.limit?.toLocaleString()} protection</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                                        {data.maturation || 180} Days Maturation
+                                                    </p>
                                                 </div>
                                                 {selectedTier === key && <Check className="w-6 h-6 text-brand-primary" />}
                                                 {isCurrent && <span className="text-[10px] font-black uppercase text-slate-400">Active</span>}

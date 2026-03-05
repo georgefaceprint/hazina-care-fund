@@ -226,10 +226,9 @@ const SifunaChatbot = () => {
 
         } catch (error) {
             console.error("Chat error:", error);
-            const errorDetail = error.message?.substring(0, 100) || "Connection failure";
             setChatHistory(prev => [...prev, {
                 role: 'model',
-                parts: [{ text: `Pole! I'm having trouble connecting to my AI brain. (Error: ${errorDetail}). Please try again shortly.` }]
+                parts: [{ text: `Pole! I'm having trouble connecting right now. Please try again in a moment.` }]
             }]);
         } finally {
             setIsTyping(false);
@@ -266,9 +265,6 @@ const SifunaChatbot = () => {
                                 </div>
                             </div>
                             <div className="flex items-center gap-1">
-                                <button onClick={resetChat} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Reset Chat">
-                                    <RotateCcw className="w-5 h-5" />
-                                </button>
                                 <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                                     <X className="w-6 h-6" />
                                 </button>
@@ -361,7 +357,7 @@ const SifunaChatbot = () => {
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white"></span>
                 )}
             </button>
-        </div>
+        </div >
     );
 };
 

@@ -64,57 +64,64 @@ export const AuthProvider = ({ children }) => {
         }
 
         const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-            if (authUser) {
-                setUser(authUser);
+            try {
+                if (authUser) {
+                    setUser(authUser);
 
-                // Fetch Profile - Use Phone number as primary ID for persistence if available
-                const sessionPhone = sessionStorage.getItem('hazina_temp_phone');
-                let profileRef = null;
+                    // Fetch Profile - Use Phone number as primary ID for persistence if available
+                    const sessionPhone = sessionStorage.getItem('hazina_temp_phone');
+                    let profileRef = null;
 
-                // 1. Try Phone-based ID
-                if (authUser.phoneNumber) {
-                    profileRef = doc(db, 'users', authUser.phoneNumber);
-                } else if (sessionPhone) {
-                    profileRef = doc(db, 'users', sessionPhone);
-                }
-
-                if (profileRef) {
-                    const snap = await getDoc(profileRef);
-                    if (!snap.exists()) profileRef = null;
-                }
-
-                // 3. Query Fallback by UID
-                if (!profileRef) {
-                    const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
-                    const querySnap = await getDocs(q);
-                    if (!querySnap.empty) {
-                        profileRef = doc(db, 'users', querySnap.docs[0].id);
+                    // 1. Try Phone-based ID
+                    if (authUser.phoneNumber) {
+                        profileRef = doc(db, 'users', authUser.phoneNumber);
+                    } else if (sessionPhone) {
+                        profileRef = doc(db, 'users', sessionPhone);
                     }
-                }
 
-                // 4. Query Fallback by Email (for Admin Email Login)
-                if (!profileRef && authUser.email) {
-                    const q = query(collection(db, 'users'), where('email', '==', authUser.email));
-                    const querySnap = await getDocs(q);
-                    if (!querySnap.empty) {
-                        profileRef = doc(db, 'users', querySnap.docs[0].id);
+                    if (profileRef) {
+                        const snap = await getDoc(profileRef);
+                        if (!snap.exists()) profileRef = null;
                     }
-                }
 
-                // 5. Fallback to UID ID
-                if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
-
-                const unsubProfile = onSnapshot(profileRef, (snap) => {
-                    if (snap.exists()) {
-                        setProfile({ id: snap.id, ...snap.data() });
+                    // 3. Query Fallback by UID
+                    if (!profileRef) {
+                        const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
+                        const querySnap = await getDocs(q);
+                        if (!querySnap.empty) {
+                            profileRef = doc(db, 'users', querySnap.docs[0].id);
+                        }
                     }
-                });
 
-                setLoading(false);
-                return () => unsubProfile();
-            } else {
-                setUser(null);
-                setProfile(null);
+                    // 4. Query Fallback by Email (for Admin Email Login)
+                    if (!profileRef && authUser.email) {
+                        const q = query(collection(db, 'users'), where('email', '==', authUser.email));
+                        const querySnap = await getDocs(q);
+                        if (!querySnap.empty) {
+                            profileRef = doc(db, 'users', querySnap.docs[0].id);
+                        }
+                    }
+
+                    // 5. Fallback to UID ID
+                    if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
+
+                    const unsubProfile = onSnapshot(profileRef, (snap) => {
+                        if (snap.exists()) {
+                            setProfile({ id: snap.id, ...snap.data() });
+                        }
+                    });
+
+                    // We return the cleanup for the profile listener
+                    return () => unsubProfile();
+                } else {
+                    setUser(null);
+                    setProfile(null);
+                }
+            } catch (error) {
+                console.error("Auth state processing failed:", error);
+                // Fallback attempt to still allow some access even if profile fails
+                if (authUser) setUser(authUser);
+            } finally {
                 setLoading(false);
             }
         });

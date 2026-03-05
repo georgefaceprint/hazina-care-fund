@@ -140,7 +140,10 @@ const translations = {
         enter_app: "Enter App",
         view_app_demo: "View App Demo (Bypass Authentication)",
         by_continuing: "By continuing, you participate in the community fund based on trust and transparency.",
-        example_phone: "Example: 0712 345 678"
+        example_phone: "Example: 0712 345 678",
+        maturation_period: "Maturation Period",
+        days: "Days",
+        maturation_desc: "waiting period for full protection"
     },
     sw: {
         // Global & Nav
@@ -283,7 +286,10 @@ const translations = {
         enter_app: "Ingia Kwenye App",
         view_app_demo: "Tazama Onyesho la App (Pita Uthibitishaji)",
         by_continuing: "Kwa kuendelea, unashiriki katika mfuko wa jamii unaozingatia uaminifu na uwazi.",
-        example_phone: "Mfano: 0712 345 678"
+        example_phone: "Mfano: 0712 345 678",
+        maturation_period: "Kipindi cha Kukomaa",
+        days: "Siku",
+        maturation_desc: "kipindi cha kusubiri ulinzi kamili"
     }
 };
 

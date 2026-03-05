@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { LanguageProvider } from './context/LanguageContext';
 import LoginPage from './pages/LoginPage';
 
 import AppLayout from './layouts/AppLayout';
@@ -16,6 +17,7 @@ const Referrals = lazy(() => import('./pages/Referrals'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
+const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, profile, loading } = useAuth();
@@ -36,8 +38,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   return children;
 };
-
-import { LanguageProvider } from './context/LanguageContext';
 
 const App = () => {
   React.useEffect(() => {
