@@ -5,8 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc, serverTimestamp, setDoc, deleteDoc, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Download, Bot, TrendingUp, Zap, LogOut } from 'lucide-react';
-import { generateWorkflowPDF } from '../utils/pdfGenerator';
+import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut } from 'lucide-react';
 import { format, subDays, startOfDay } from 'date-fns';
 
 const getSafeDate = (dateVal) => {
@@ -238,14 +237,6 @@ const AdminPanel = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button
-                            onClick={generateWorkflowPDF}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-sm active:scale-95"
-                        >
-                            <Download className="w-4 h-4" />
-                            <span>Workflow PDF</span>
-                        </button>
-                        <div className="h-8 w-px bg-slate-200 mx-2"></div>
                         <button
                             onClick={handleLogout}
                             className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition-all"

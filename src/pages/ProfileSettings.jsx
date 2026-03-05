@@ -3,8 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 
-import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, HelpCircle, Download, FileText, Globe, Gift } from 'lucide-react';
-import { generateWorkflowPDF } from '../utils/pdfGenerator';
+import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, Globe, Gift } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { requestNotificationPermission, disableNotifications } from '../services/pushNotifications';
 
