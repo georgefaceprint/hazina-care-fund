@@ -27,9 +27,17 @@ export const InstallProvider = ({ children }) => {
             if (daysSinceDismissed > 3) {
                 setTimeout(() => setShowBanner(true), 4000);
             }
+        } else {
+            // Android / Desktop logic
+            const isProbablyAndroid = /Android/i.test(navigator.userAgent);
+
+            // If they are on Android, show the banner after 4s anyway
+            if (isProbablyAndroid && daysSinceDismissed > 3) {
+                setTimeout(() => setShowBanner(true), 4000);
+            }
         }
 
-        // Android/Chrome beforeinstallprompt
+        // Catch beforeinstallprompt (This is required actually to INSTALL the app on Android)
         const handler = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
@@ -59,7 +67,7 @@ export const InstallProvider = ({ children }) => {
     };
 
     return (
-        <InstallContext.Provider value={{ triggerInstall, isIOS, isInstalled, canInstall: !!deferredPrompt || isIOS }}>
+        <InstallContext.Provider value={{ triggerInstall, isIOS, isInstalled, canInstall: !!deferredPrompt || isIOS, isAndroid: !isIOS && !isInstalled }}>
             {children}
             {showBanner && !isInstalled && (
                 <InstallBanner isIOS={isIOS} onInstall={triggerInstall} onDismiss={dismiss} canInstall={!!deferredPrompt} />
@@ -88,10 +96,10 @@ const InstallBanner = ({ isIOS, onInstall, onDismiss, canInstall }) => (
                 )}
             </div>
             <div className="flex flex-col gap-2 flex-shrink-0">
-                {canInstall && !isIOS && (
+                {!isIOS && (
                     <button onClick={onInstall}
-                        className="bg-brand-primary text-white text-[11px] font-black px-4 py-2 rounded-xl hover:bg-emerald-500 transition-colors active:scale-95">
-                        Install
+                        className={`text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors active:scale-95 ${canInstall ? 'bg-brand-primary hover:bg-emerald-500' : 'bg-slate-700 opacity-50 cursor-not-allowed'}`}>
+                        {canInstall ? 'Install' : 'Checking...'}
                     </button>
                 )}
                 <button onClick={onDismiss}
