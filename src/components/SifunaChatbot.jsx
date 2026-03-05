@@ -5,6 +5,8 @@ import { useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useAuth } from '../context/AuthContext';
+import { db } from '../services/firebase';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
 
 const SifunaChatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -24,6 +26,24 @@ const SifunaChatbot = () => {
     const { t, language: appLanguage } = useLanguage();
     const location = useLocation();
     const chatEndRef = useRef(null);
+
+    const [kbItems, setKbItems] = useState([]);
+    const [tiers, setTiers] = useState({
+        bronze: { cost: 10, limit: 15000 },
+        silver: { cost: 30, limit: 50000 },
+        gold: { cost: 50, limit: 150000 }
+    });
+
+    useEffect(() => {
+        if (isDemoMode) return;
+        const unsubKb = onSnapshot(collection(db, 'sifuna_kb'), (snapshot) => {
+            setKbItems(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        const unsubTiers = onSnapshot(doc(db, 'config', 'tiers'), (docSnap) => {
+            if (docSnap.exists()) setTiers(docSnap.data());
+        });
+        return () => { unsubKb(); unsubTiers(); };
+    }, [isDemoMode]);
 
     // Dynamic Prompts based on Route
     const getDynamicPrompts = () => {
@@ -138,11 +158,14 @@ const SifunaChatbot = () => {
                 systemInstruction: `
                     You are Sifuna, the official AI assistant for Hazina Care. Hazina is a community-driven protection platform in Kenya.
                     
-                    REFRESHED KNOWLEDGE BASE:
+                    TRAINING DATA (DYNAMNIC KNOWLEDGE BASE):
+                    ${kbItems.map(item => `Q: ${item.question}\nA: ${item.answer}`).join('\n\n')}
+
+                    REFRESHED PRICING & LIMITS:
                     - Tiers & Benefits: 
-                        * Bronze: KSh 10/day, Max Cover KSh 15,000.
-                        * Silver: KSh 30/day, Max Cover KSh 50,000.
-                        * Gold: KSh 50/day, Max Cover KSh 150,000.
+                        * Bronze: KSh ${tiers.bronze?.cost}/day, Max Cover KSh ${tiers.bronze?.limit?.toLocaleString()}.
+                        * Silver: KSh ${tiers.silver?.cost}/day, Max Cover KSh ${tiers.silver?.limit?.toLocaleString()}.
+                        * Gold: KSh ${tiers.gold?.cost}/day, Max Cover KSh ${tiers.gold?.limit?.toLocaleString()}.
                     - Maturation (Waiting Period): 180-day grace period for new shields.
                     - Daily Burn: Calculated as User Tier Cost + Dependent Tier Costs.
                     - Crisis Types: Medical Emergencies, Bereavement/Funeral, School Fees gaps.

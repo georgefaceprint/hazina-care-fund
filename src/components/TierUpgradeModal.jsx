@@ -2,36 +2,13 @@ import React, { useState } from 'react';
 import { Shield, Zap, Check, X, CreditCard, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../services/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { useEffect } from 'react';
 
-const TIER_DATA = {
-    bronze: {
-        name: 'Bronze Shield',
-        cost: 10,
-        limit: '15,000',
-        color: 'text-orange-700',
-        bg: 'bg-orange-50',
-        border: 'border-orange-100',
-        icon: Shield
-    },
-    silver: {
-        name: 'Silver Shield',
-        cost: 30,
-        limit: '50,000',
-        color: 'text-slate-700',
-        bg: 'bg-slate-50',
-        border: 'border-slate-200',
-        icon: Shield
-    },
-    gold: {
-        name: 'Gold Shield',
-        cost: 50,
-        limit: '150,000',
-        color: 'text-amber-700',
-        bg: 'bg-amber-50',
-        border: 'border-amber-200',
-        icon: Zap
-    }
+const TIER_UI = {
+    bronze: { color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-100', icon: Shield },
+    silver: { color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', icon: Shield },
+    gold: { color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', icon: Zap }
 };
 
 const TierUpgradeModal = ({ isOpen, onClose, currentTier, profileId, isDemoMode, onUpgradeSuccess }) => {
@@ -39,6 +16,18 @@ const TierUpgradeModal = ({ isOpen, onClose, currentTier, profileId, isDemoMode,
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState('select'); // 'select' | 'payment' | 'success'
     const [upgradeFee, setUpgradeFee] = useState(0);
+    const [tiers, setTiers] = useState({
+        bronze: { cost: 10, limit: 15000, name: 'Bronze Shield' },
+        silver: { cost: 30, limit: 50000, name: 'Silver Shield' },
+        gold: { cost: 50, limit: 150000, name: 'Gold Shield' }
+    });
+
+    useEffect(() => {
+        const unsub = onSnapshot(doc(db, 'config', 'tiers'), (docSnap) => {
+            if (docSnap.exists()) setTiers(docSnap.data());
+        });
+        return () => unsub();
+    }, []);
 
     const TIER_VALUES = { bronze: 1, silver: 2, gold: 3 };
     const BASE_UPGRADE_UNIT = 200; // KSh per step up
@@ -89,9 +78,10 @@ const TierUpgradeModal = ({ isOpen, onClose, currentTier, profileId, isDemoMode,
 
                         {step === 'select' && (
                             <div className="space-y-4">
-                                {Object.entries(TIER_DATA).map(([key, data]) => {
+                                {Object.entries(tiers).map(([key, data]) => {
                                     const isCurrent = key === currentTier;
-                                    const Icon = data.icon;
+                                    const ui = TIER_UI[key];
+                                    const Icon = ui.icon;
                                     return (
                                         <button
                                             key={key}
@@ -105,15 +95,15 @@ const TierUpgradeModal = ({ isOpen, onClose, currentTier, profileId, isDemoMode,
                                                 }`}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className={`p-3 rounded-2xl ${data.bg} ${data.color}`}>
+                                                <div className={`p-3 rounded-2xl ${ui.bg} ${ui.color}`}>
                                                     <Icon className="w-6 h-6" />
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-center">
-                                                        <h3 className="font-bold text-slate-900">{data.name}</h3>
+                                                        <h3 className="font-bold text-slate-900">{data.name || key}</h3>
                                                         <span className="text-xs font-black text-brand-primary uppercase">KSh {data.cost}/day</span>
                                                     </div>
-                                                    <p className="text-xs text-slate-500">Up to KSh {data.limit} protection</p>
+                                                    <p className="text-xs text-slate-500">Up to KSh {data.limit?.toLocaleString()} protection</p>
                                                 </div>
                                                 {selectedTier === key && <Check className="w-6 h-6 text-brand-primary" />}
                                                 {isCurrent && <span className="text-[10px] font-black uppercase text-slate-400">Active</span>}
@@ -143,7 +133,7 @@ const TierUpgradeModal = ({ isOpen, onClose, currentTier, profileId, isDemoMode,
                                 </div>
                                 <div>
                                     <p className="text-slate-500 text-sm">You are upgrading to</p>
-                                    <h3 className="text-3xl font-black text-slate-900">{TIER_DATA[selectedTier]?.name}</h3>
+                                    <h3 className="text-3xl font-black text-slate-900">{tiers[selectedTier]?.name || selectedTier}</h3>
                                 </div>
                                 <div className="p-6 bg-slate-50 rounded-3xl space-y-3">
                                     <div className="flex justify-between text-sm">
@@ -152,7 +142,7 @@ const TierUpgradeModal = ({ isOpen, onClose, currentTier, profileId, isDemoMode,
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">New Daily Burn</span>
-                                        <span className="font-bold text-brand-primary">KSh {TIER_DATA[selectedTier]?.cost}</span>
+                                        <span className="font-bold text-brand-primary">KSh {tiers[selectedTier]?.cost}</span>
                                     </div>
                                     <div className="border-t border-slate-200 pt-3 flex justify-between font-bold text-lg">
                                         <span>Total Due</span>
@@ -181,7 +171,7 @@ const TierUpgradeModal = ({ isOpen, onClose, currentTier, profileId, isDemoMode,
                                 </div>
                                 <div>
                                     <h3 className="text-3xl font-black text-slate-900 mb-2">Success!</h3>
-                                    <p className="text-slate-500">Your shield has been upgraded to <strong className="text-slate-900">{TIER_DATA[selectedTier]?.name}</strong>. Enjoy enhanced protection.</p>
+                                    <p className="text-slate-500">Your shield has been upgraded to <strong className="text-slate-900">{tiers[selectedTier]?.name || selectedTier}</strong>. Enjoy enhanced protection.</p>
                                 </div>
                                 <button
                                     onClick={onClose}

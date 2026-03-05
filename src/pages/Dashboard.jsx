@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Shield, Users, CreditCard, ChevronRight, Zap, TrendingUp, AlertCircle, Clock, Heart, PlusCircle, Globe, FileText, User, Gift, Info } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
-import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import TierUpgradeModal from '../components/TierUpgradeModal';
 import RecentActivity from '../components/RecentActivity';
@@ -110,9 +110,21 @@ const Dashboard = () => {
         : (daysPassed >= totalDays ? 100 : 0);
     const isMatured = daysPassed >= totalDays && totalDays > 0;
 
-    const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
-    const baseDailyBurn = TIER_COSTS[profile.active_tier] || 0;
-    const dependentBurn = dependents.reduce((sum, dep) => sum + (TIER_COSTS[dep.active_tier] || 0), 0);
+    const [tierConfig, setTierConfig] = useState({
+        bronze: { cost: 10 },
+        silver: { cost: 30 },
+        gold: { cost: 50 }
+    });
+
+    useEffect(() => {
+        const unsub = onSnapshot(doc(db, 'config', 'tiers'), (docSnap) => {
+            if (docSnap.exists()) setTierConfig(docSnap.data());
+        });
+        return () => unsub();
+    }, []);
+
+    const baseDailyBurn = tierConfig[profile.active_tier]?.cost || 0;
+    const dependentBurn = dependents.reduce((sum, dep) => sum + (tierConfig[dep.active_tier]?.cost || 0), 0);
     const totalDailyBurn = baseDailyBurn + dependentBurn;
 
     const multipliers = { daily: 1, weekly: 7, monthly: 30, yearly: 365 };

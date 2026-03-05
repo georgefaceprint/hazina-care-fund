@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 
@@ -27,6 +27,19 @@ export const AuthProvider = ({ children }) => {
             phoneNumber: phone
         });
         setLoading(false);
+    };
+
+    const loginWithEmail = async (email, password) => {
+        try {
+            setLoading(true);
+            const result = await signInWithEmailAndPassword(auth, email, password);
+            return result.user;
+        } catch (error) {
+            console.error("Login with email failed:", error);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
     };
 
     const logout = async () => {
@@ -70,7 +83,7 @@ export const AuthProvider = ({ children }) => {
                     if (!snap.exists()) profileRef = null;
                 }
 
-                // 2. Query Fallback by UID
+                // 3. Query Fallback by UID
                 if (!profileRef) {
                     const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
                     const querySnap = await getDocs(q);
@@ -79,7 +92,16 @@ export const AuthProvider = ({ children }) => {
                     }
                 }
 
-                // 3. Fallback to UID ID
+                // 4. Query Fallback by Email (for Admin Email Login)
+                if (!profileRef && authUser.email) {
+                    const q = query(collection(db, 'users'), where('email', '==', authUser.email));
+                    const querySnap = await getDocs(q);
+                    if (!querySnap.empty) {
+                        profileRef = doc(db, 'users', querySnap.docs[0].id);
+                    }
+                }
+
+                // 5. Fallback to UID ID
                 if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
 
                 const unsubProfile = onSnapshot(profileRef, (snap) => {
@@ -106,6 +128,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         isAuthenticated: !!user,
         enableDemoMode,
+        loginWithEmail,
         logout,
         isDemoMode
     };

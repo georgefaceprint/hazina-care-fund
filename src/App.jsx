@@ -14,11 +14,11 @@ const CrisisClaim = lazy(() => import('./pages/CrisisClaim'));
 const Benefits = lazy(() => import('./pages/Benefits'));
 const Referrals = lazy(() => import('./pages/Referrals'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
-const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
 
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, requireAdmin = false }) => {
+  const { user, profile, loading } = useAuth();
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -26,7 +26,13 @@ const ProtectedRoute = ({ children }) => {
     </div>
   );
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to={requireAdmin ? "/admin/login" : "/login"} replace />;
+  }
+
+  if (requireAdmin && profile?.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return children;
 };
@@ -49,32 +55,40 @@ const App = () => {
       <LanguageProvider>
         <ToastProvider>
           <AuthProvider>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
+            <Suspense fallback={
+              <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            }>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/admin/login" element={<AdminLogin />} />
 
-              <Route element={
-                <ProtectedRoute>
-                  <Suspense fallback={
-                    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                      <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  }>
+                {/* Independent Admin Portal */}
+                <Route path="/admin" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminPanel />
+                  </ProtectedRoute>
+                } />
+
+                {/* Mobile App Layout */}
+                <Route element={
+                  <ProtectedRoute>
                     <AppLayout />
-                  </Suspense>
-                </ProtectedRoute>
-              }>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/topup" element={<TopUp />} />
-                <Route path="/family" element={<FamilyMembers />} />
-                <Route path="/claim" element={<CrisisClaim />} />
-                <Route path="/benefits" element={<Benefits />} />
-                <Route path="/referrals" element={<Referrals />} />
-                <Route path="/admin" element={<AdminPanel />} />
-                <Route path="/settings" element={<ProfileSettings />} />
-                <Route path="/complete-profile" element={<CompleteProfile />} />
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              </Route>
-            </Routes>
+                  </ProtectedRoute>
+                }>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/topup" element={<TopUp />} />
+                  <Route path="/family" element={<FamilyMembers />} />
+                  <Route path="/claim" element={<CrisisClaim />} />
+                  <Route path="/benefits" element={<Benefits />} />
+                  <Route path="/referrals" element={<Referrals />} />
+                  <Route path="/settings" element={<ProfileSettings />} />
+                  <Route path="/complete-profile" element={<CompleteProfile />} />
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                </Route>
+              </Routes>
+            </Suspense>
           </AuthProvider>
         </ToastProvider>
       </LanguageProvider>
