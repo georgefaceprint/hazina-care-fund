@@ -5,7 +5,8 @@ import { useToast } from '../context/ToastContext';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc, serverTimestamp, setDoc, deleteDoc, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles } from 'lucide-react';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { format, subDays, startOfDay } from 'date-fns';
 
 const getSafeDate = (dateVal) => {
@@ -29,6 +30,7 @@ const AdminPanel = () => {
     const [kbItems, setKbItems] = useState([]);
     const [tiers, setTiers] = useState({});
     const [newKb, setNewKb] = useState({ question: '', answer: '' });
+    const [isGenerating, setIsGenerating] = useState(false);
 
 
     // Hardcode admin role check for MVP purposes (In production this should be a role in Firestore/Custom Claims)
@@ -170,6 +172,62 @@ const AdminPanel = () => {
             toast.success("Item removed.");
         } catch (error) {
             toast.error("Delete failed.");
+        }
+    };
+
+    const handleAutoGenerateKb = async () => {
+        setIsGenerating(true);
+        toast.success('🤖 Sifuna is generating Q&A pairs...');
+        try {
+            const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD8zWheYt-GwnUS4MaYQ7pMoIrxmfXYGM0";
+            const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+            const existingQs = kbItems.map(k => k.question).join('\n');
+            const tierInfo = `Bronze: KSh ${tiers.bronze?.cost}/day, KSh ${tiers.bronze?.limit?.toLocaleString()} cover. Silver: KSh ${tiers.silver?.cost}/day, KSh ${tiers.silver?.limit?.toLocaleString()} cover. Gold: KSh ${tiers.gold?.cost}/day, KSh ${tiers.gold?.limit?.toLocaleString()} cover.`;
+
+            const prompt = `You are an expert on Hazina Care Fund, a community mutual protection platform in Kenya.
+Hazina members pay daily premiums and can file crisis claims for Medical Emergencies, Bereavement, and School Fees after a 180-day grace period.
+Tier pricing: ${tierInfo}
+Members top up via M-Pesa. Referral program rewards at 10 and 30 referrals. USSD: *384#.
+
+ALREADY EXISTING QUESTIONS (do NOT repeat these):
+${existingQs || 'None yet'}
+
+Generate exactly 12 NEW unique Q&A pairs that real Kenyan users would ask about Hazina. Cover: membership, tiers, claims, top-up, dependents, referrals, grace period, cancellation, USSD, maturation, M-Pesa issues, and daily burn.
+Mix English and Kiswahili questions roughly 50/50.
+
+Return ONLY a valid JSON array, no markdown, no explanation:
+[
+  { "question": "...", "answer": "..." },
+  ...
+]`;
+
+            const result = await model.generateContent(prompt);
+            const text = result.response.text().trim();
+
+            // Strip markdown code fences if present
+            const jsonStr = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+            const pairs = JSON.parse(jsonStr);
+
+            let added = 0;
+            for (const pair of pairs) {
+                if (pair.question && pair.answer) {
+                    await addDoc(collection(db, 'sifuna_kb'), {
+                        question: pair.question.trim(),
+                        answer: pair.answer.trim(),
+                        source: 'ai_generated',
+                        createdAt: serverTimestamp()
+                    });
+                    added++;
+                }
+            }
+            toast.success(`✅ Sifuna generated ${added} new Q&A pairs!`);
+        } catch (err) {
+            console.error('Auto-generate error:', err);
+            toast.error('Generation failed. Check the console.');
+        } finally {
+            setIsGenerating(false);
         }
     };
 
@@ -418,10 +476,20 @@ const AdminPanel = () => {
                 {activeTab === 'sifuna' && (
                     <div className="space-y-6">
                         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-                            <h3 className="text-xl font-black mb-4 flex items-center gap-2">
-                                <Bot className="w-6 h-6 text-orange-500" />
-                                Teach Sifuna
-                            </h3>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-black flex items-center gap-2">
+                                    <Bot className="w-6 h-6 text-orange-500" />
+                                    Teach Sifuna
+                                </h3>
+                                <button
+                                    onClick={handleAutoGenerateKb}
+                                    disabled={isGenerating}
+                                    className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all active:scale-95 disabled:opacity-60"
+                                >
+                                    <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                                    {isGenerating ? 'Generating...' : 'AI Auto-Generate'}
+                                </button>
+                            </div>
                             <form onSubmit={handleAddKb} className="space-y-4">
                                 <div>
                                     <label className="text-[10px] font-bold uppercase text-slate-400 ml-1 tracking-widest">Example Question (English)</label>
