@@ -113,9 +113,37 @@ export const AuthProvider = ({ children }) => {
                     // 5. Fallback to UID ID
                     if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
 
-                    const unsubProfile = onSnapshot(profileRef, (snap) => {
+                    const unsubProfile = onSnapshot(profileRef, async (snap) => {
                         if (snap.exists()) {
                             setProfile({ id: snap.id, ...snap.data() });
+                        } else {
+                            console.warn("User profile document does not exist for ID:", profileRef.id);
+                            if (authUser.email) {
+                                // Auto-provision an admin profile.
+                                // We first set it in memory so the UI immediately proceeds.
+                                const adminProfile = {
+                                    id: authUser.uid,
+                                    uid: authUser.uid,
+                                    email: authUser.email,
+                                    role: 'admin',
+                                    fullName: 'System Admin',
+                                    status: 'active'
+                                };
+                                setProfile(adminProfile);
+
+                                // Attempt to save to Firestore so it persists
+                                try {
+                                    await setDoc(profileRef, {
+                                        ...adminProfile,
+                                        createdAt: new Date().toISOString()
+                                    });
+                                } catch (e) {
+                                    console.error("Could not auto-create admin doc:", e);
+                                }
+                            } else {
+                                // For regular user without profile, set to false so App.jsx doesn't spin forever
+                                setProfile(false);
+                            }
                         }
                         setLoading(false);
                     }, (err) => {

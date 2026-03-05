@@ -18,6 +18,7 @@ const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
+import InstallPrompt from './components/InstallPrompt';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, profile, loading } = useAuth();
@@ -36,6 +37,13 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
         <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
+  }
+
+  // If profile is false, the user logged in but has no profile document. We log them out or redirect to a fallback.
+  // For now, if no profile, we can't let them in, but we shouldn't trap them in a spinner.
+  if (user && profile === false) {
+    // We could navigate them away, or just return an error UI. 
+    return <Navigate to="/login" replace />;
   }
 
   if (!user) {
@@ -99,6 +107,7 @@ const App = () => {
                 </Route>
               </Routes>
             </Suspense>
+            <InstallPrompt />
           </AuthProvider>
         </ToastProvider>
       </LanguageProvider>
