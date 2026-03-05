@@ -14,8 +14,8 @@ const SifunaChatbot = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [chatLanguage, setChatLanguage] = useState(null); // 'en' or 'sw'
 
-    // AI Initialization - Frontend Fallback
-    const GEMINI_API_KEY = "AIzaSyCaAkDtu93ADVaDE0hy0MCK1n9E8ksUdN0";
+    // AI Initialization - Use env var in production
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD8zWheYt-GwnUS4MaYQ7pMoIrxmfXYGM0";
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
     // chatHistory is the source of truth for the conversation
@@ -154,7 +154,7 @@ const SifunaChatbot = () => {
 
             // Direct Frontend AI Call
             const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash",
+                model: "gemini-2.5-flash",
                 systemInstruction: `
                     You are Sifuna, the official AI assistant for Hazina Care. Hazina is a community-driven protection platform in Kenya.
                     
@@ -226,9 +226,30 @@ const SifunaChatbot = () => {
 
         } catch (error) {
             console.error("Chat error:", error);
+            // Fallback: Try local KB search before showing error
+            const errorMsg = error?.message || '';
+            if (kbItems.length > 0) {
+                const query = userMsg.toLowerCase();
+                const matched = kbItems.find(item =>
+                    item.question?.toLowerCase().includes(query) ||
+                    query.split(' ').some(w => w.length > 3 && item.question?.toLowerCase().includes(w))
+                );
+                if (matched) {
+                    setChatHistory(prev => [...prev, {
+                        role: 'model',
+                        parts: [{ text: matched.answer }]
+                    }]);
+                    setIsTyping(false);
+                    return;
+                }
+            }
             setChatHistory(prev => [...prev, {
                 role: 'model',
-                parts: [{ text: `Pole! I'm having trouble connecting right now. Please try again in a moment.` }]
+                parts: [{
+                    text: chatLanguage === 'sw'
+                        ? `Samahani, kuna tatizo la kiufundi. Tafadhali wasiliana nasi kupitia WhatsApp au jaribu tena.`
+                        : `Sorry, I'm having a technical issue. Please try again or contact support. (Error: ${errorMsg.includes('API') ? 'API key issue' : 'Network error'})`
+                }]
             }]);
         } finally {
             setIsTyping(false);
