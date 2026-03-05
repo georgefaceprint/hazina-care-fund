@@ -163,7 +163,7 @@ const SifunaChatbot = () => {
 
             // Direct Frontend AI Call
             const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash",
+                model: "gemini-2.0-flash",
                 systemInstruction: `
                     You are Sifuna, the official AI assistant for Hazina Care. Hazina is a community-driven protection platform in Kenya.
                     
