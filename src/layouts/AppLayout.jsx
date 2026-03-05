@@ -86,9 +86,4 @@ const AppLayout = () => {
     );
 };
 
-// Simple Zap icon as it might not be imported from lucide-react in current scope if not redefined
-const Zap = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" ><path d="M4 14.7l11.7-11c.7-.6 1.7-.2 1.7.7v7.3h4c.9 0 1.2 1.1.7 1.6l-11.7 11c-.7.6-1.7.2-1.7-.7v-7.3h-4c-.9 0-1.2-1.1-.7-1.6z" /></svg>
-);
-
 export default AppLayout;
