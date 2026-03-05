@@ -156,7 +156,7 @@ const Dashboard = () => {
 
                 {/* Digital ID Card */}
                 <div className="relative group perspective-1000">
-                    <div className="bg-gradient-to-br from-brand-primary via-emerald-600 to-brand-secondary p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden transform-gpu hover:rotate-y-6 transition-all duration-700">
+                    <div className="bg-gradient-to-br from-brand-primary via-brand-secondary to-[#2d060a] p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden transform-gpu hover:rotate-y-6 transition-all duration-700">
                         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                         <div className="flex justify-between items-start mb-10">
                             <div className="flex items-center gap-4">
@@ -182,16 +182,16 @@ const Dashboard = () => {
                                     </div>
                                 )}
                                 <div>
-                                    <p className="text-xs uppercase tracking-widest text-emerald-100 font-bold mb-1 opacity-70">{t('official_digital_id')}</p>
+                                    <p className="text-xs uppercase tracking-widest text-brand-accent/70 font-bold mb-1">{t('official_digital_id')}</p>
                                     <h3 className="text-lg font-black text-white mb-0.5 tracking-tight">{profile.fullName || 'Member'}</h3>
-                                    <p className="text-[10px] font-bold text-emerald-100 opacity-60 uppercase tracking-widest">ID: {profile.national_id || profile.id.substring(0, 8).toUpperCase()}</p>
+                                    <p className="text-[10px] font-bold text-brand-accent/50 uppercase tracking-widest">ID: {profile.national_id || profile.id.substring(0, 8).toUpperCase()}</p>
                                 </div>
                             </div>
-                            <div className="bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
+                            <div className="relative">
                                 {!isMatured && (
-                                    <div className="bg-yellow-400 absolute -top-8 -right-4 px-4 py-2 rounded-full flex items-center gap-2 shadow-lg animate-pulse border-4 border-slate-50">
-                                        <Clock className="w-4 h-4 text-emerald-900" />
-                                        <span className="text-xs font-black text-emerald-900 uppercase tracking-tighter">{t('in_waiting')}</span>
+                                    <div className="bg-brand-accent text-brand-secondary px-4 py-1.5 rounded-full flex items-center gap-2 shadow-lg animate-pulse border-2 border-white/20">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-black uppercase tracking-tight">{t('in_waiting')}</span>
                                     </div>
                                 )}
                             </div>
@@ -209,12 +209,12 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] uppercase font-bold text-emerald-200/60 mb-1">{t('phone_number')}</p>
-                                    <p className="font-bold font-mono tracking-widest">{profile.phoneNumber}</p>
+                                    <p className="text-[10px] uppercase font-bold text-brand-accent/40 mb-1">{t('phone_number')}</p>
+                                    <p className="font-bold font-mono tracking-widest text-white">{profile.phoneNumber}</p>
                                 </div>
                             </div>
                             <div className="bg-white p-2.5 rounded-2xl shadow-xl transform group-hover:scale-110 transition-transform duration-500">
-                                <QRCodeSVG value={profile.id} size={70} fgColor="#064e3b" />
+                                <QRCodeSVG value={profile.id} size={70} fgColor="#3d080e" />
                             </div>
                         </div>
                     </div>
@@ -298,7 +298,7 @@ const Dashboard = () => {
 
                     <div className="w-full h-5 bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner border border-slate-50">
                         <div
-                            className={`h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm ${isMatured ? 'bg-gradient-to-r from-brand-primary to-emerald-400' : 'bg-gradient-to-r from-yellow-400 to-orange-400'
+                            className={`h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm ${isMatured ? 'bg-gradient-to-r from-brand-primary to-brand-accent' : 'bg-gradient-to-r from-yellow-400 to-orange-400'
                                 }`}
                             style={{ width: `${progressPercent}%` }}
                         >
@@ -318,19 +318,19 @@ const Dashboard = () => {
                 </div>
 
                 {/* Referrals Banner */}
-                <div onClick={() => navigate('/referrals')} className="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-[2rem] p-6 shadow-lg shadow-emerald-500/20 relative overflow-hidden cursor-pointer group transform hover:-translate-y-1 transition-all">
+                <div onClick={() => navigate('/referrals')} className="bg-gradient-to-r from-brand-primary to-brand-secondary rounded-[2rem] p-6 shadow-lg shadow-brand-primary/20 relative overflow-hidden cursor-pointer group transform hover:-translate-y-1 transition-all">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-duration-700"></div>
                     <div className="relative z-10 flex items-center justify-between">
                         <div className="flex-1">
                             <h4 className="text-white font-black text-lg mb-1 flex items-center gap-2">
-                                <Gift className="w-5 h-5 text-yellow-300" /> {t('refer_and_earn') || 'Refer & Earn'}
+                                <Gift className="w-5 h-5 text-brand-accent" /> {t('refer_and_earn') || 'Refer & Earn'}
                             </h4>
-                            <p className="text-emerald-50 text-xs font-medium opacity-90 max-w-[200px]">
+                            <p className="text-white/80 text-xs font-medium opacity-90 max-w-[200px]">
                                 {t('invite_friends_desc') || 'Invite friends and get up to 14 days of free protection!'}
                             </p>
                         </div>
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 group-hover:bg-white group-hover:text-emerald-600 transition-colors">
-                            <ChevronRight className="w-6 h-6 text-white group-hover:text-emerald-600" />
+                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 group-hover:bg-white group-hover:text-brand-primary transition-colors">
+                            <ChevronRight className="w-6 h-6 text-white group-hover:text-brand-primary" />
                         </div>
                     </div>
                 </div>
