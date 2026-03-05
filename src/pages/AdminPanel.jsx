@@ -7,8 +7,13 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc,
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Download, Bot, TrendingUp, Zap, LogOut } from 'lucide-react';
 import { generateWorkflowPDF } from '../utils/pdfGenerator';
+import { generateWorkflowPDF } from '../utils/pdfGenerator';
 import { format, subDays, startOfDay } from 'date-fns';
 
+const getSafeDate = (dateVal) => {
+    if (!dateVal) return new Date();
+    return typeof dateVal.toDate === 'function' ? dateVal.toDate() : new Date(dateVal);
+};
 
 const AdminPanel = () => {
     const { profile, isDemoMode, logout } = useAuth();
@@ -113,6 +118,9 @@ const AdminPanel = () => {
                     toast.warning("M-Pesa B2C error. Please process manually.");
                 }
 
+                // Actually update the claim status
+                await updateDoc(doc(db, 'claims', claimId), { status: 'approved' });
+
                 await addDoc(collection(db, 'transactions'), {
                     userId: guardianId,
                     type: 'payout',
@@ -124,6 +132,7 @@ const AdminPanel = () => {
                 });
                 toast.success("Claim approved and payout recorded.");
             } else {
+                await updateDoc(doc(db, 'claims', claimId), { status: 'rejected' });
                 toast.success("Claim rejected.");
             }
         } catch (error) {
@@ -199,7 +208,7 @@ const AdminPanel = () => {
 
     transactions.forEach(t => {
         if (!t.createdAt) return;
-        const tDate = t.createdAt.toDate();
+        const tDate = getSafeDate(t.createdAt);
         const tStart = startOfDay(tDate).getTime();
 
         const dayMatch = last7Days.find(d => startOfDay(d.date).getTime() === tStart);
@@ -318,7 +327,7 @@ const AdminPanel = () => {
                                                         </span>
                                                         <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                                                         <span className="text-[10px] text-slate-400 font-mono">
-                                                            {new Date(claim.createdAt?.toDate()).toLocaleDateString()}
+                                                            {format(getSafeDate(claim.createdAt), 'PP')}
                                                         </span>
                                                     </div>
                                                     <h3 className="text-2xl font-black text-slate-900 tracking-tight">KSh {claim.amount.toLocaleString()}</h3>
@@ -555,7 +564,7 @@ const AdminPanel = () => {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">{new Date(t.createdAt?.toDate()).toLocaleDateString()}</p>
+                                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">{format(getSafeDate(t.createdAt), 'PP')}</p>
                                             <span className={`text-[10px] px-3 py-1 rounded-lg font-black uppercase tracking-widest ${t.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{t.status}</span>
                                         </div>
                                     </div>
