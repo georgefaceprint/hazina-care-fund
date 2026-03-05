@@ -109,6 +109,10 @@ export const AuthProvider = ({ children }) => {
                         if (snap.exists()) {
                             setProfile({ id: snap.id, ...snap.data() });
                         }
+                        setLoading(false);
+                    }, (err) => {
+                        console.error("Profile snapshot error:", err);
+                        setLoading(false);
                     });
 
                     // We return the cleanup for the profile listener
@@ -116,12 +120,12 @@ export const AuthProvider = ({ children }) => {
                 } else {
                     setUser(null);
                     setProfile(null);
+                    setLoading(false);
                 }
             } catch (error) {
                 console.error("Auth state processing failed:", error);
-                // Fallback attempt to still allow some access even if profile fails
-                if (authUser) setUser(authUser);
-            } finally {
+                setUser(null);
+                setProfile(null);
                 setLoading(false);
             }
         });
