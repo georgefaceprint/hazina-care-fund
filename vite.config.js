@@ -15,7 +15,7 @@ export default defineConfig({
         name: 'Hazina Care Fund',
         short_name: 'Hazina',
         description: 'Sustainable community-based care fund for Kenya',
-        theme_color: '#10b981',
+        theme_color: '#630d16',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',

@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-primary: #10b981;
-  --color-brand-secondary: #064e3b;
-  --color-brand-accent: #f59e0b;
-  --color-hazina-bronze: #cd7f32;
-  --color-hazina-silver: #c0c0c0;
-  --color-hazina-gold: #ffd700;
-  
+  --color-brand-primary: #630d16;
+  --color-brand-secondary: #3d080e;
+  --color-brand-accent: #c5a059;
+  --color-hazina-bronze: #8c5d3f;
+  --color-hazina-silver: #a8a9ad;
+  --color-hazina-gold: #c5a059;
+
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-heading: 'Outfit', sans-serif;
 }
@@ -22,11 +22,11 @@
   .glass {
     @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
   }
-  
+
   .btn-primary {
     @apply bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2;
   }
-  
+
   .card {
     @apply bg-white p-6 rounded-2xl shadow-sm border border-slate-100;
   }
@@ -36,18 +36,19 @@
   .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
-  
+
   @keyframes slide-up {
     from {
       transform: translateY(100%);
       opacity: 0;
     }
+
     to {
       transform: translateY(0);
       opacity: 1;
     }
   }
-  
+
   .animate-slide-up {
     animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
