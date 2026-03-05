@@ -3,6 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
+import { getMessaging } from 'firebase/messaging';
 
 // Use Vite environment variables
 const firebaseConfig = {
@@ -25,9 +26,13 @@ try {
     db = getFirestore(app);
     functions = getFunctions(app);
     storage = getStorage(app);
+    // Initialize Messaging only if supported by the browser to prevent crashing
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        messaging = getMessaging(app);
+    }
 } catch (error) {
     console.error("Firebase initialization failed:", error);
 }
 
-export { auth, db, functions, storage };
+export { auth, db, functions, storage, messaging };
 export default app;

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, LogOut, Shield, Phone, CreditCard, ChevronRight, Bell, HelpCircle, Download, FileText, Globe } from 'lucide-react';
 import { generateWorkflowPDF } from '../utils/pdfGenerator';
 import { useLanguage } from '../context/LanguageContext';
+import { requestNotificationPermission, disableNotifications } from '../services/pushNotifications';
 
 
 const ProfileSettings = () => {
@@ -14,8 +15,28 @@ const ProfileSettings = () => {
     const navigate = useNavigate();
     const toast = useToast();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isPushEnabling, setIsPushEnabling] = useState(false);
 
-
+    const handleNotificationToggle = async () => {
+        if (!user?.uid) return;
+        setIsPushEnabling(true);
+        try {
+            if (profile?.notificationsEnabled) {
+                const success = await disableNotifications(user.uid);
+                if (success) toast.success("Push notifications disabled.");
+                else toast.error("Failed to disable notifications.");
+            } else {
+                const success = await requestNotificationPermission(user.uid);
+                if (success) toast.success("Push notifications enabled!");
+                else toast.error("Permission denied or not supported.");
+            }
+        } catch (error) {
+            console.error("Error toggling notifications", error);
+            toast.error("An error occurred.");
+        } finally {
+            setIsPushEnabling(false);
+        }
+    };
     const handleLogout = async () => {
         setIsLoggingOut(true);
         try {
@@ -101,17 +122,23 @@ const ProfileSettings = () => {
                 <div className="space-y-3">
                     <h3 className="font-black text-[10px] uppercase tracking-widest text-slate-400 ml-2">Preferences</h3>
                     <div className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 divide-y divide-slate-50">
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100" onClick={() => toast.info('Notification preferences coming in V2.')}>
+                        <div className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-indigo-50 text-indigo-500 rounded-xl">
                                     <Bell className="w-5 h-5" />
                                 </div>
                                 <div>
                                     <p className="font-bold text-slate-800 text-sm">Notifications</p>
-                                    <p className="text-xs text-slate-500">SMS & push alerts</p>
+                                    <p className="text-xs text-slate-500">Push alerts</p>
                                 </div>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-slate-300" />
+                            <button
+                                onClick={handleNotificationToggle}
+                                disabled={isPushEnabling}
+                                className={`w-12 h-6 rounded-full relative p-1 transition-colors outline-none ${profile?.notificationsEnabled ? 'bg-brand-primary' : 'bg-slate-200'} ${isPushEnabling ? 'opacity-50' : 'cursor-pointer'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-sm ${profile?.notificationsEnabled ? 'ml-6' : 'ml-0'}`}></div>
+                            </button>
                         </div>
 
                         <div className="p-4 flex items-center justify-between">
