@@ -3,13 +3,34 @@ import { Home, Users, CreditCard, User, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { onMessageListener } from '../services/pushNotifications';
 import SifunaChatbot from '../components/SifunaChatbot';
+import { Zap } from 'lucide-react';
 
 const AppLayout = () => {
     const { profile } = useAuth();
     const { t } = useLanguage();
+    const { success, info } = useToast();
     const navigate = useNavigate();
     const isAdmin = profile?.role === 'admin';
+
+    // Listen for foreground push notifications
+    React.useEffect(() => {
+        const listenForMessages = async () => {
+            try {
+                const payload = await onMessageListener();
+                if (payload) {
+                    info(payload.notification?.body || payload.notification?.title || "New notification received");
+                    // Continue listening by calling it again
+                    listenForMessages();
+                }
+            } catch (err) {
+                console.log('Push listener error or timeout:', err);
+            }
+        };
+        listenForMessages();
+    }, [info]);
 
     return (
         <div className="min-h-screen bg-slate-50">

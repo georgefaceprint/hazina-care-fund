@@ -11,6 +11,14 @@ export const ToastProvider = ({ children }) => {
         const id = Math.random().toString(36).substring(2, 9);
         setToasts((prev) => [...prev, { id, message, type }]);
 
+        // Play notification sound
+        try {
+            const audio = new Audio('/pop.mp3');
+            audio.play().catch(e => console.log('Audio play blocked by browser policy until user interacts.'));
+        } catch (e) {
+            console.error('Sound play failed', e);
+        }
+
         // Auto-remove after 4 seconds
         setTimeout(() => {
             setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -40,9 +48,9 @@ export const ToastProvider = ({ children }) => {
                             animate={{ opacity: 1, x: 0, scale: 1 }}
                             exit={{ opacity: 0, x: 20, scale: 0.95, transition: { duration: 0.2 } }}
                             className={`pointer-events-auto flex items-center gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md ${t.type === 'success' ? 'bg-emerald-50/90 border-emerald-100 text-emerald-800' :
-                                    t.type === 'error' ? 'bg-red-50/90 border-red-100 text-red-800' :
-                                        t.type === 'warning' ? 'bg-amber-50/90 border-amber-100 text-amber-800' :
-                                            'bg-slate-900/90 border-slate-700 text-white'
+                                t.type === 'error' ? 'bg-red-50/90 border-red-100 text-red-800' :
+                                    t.type === 'warning' ? 'bg-amber-50/90 border-amber-100 text-amber-800' :
+                                        'bg-slate-900/90 border-slate-700 text-white'
                                 }`}
                         >
                             <div className="shrink-0">

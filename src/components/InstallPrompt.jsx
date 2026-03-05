@@ -19,25 +19,18 @@ export const InstallProvider = ({ children }) => {
         const lastDismissed = dismissed ? parseInt(dismissed) : 0;
         const daysSinceDismissed = (Date.now() - lastDismissed) / (1000 * 60 * 60 * 24);
 
-        // iOS detection
+        // iOS detection for specific instructions
         const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         if (isIosDevice) {
             setIsIOS(true);
-            // Only show if not dismissed recently (within 3 days)
-            if (daysSinceDismissed > 3) {
-                setTimeout(() => setShowBanner(true), 4000);
-            }
-        } else {
-            // Android / Desktop logic
-            const isProbablyAndroid = /Android/i.test(navigator.userAgent);
-
-            // If they are on Android, show the banner after 4s anyway
-            if (isProbablyAndroid && daysSinceDismissed > 3) {
-                setTimeout(() => setShowBanner(true), 4000);
-            }
         }
 
-        // Catch beforeinstallprompt (This is required actually to INSTALL the app on Android)
+        // Force banner to show on ANY device after 4 seconds (if not recently dismissed)
+        if (daysSinceDismissed > 3) {
+            setTimeout(() => setShowBanner(true), 4000);
+        }
+
+        // Catch beforeinstallprompt (This is required actually to INSTALL the app on Android natively)
         const handler = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
