@@ -141,6 +141,7 @@ const CompleteProfile = () => {
                             <input
                                 type="file"
                                 accept="image/jpeg, image/png"
+                                capture="environment"
                                 onChange={(e) => setIdPhoto(e.target.files[0])}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                 required
