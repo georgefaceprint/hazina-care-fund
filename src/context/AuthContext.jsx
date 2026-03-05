@@ -72,30 +72,38 @@ export const AuthProvider = ({ children }) => {
                     const sessionPhone = sessionStorage.getItem('hazina_temp_phone');
                     let profileRef = null;
 
-                    // 1. Try Phone-based ID
-                    if (authUser.phoneNumber) {
-                        profileRef = doc(db, 'users', authUser.phoneNumber);
-                    } else if (sessionPhone) {
-                        profileRef = doc(db, 'users', sessionPhone);
-                    }
-
-                    if (profileRef) {
+                    // 1. Check if Admin / Email user
+                    if (authUser.email) {
+                        // Admins use UID as document ID
+                        profileRef = doc(db, 'users', authUser.uid);
                         const snap = await getDoc(profileRef);
-                        if (!snap.exists()) profileRef = null;
-                    }
+                        if (!snap.exists()) {
+                            // Try querying by email as fallback
+                            const q = query(collection(db, 'users'), where('email', '==', authUser.email));
+                            const querySnap = await getDocs(q);
+                            if (!querySnap.empty) {
+                                profileRef = doc(db, 'users', querySnap.docs[0].id);
+                            } else {
+                                profileRef = null;
+                            }
+                        }
+                    } else {
+                        // 2. Try Phone-based ID for regular users
+                        if (authUser.phoneNumber) {
+                            profileRef = doc(db, 'users', authUser.phoneNumber);
+                        } else if (sessionPhone) {
+                            profileRef = doc(db, 'users', sessionPhone);
+                        }
 
-                    // 3. Query Fallback by UID
-                    if (!profileRef) {
-                        const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
-                        const querySnap = await getDocs(q);
-                        if (!querySnap.empty) {
-                            profileRef = doc(db, 'users', querySnap.docs[0].id);
+                        if (profileRef) {
+                            const snap = await getDoc(profileRef);
+                            if (!snap.exists()) profileRef = null;
                         }
                     }
 
-                    // 4. Query Fallback by Email (for Admin Email Login)
-                    if (!profileRef && authUser.email) {
-                        const q = query(collection(db, 'users'), where('email', '==', authUser.email));
+                    // 3. Query Fallback by UID for phone users
+                    if (!profileRef && !authUser.email) {
+                        const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
                         const querySnap = await getDocs(q);
                         if (!querySnap.empty) {
                             profileRef = doc(db, 'users', querySnap.docs[0].id);
