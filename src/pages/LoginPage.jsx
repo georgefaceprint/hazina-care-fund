@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
-import { auth, db } from '../services/firebase';
+import { signInWithCustomToken } from 'firebase/auth';
+import { auth, db, functions } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Phone, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -24,26 +25,7 @@ const LoginPage = () => {
         }
     }, [isDemoMode, user, navigate]);
 
-    useEffect(() => {
-        if (!window.recaptchaVerifier) {
-            // Disable app verification if we're on localhost to bypass CORS/AppCheck issues
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                auth.settings.appVerificationDisabledForTesting = true;
-                console.log("Firebase App Verification disabled for local testing.");
-            }
 
-            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                'size': 'invisible',
-                'callback': (response) => {
-                    // reCAPTCHA solved
-                },
-                'expired-callback': () => {
-                    // Response expired. Ask user to solve reCAPTCHA again.
-                    setError('Verification expired. Please try again.');
-                }
-            });
-        }
-    }, []);
 
     const onSignInSubmit = async (e) => {
         e.preventDefault();
@@ -53,11 +35,13 @@ const LoginPage = () => {
         const formatPhone = formatKenyanPhone(phoneNumber);
 
         try {
-            const appVerifier = window.recaptchaVerifier;
-            const confirmation = await signInWithPhoneNumber(auth, formatPhone, appVerifier);
-            setConfirmationResult(confirmation);
+            const sendOtp = httpsCallable(functions, 'sendOtp');
+            await sendOtp({ phoneNumber: formatPhone });
+
+            // On success, set a local state to reveal OTP UI
+            setConfirmationResult(true);
         } catch (error) {
-            console.error('SMS send error:', error);
+            console.error('sendOtp error:', error);
             setError(error.message || 'Failed to send SMS. Please check your number and try again.');
         } finally {
             setLoading(false);
@@ -66,15 +50,26 @@ const LoginPage = () => {
 
     const onOtpSubmit = async (e) => {
         e.preventDefault();
-        if (!confirmationResult || !verificationCode) return;
+        if (!verificationCode) return;
 
         setError('');
         setLoading(true);
 
         try {
-            const result = await confirmationResult.confirm(verificationCode);
-            const user = result.user;
             const formatPhone = formatKenyanPhone(phoneNumber);
+            const verifyOtp = httpsCallable(functions, 'verifyOtp');
+
+            // Validate code and get custom token
+            const result = await verifyOtp({
+                phoneNumber: formatPhone,
+                validationCode: verificationCode
+            });
+
+            const { token } = result.data;
+
+            // Sign in to Firebase Auth using Custom Token
+            const authResult = await signInWithCustomToken(auth, token);
+            const user = authResult.user;
 
             // Store phone in session
             sessionStorage.setItem('hazina_temp_phone', formatPhone);
@@ -113,7 +108,7 @@ const LoginPage = () => {
             }
         } catch (error) {
             console.error('OTP confirmation error:', error);
-            setError('Invalid code. Please try again.');
+            setError('Invalid code or code expired. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -135,8 +130,6 @@ const LoginPage = () => {
                         {error}
                     </div>
                 )}
-
-                <div id="recaptcha-container"></div>
 
                 {!confirmationResult ? (
                     <form onSubmit={onSignInSubmit} className="space-y-6">

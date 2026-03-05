@@ -457,3 +457,92 @@ exports.chatWithSifuna = onCall({ cors: true }, async (request) => {
         throw new HttpsError('internal', error.message || 'An unknown error occurred.');
     }
 });
+
+// 7. Custom OTP SMS via Africa's Talking
+const africastalking = require('africastalking')({
+    apiKey: process.env.VITE_AT_API_KEY || 'atsk_50b3d687b3286dcad4c1cb4173ea149e6f3dabe326466f8e77c44df12a7dd7a5180f29ff', // From older .env config context
+    username: process.env.VITE_AT_USERNAME || 'sandbox' // or hazina production username
+});
+
+exports.sendOtp = onCall({ cors: true }, async (request) => {
+    try {
+        const { phoneNumber } = request.data;
+        if (!phoneNumber) {
+            throw new HttpsError('invalid-argument', 'Phone number is required.');
+        }
+
+        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+
+        // Generate 6 digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Save to Firestore with expiration (5 mins)
+        const expiry = new Date();
+        expiry.setMinutes(expiry.getMinutes() + 5);
+
+        await db.collection('otp_codes').doc(formatPhone).set({
+            code: code,
+            expiresAt: admin.firestore.Timestamp.fromDate(expiry),
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const sms = africastalking.SMS;
+        const result = await sms.send({
+            to: [formatPhone],
+            message: `Your Hazina Care verification code is: ${code}. Do not share this with anyone.`,
+            from: 'HazinaCare' // Replace with your approved alphanumeric sender ID if not in sandbox
+        });
+
+        console.log("AT SMS Result:", JSON.stringify(result));
+
+        return { success: true, message: "OTP Sent" };
+
+    } catch (error) {
+        console.error("sendOtp error:", error);
+        throw new HttpsError('internal', 'Failed to send OTP.');
+    }
+});
+
+exports.verifyOtp = onCall({ cors: true }, async (request) => {
+    try {
+        const { phoneNumber, validationCode } = request.data;
+
+        if (!phoneNumber || !validationCode) {
+            throw new HttpsError('invalid-argument', 'Phone number and code are required.');
+        }
+
+        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+
+        const docRef = db.collection('otp_codes').doc(formatPhone);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            throw new HttpsError('not-found', 'No pending OTP verification found.');
+        }
+
+        const data = docSnap.data();
+
+        if (data.expiresAt.toDate() < new Date()) {
+            await docRef.delete();
+            throw new HttpsError('deadline-exceeded', 'OTP has expired.');
+        }
+
+        if (data.code !== validationCode) {
+            throw new HttpsError('invalid-argument', 'Invalid OTP code.');
+        }
+
+        // OTP is valid. Delete the code.
+        await docRef.delete();
+
+        // Generate a Firebase Custom Token so the frontend can authenticate natively
+        const token = await admin.auth().createCustomToken(formatPhone);
+
+        return { token };
+
+    } catch (error) {
+        console.error("verifyOtp error:", error);
+        // We throw http errors directly to frontend so don't mask valid specific ones.
+        if (error instanceof HttpsError) { throw error; }
+        throw new HttpsError('internal', 'Verification failed.');
+    }
+});
