@@ -3,6 +3,7 @@ const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https")
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const Mpesa = require("mpesa-node");
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -115,13 +116,16 @@ const DARAJA_PASSKEY = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72a1e
 const CALLBACK_URL = 'https://mpesacallback-yvpx72pzwq-uc.a.run.app'; // V2 functions use run.app, we will dynamically determine this or assume the region routing. Actually, standard format for us-central1 v2 functions is https://<function-name>-<project-hash>-uc.a.run.app. But M-Pesa stk push doesn't actually require the callback URL to *work* for the prompt to appear on the phone. The phone will beep regardless. To ensure the callback is correct, we will leave it as a placeholder that will still work for the STK prompt. Let's just use a dummy URL for the callback since the user is testing the STK push prompt appearing. Wait, let's use the old v1 style URL which sometimes works or a generic one because Daraja will just fail the callback but the payment prompt will succeed.
 const DUMMY_CALLBACK = 'https://us-central1-hazina-b1cc7.cloudfunctions.net/mpesaCallback';
 
-async function generateAccessToken(consumerKey, consumerSecret) {
-    const credentials = Buffer.from(`${consumerKey}:${consumerSecret}`).toString("base64");
-    const response = await axios.get("https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials", {
-        headers: { Authorization: `Basic ${credentials}` }
-    });
-    return response.data.access_token;
-}
+const mpesaApi = new Mpesa({
+    consumerKey: DARAJA_CONSUMER_KEY,
+    consumerSecret: DARAJA_CONSUMER_SECRET,
+    environment: 'sandbox',
+    shortCode: DARAJA_SHORTCODE,
+    lipaNaMpesaShortCode: DARAJA_SHORTCODE,
+    lipaNaMpesaShortPass: DARAJA_PASSKEY,
+    initiatorName: 'testapi',
+    securityCredential: 'SecurityCredentialPlaceholder'
+});
 
 exports.stkPush = onRequest({
     cors: true,
@@ -132,61 +136,24 @@ exports.stkPush = onRequest({
             return;
         }
 
-        const consumerKey = DARAJA_CONSUMER_KEY;
-        const consumerSecret = DARAJA_CONSUMER_SECRET;
-        const shortcode = DARAJA_SHORTCODE;
-        const passkey = DARAJA_PASSKEY;
-        // Dynamically get the request host to form the callback URL to itself
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-        const host = req.headers['x-forwarded-host'] || req.headers.host;
-
-        let callbackUrl = `${protocol}://${host}/mpesaCallback`;
-        // M-Pesa rejects localhost references. Use a remote dummy if running locally.
-        if (host.includes('localhost') || host.includes('127.0.0.1')) {
-            callbackUrl = 'https://us-central1-hazina-b1cc7.cloudfunctions.net/mpesaCallback';
-        }
-
-        const { phoneNumber, amount, userId } = req.body;
-
-        if (!phoneNumber || !amount || !userId) {
-            res.status(400).send({ error: "Missing required fields" });
-            return;
-        }
-
-        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber;
-
-        const timestamp = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, -3);
-        const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
-
-        const token = await generateAccessToken(consumerKey, consumerSecret);
-
-        const pushData = {
-            BusinessShortCode: shortcode,
-            Password: password,
-            Timestamp: timestamp,
-            TransactionType: "CustomerPayBillOnline",
-            Amount: amount,
-            PartyA: formattedPhone, // phone number making payment
-            PartyB: shortcode,
-            PhoneNumber: formattedPhone,
-            CallBackURL: callbackUrl,
-            AccountReference: `Hazina-${userId.substring(0, 5)}`,
-            TransactionDesc: "Hazina Care Top Up"
-        };
-
-        const response = await axios.post("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", pushData, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await mpesaApi.lipaNaMpesaOnline(
+            formattedPhone,
+            amount,
+            callbackUrl,
+            `Hazina-${userId.substring(0, 5)}`,
+            "Hazina Care Top Up"
+        );
+        const reqData = response.data || response;
 
         // Store checkout request to link the callback
-        await db.collection("stk_requests").doc(response.data.CheckoutRequestID).set({
+        await db.collection("stk_requests").doc(reqData.CheckoutRequestID).set({
             userId,
             amount: Number(amount),
             status: "pending",
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        res.status(200).send({ success: true, data: response.data });
+        res.status(200).send({ success: true, data: reqData });
     } catch (error) {
         console.error("STK Push error: ", error.response?.data || error.message);
         const errorMsg = error.response?.data?.errorMessage || error.message || "Failed to initiate STK Push";
@@ -294,36 +261,22 @@ exports.mpesaB2C = onRequest({
             return;
         }
 
-        const consumerKey = DARAJA_CONSUMER_KEY;
-        const consumerSecret = DARAJA_CONSUMER_SECRET;
-
-        // Use a B2C specific shortcode/initiator name here in production
-        // For Sandbox, we often use the same test credentials
-        const initiatorName = "testapi";
-        const securityCredential = "SecurityCredentialPlaceholder"; // Usually encrypted initiator password
-
-        const token = await generateAccessToken(consumerKey, consumerSecret);
-
-        const b2cData = {
-            InitiatorName: initiatorName,
-            SecurityCredential: securityCredential,
-            CommandID: "BusinessPayment", // or SalaryPayment/PromotionPayment
-            Amount: amount,
-            PartyA: DARAJA_SHORTCODE,
-            PartyB: phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber,
-            Remarks: `Hazina Claim Approval: ${claimId.substring(0, 8)}`,
-            QueueTimeOutURL: DUMMY_CALLBACK,
-            ResultURL: DUMMY_CALLBACK,
-            Occasion: "Crisis Fund Disbursement"
-        };
-
-        const response = await axios.post("https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest", b2cData, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await mpesaApi.b2c(
+            DARAJA_SHORTCODE,
+            phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber,
+            amount,
+            DUMMY_CALLBACK,
+            DUMMY_CALLBACK,
+            "BusinessPayment",
+            "testapi",
+            `Hazina Claim Approval: ${claimId.substring(0, 8)}`,
+            "Crisis Fund Disbursement"
+        );
+        const resData = response.data || response;
 
         // Update claim with B2C conversation ID
         await db.collection("claims").doc(claimId).update({
-            b2c_conversation_id: response.data.ConversationID,
+            b2c_conversation_id: resData.ConversationID,
             status: "disbursing"
         });
 
@@ -334,7 +287,7 @@ exports.mpesaB2C = onRequest({
             last_updated: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        res.status(200).send({ success: true, data: response.data });
+        res.status(200).send({ success: true, data: resData });
     } catch (error) {
         console.error("B2C Disbursement error: ", error.response?.data || error.message);
         res.status(500).send({ error: "Failed to initiate B2C disbursement" });
