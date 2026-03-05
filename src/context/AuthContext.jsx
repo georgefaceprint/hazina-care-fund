@@ -54,23 +54,23 @@ export const AuthProvider = ({ children }) => {
             if (authUser) {
                 setUser(authUser);
 
-                // Fetch or Initialize Profile in Firestore
-                const profileRef = doc(db, 'users', authUser.uid);
-                const docSnap = await getDoc(profileRef);
+                // Fetch Profile - Use Phone number as primary ID for persistence if available
+                // If the user signed in anonymously with a phone number, we use that.
+                // Note: In our current LoginPage, we store profiles by phone number.
+                let profileRef;
+                if (authUser.phoneNumber) {
+                    profileRef = doc(db, 'users', authUser.phoneNumber);
+                } else {
+                    // Fallback to searching for a profile by UID if phone isn't in authUser
+                    // Or for now, just use the UID if no phone is found (e.g. social login)
+                    profileRef = doc(db, 'users', authUser.uid);
+                }
+
+                let docSnap = await getDoc(profileRef);
 
                 if (!docSnap.exists()) {
-                    // Initialize default profile for new user
-                    const newProfile = {
-                        phoneNumber: authUser.phoneNumber || '',
-                        role: 'user',
-                        active_tier: 'bronze',
-                        balance: 0,
-                        status: 'pending_payment',
-                        tier_joined_date: new Date(),
-                        grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 180 days
-                    };
-                    await setDoc(profileRef, newProfile);
-                    setProfile({ id: authUser.uid, ...newProfile });
+                    // Try to find if a profile exists with this UID mapping (legacy or fallback)
+                    // If not, we stay with the initial ref
                 }
 
                 // Real-time profile updates

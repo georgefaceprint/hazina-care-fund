@@ -38,8 +38,8 @@ const LoginPage = () => {
             const result = await signInAnonymously(auth);
             const user = result.user;
 
-            // Check if user profile exists
-            const userRef = doc(db, 'users', user.uid);
+            // Check if user profile exists using phone number as the ID for persistence
+            const userRef = doc(db, 'users', formatPhone);
             const userSnap = await getDoc(userRef);
 
             // Check if user profile exists
@@ -47,8 +47,9 @@ const LoginPage = () => {
                 // Get referrer if any
                 const referrerId = sessionStorage.getItem('hazina_referrer');
 
-                // Create initial profile
+                // Create initial profile linked to phone number
                 await setDoc(userRef, {
+                    uid: user.uid,
                     phoneNumber: formatPhone,
                     role: 'guardian',
                     status: 'in-waiting',
