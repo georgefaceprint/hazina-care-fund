@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
         setUser({ uid: 'demo-user', phoneNumber: phone });
         setProfile({
             id: 'demo-profile-12345',
+            fullName: 'George Demo',
             role: 'admin',
             active_tier: 'gold',
             national_id: '12345678',

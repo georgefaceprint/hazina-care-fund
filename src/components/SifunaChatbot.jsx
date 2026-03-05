@@ -79,7 +79,8 @@ const SifunaChatbot = () => {
         setChatLanguage(lang);
 
         // Get first name if available
-        const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : null;
+        const rawName = profile?.fullName || user?.displayName || null;
+        const firstName = rawName ? rawName.trim().split(' ')[0] : null;
 
         let welcome;
         if (lang === 'sw') {
