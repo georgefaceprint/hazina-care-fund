@@ -13,7 +13,7 @@ const SifunaChatbot = () => {
     const [chatLanguage, setChatLanguage] = useState(null); // 'en' or 'sw'
 
     // AI Initialization - Frontend Fallback
-    const GEMINI_API_KEY = "AIzaSyA_V468F9lzmWx6EAc9D-ZCTYyzqvwrDh8";
+    const GEMINI_API_KEY = "AIzaSyCaAkDtu93ADVaDE0hy0MCK1n9E8ksUdN0";
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
     // chatHistory is the source of truth for the conversation

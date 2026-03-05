@@ -9,7 +9,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 admin.initializeApp();
 const db = admin.firestore();
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA_V468F9lzmWx6EAc9D-ZCTYyzqvwrDh8";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCaAkDtu93ADVaDE0hy0MCK1n9E8ksUdN0";
 
 if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
     console.error("❌ ERROR: GEMINI_API_KEY is not set. Using fallback (if provided).");
