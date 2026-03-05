@@ -115,8 +115,9 @@ export const AuthProvider = ({ children }) => {
                         setLoading(false);
                     });
 
-                    // We return the cleanup for the profile listener
-                    return () => unsubProfile();
+                    return () => {
+                        if (typeof unsubProfile === 'function') unsubProfile();
+                    };
                 } else {
                     setUser(null);
                     setProfile(null);

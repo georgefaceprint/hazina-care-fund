@@ -183,7 +183,8 @@ const Dashboard = () => {
                                 )}
                                 <div>
                                     <p className="text-xs uppercase tracking-widest text-emerald-100 font-bold mb-1 opacity-70">{t('official_digital_id')}</p>
-                                    <h3 className="text-2xl font-black font-heading tracking-tight">{profile.national_id || profile.id.substring(0, 10).toUpperCase()}</h3>
+                                    <h3 className="text-lg font-black text-white mb-0.5 tracking-tight">{profile.fullName || 'Member'}</h3>
+                                    <p className="text-[10px] font-bold text-emerald-100 opacity-60 uppercase tracking-widest">ID: {profile.national_id || profile.id.substring(0, 8).toUpperCase()}</p>
                                 </div>
                             </div>
                             <div className="bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
