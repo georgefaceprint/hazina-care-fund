@@ -20,6 +20,7 @@ const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
+import SplashScreen from './components/SplashScreen';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, profile, loading } = useAuth();
@@ -59,6 +60,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 };
 
 const App = () => {
+  const [showSplash, setShowSplash] = React.useState(true);
+
   React.useEffect(() => {
     // Capture referral code from URL
     const params = new URLSearchParams(window.location.search);
@@ -67,6 +70,13 @@ const App = () => {
       console.log("📍 Captured referral code:", ref);
       sessionStorage.setItem('hazina_referrer', ref);
     }
+
+    // Hide splash screen after 2.5 seconds
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500); // 2.5 seconds
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -75,11 +85,8 @@ const App = () => {
         <ToastProvider>
           <AuthProvider>
             <InstallProvider>
-              <Suspense fallback={
-                <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                  <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              }>
+              {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+              <Suspense fallback={<SplashScreen />}>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/admin/login" element={<AdminLogin />} />

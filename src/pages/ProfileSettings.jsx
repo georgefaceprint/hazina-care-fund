@@ -236,7 +236,7 @@ const ProfileSettings = () => {
                     </button>
 
                     <p className="text-center mt-6 mb-2 text-xs font-bold text-slate-400">
-                        Hazina Care V.1.0.5
+                        Hazina Care V.1.0.6
                     </p>
                 </div>
             </div>
