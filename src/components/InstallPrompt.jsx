@@ -12,8 +12,13 @@ export const InstallProvider = ({ children }) => {
 
     useEffect(() => {
         // Check if already installed
-        const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-        if (standalone) { setIsInstalled(true); return; }
+        const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+            window.navigator.standalone === true;
+
+        if (standalone) {
+            setIsInstalled(true);
+            return;
+        }
 
         const dismissed = localStorage.getItem('hazina_install_dismissed');
         const lastDismissed = dismissed ? parseInt(dismissed) : 0;
@@ -23,34 +28,48 @@ export const InstallProvider = ({ children }) => {
         const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         if (isIosDevice) {
             setIsIOS(true);
+            // Show iOS banner after a short delay since it doesn't need beforeinstallprompt
+            if (daysSinceDismissed > 3) {
+                const timer = setTimeout(() => setShowBanner(true), 5000);
+                return () => clearTimeout(timer);
+            }
         }
 
-        // Force banner to show on ANY device after 4 seconds (if not recently dismissed)
-        if (daysSinceDismissed > 3) {
-            setTimeout(() => setShowBanner(true), 4000);
-        }
-
-        // Catch beforeinstallprompt (This is required actually to INSTALL the app on Android natively)
+        // Catch beforeinstallprompt for Android/Chrome
         const handler = (e) => {
+            console.log("📍 PWA: beforeinstallprompt event fired!");
             e.preventDefault();
             setDeferredPrompt(e);
+
+            // Show banner ONLY after we have the prompt and it wasn't recently dismissed
             if (daysSinceDismissed > 3) {
-                setTimeout(() => setShowBanner(true), 4000);
+                setShowBanner(true);
             }
         };
+
         window.addEventListener('beforeinstallprompt', handler);
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
     const triggerInstall = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
+        if (!deferredPrompt) {
+            console.warn("📍 PWA: Attempted to install but deferredPrompt is null.");
+            return;
+        }
+
+        try {
+            console.log("📍 PWA: Triggering native install prompt...");
+            await deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
+            console.log("📍 PWA: User choice result:", outcome);
+
             if (outcome === 'accepted') {
                 setDeferredPrompt(null);
                 setShowBanner(false);
                 setIsInstalled(true);
             }
+        } catch (err) {
+            console.error("📍 PWA: Install prompt failed:", err);
         }
     };
 

@@ -184,7 +184,7 @@ const Dashboard = () => {
                                 <div>
                                     <p className="text-[10px] uppercase font-black tracking-[0.2em] text-brand-accent/80 mb-1">{t('official_digital_id')}</p>
                                     <h3 className="text-xl font-black text-white leading-tight tracking-tight">{profile.fullName || 'Member'}</h3>
-                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">ID: {profile.national_id || profile.id.substring(0, 8).toUpperCase()}</p>
+                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">ID: {profile.referral_code || profile.id.substring(0, 8).toUpperCase()}</p>
                                 </div>
                             </div>
                             <div className="relative">
@@ -214,7 +214,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="bg-white p-3.5 rounded-[1.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-brand-accent/20">
-                                <QRCodeSVG value={profile.id} size={85} fgColor="#3d080e" />
+                                <QRCodeSVG value={profile.id} size={85} fgColor="#6B2324" />
                             </div>
                         </div>
                     </div>

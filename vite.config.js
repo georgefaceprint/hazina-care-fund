@@ -9,13 +9,18 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      devOptions: {
+        enabled: true,
+        type: 'module'
+      },
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'Hazina Care Fund',
         short_name: 'Hazina',
         description: 'Sustainable community-based care fund for Kenya',
-        theme_color: '#630d16',
+        theme_color: '#9D3334',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',

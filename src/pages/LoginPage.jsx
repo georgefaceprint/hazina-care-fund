@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Shield, Phone, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatKenyanPhone } from '../utils/phoneUtils';
+import { generateReferralCode } from '../utils/referralUtils';
 import { useLanguage } from '../context/LanguageContext';
 
 const LoginPage = () => {
@@ -98,8 +99,10 @@ const LoginPage = () => {
                     balance: 0,
                     createdAt: serverTimestamp(),
                     profile_completed: false,
+                    profile_completed: false,
                     grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-                    referrer_id: referrerId || null
+                    referrer_id: referrerId || null,
+                    referral_code: generateReferralCode(6)
                 });
                 navigate('/complete-profile');
             } else {

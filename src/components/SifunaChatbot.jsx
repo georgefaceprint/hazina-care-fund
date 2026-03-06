@@ -69,8 +69,8 @@ Hazina Care Fund is a community-driven mutual protection platform in Kenya. Memb
 - Add via the Family Members page
 
 ### REFERRAL PROGRAM
-- Each member has a unique referral code (their user ID)
-- Share link format: myhazina.org/signup?ref=YOUR_ID
+- Each member has a unique 6-character alphanumeric referral code
+- Share link format: myhazina.org/signup?ref=REFERRAL_CODE
 - Milestone 1: 10 referrals = 7-day payment holiday (no daily burn for 7 days)
 - Milestone 2: 30 referrals = 14-day payment holiday
 - Referral tracking and rewards on the Referrals page
@@ -239,6 +239,7 @@ USER CONTEXT:
 - Name: ${profile?.fullName || user?.displayName || 'Unknown'}
 - Tier: ${profile?.active_tier || 'Not set'}
 - Balance: KSh ${profile?.balance || 0}
+- Referral Code: ${profile?.referral_code || 'None'}
 - Member Since: ${profile?.tier_joined_date ? new Date(profile.tier_joined_date?.toDate ? profile.tier_joined_date.toDate() : profile.tier_joined_date).toLocaleDateString() : 'Unknown'}
 - Current Page: ${location.pathname}
 - Language: ${chatLanguage === 'sw' ? 'Kiswahili' : 'English'}

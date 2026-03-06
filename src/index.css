@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-primary: #630d16;
-  --color-brand-secondary: #3d080e;
-  --color-brand-accent: #c5a059;
-  --color-hazina-bronze: #8c5d3f;
-  --color-hazina-silver: #a8a9ad;
-  --color-hazina-gold: #c5a059;
+  --color-brand-primary: #9D3334;
+  --color-brand-secondary: #6B2324;
+  --color-brand-accent: #E2C08D;
+  --color-hazina-bronze: #A67C52;
+  --color-hazina-silver: #CBD5E1;
+  --color-hazina-gold: #E2C08D;
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-heading: 'Outfit', sans-serif;
