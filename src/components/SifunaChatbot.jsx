@@ -112,80 +112,29 @@ Hazina Care Fund is a community-driven mutual protection platform in Kenya. Memb
 - Helps members understand their shield, file claims, manage dependents, and more
 `;
 
-// ==================================================================
-// PAGE-AWARE TOPIC GENERATION
-// ==================================================================
-const getPageTopics = (path, lang, profile, tiers) => {
-    const sw = lang === 'sw';
-    const tier = profile?.active_tier || 'bronze';
-    const balance = profile?.balance || 0;
+import { CHATBOT_CATEGORIES } from '../data/chatbotData';
 
-    const all = {
-        '/dashboard': [
-            { id: 'shield_status', label: sw ? 'Hali ya ngao yangu' : 'My shield status' },
-            { id: 'daily_burn', label: sw ? 'Gharama zangu za kila siku' : `My daily burn (KSh ${(tiers[tier]?.cost || 10)}/day)` },
-            { id: 'balance_low', label: sw ? 'Niongeze pesa jinsi gani?' : 'How to top up my wallet?' },
-            { id: 'upgrade_tier', label: sw ? 'Nipitishe ngazi ya juu?' : 'How to upgrade my tier?' },
-            { id: 'claim_now', label: sw ? 'Niomba msaada wa dharura?' : 'File a crisis claim?' },
-            { id: 'grace_period', label: sw ? 'Grace period ni nini?' : 'What is the grace period?' },
-        ],
-        '/claim': [
-            { id: 'claim_types', label: sw ? 'Ni madai gani yanakubaliwa?' : 'What claim types are accepted?' },
-            { id: 'claim_docs', label: sw ? 'Nahitaji hati gani?' : 'What documents do I need?' },
-            { id: 'claim_limit', label: sw ? 'Kiwango changu cha madai?' : `My claim limit (KSh ${(tiers[tier]?.limit || 15000).toLocaleString()})` },
-            { id: 'claim_process', label: sw ? 'Mchakato wa dai?' : 'How long does approval take?' },
-            { id: 'claim_matured', label: sw ? 'Ngao yangu imekomaa?' : 'Is my shield matured for claims?' },
-        ],
-        '/family': [
-            { id: 'add_dependent', label: sw ? 'Ongeza mwanafamilia?' : 'How to add a family member?' },
-            { id: 'dep_cost', label: sw ? 'Gharama za mtegemezi?' : 'What is the cost per dependent?' },
-            { id: 'dep_waiting', label: sw ? 'Mtegemezi asubiriaje?' : 'Does each dependent have a waiting period?' },
-            { id: 'dep_claim', label: sw ? 'Niomba kwa mtegemezi?' : 'Can I claim on behalf of a dependent?' },
-        ],
-        '/topup': [
-            { id: 'mpesa_topup', label: sw ? 'Top up kupitia M-Pesa?' : 'How to top up via M-Pesa?' },
-            { id: 'min_topup', label: sw ? 'Kiwango cha chini cha kuweka?' : 'What is the minimum top-up amount?' },
-            { id: 'auto_deduct', label: sw ? 'Jinsi gani pesa inavyokatwa?' : 'How is my daily burn deducted?' },
-            { id: 'balance_check', label: sw ? 'Niangalie salio langu?' : `My balance (KSh ${balance})` },
-        ],
-        '/referrals': [
-            { id: 'share_link', label: sw ? 'Nishiriki nambari yangu ya rufaa?' : 'How to share my referral link?' },
-            { id: 'referral_reward', label: sw ? 'Niapata nini kwa rufaa?' : 'What rewards do I earn from referrals?' },
-            { id: 'holiday_payment', label: sw ? 'Likizo ya malipo ni nini?' : 'What is a payment holiday?' },
-            { id: 'referral_count', label: sw ? 'Angalia rufaa zangu?' : 'Check my referral progress' },
-        ],
-        '/settings': [
-            { id: 'notifications', label: sw ? 'Washa arifa?' : 'Enable push notifications?' },
-            { id: 'install_app', label: sw ? 'Sakinisha programu?' : 'How to install the app?' },
-            { id: 'change_language', label: sw ? 'Badilisha lugha?' : 'Change app language?' },
-            { id: 'how_cancel', label: sw ? 'Kufuta akaunti?' : 'How to cancel my membership?' },
-        ],
-        '/benefits': [
-            { id: 'bronze_benefits', label: sw ? 'Faida za Bronze?' : 'What does Bronze cover?' },
-            { id: 'silver_benefits', label: sw ? 'Faida za Silver?' : 'What does Silver cover?' },
-            { id: 'gold_benefits', label: sw ? 'Faida za Gold?' : 'What does Gold cover?' },
-            { id: 'which_tier', label: sw ? 'Ngazi gani inafaa kwangu?' : 'Which tier is right for me?' },
-        ],
-    };
-
-    const defaults = [
-        { id: 'how_it_works', label: sw ? 'Hazina inafanyaje kazi?' : 'How does Hazina work?' },
-        { id: 'claim_q', label: sw ? 'Omba msaada wa dharura?' : 'File a crisis claim' },
-        { id: 'my_tier', label: sw ? 'Ngazi yangu ni ipi?' : `My tier: ${tier}` },
-        { id: 'ussd', label: sw ? 'Tumia USSD (*384#)?' : 'Access via USSD (*384#)?' },
-    ];
-
-    return all[path] || defaults;
-};
-
-// ==================================================================
-// MAIN COMPONENT
-// ==================================================================
 const SifunaChatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [chatLanguage, setChatLanguage] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+
+    // Listen for external "Open Chatbot" events from Dashboard
+    useEffect(() => {
+        const handleOpenSifuna = (e) => {
+            const { category, welcome } = e.detail || {};
+            setIsOpen(true);
+            if (category) setSelectedCategory(category);
+            if (!chatLanguage) {
+                // Default to English if no language selected yet, but keep original flow if possible
+                // setChatLanguage('en'); 
+            }
+        };
+        window.addEventListener('open-sifuna', handleOpenSifuna);
+        return () => window.removeEventListener('open-sifuna', handleOpenSifuna);
+    }, [chatLanguage]);
 
     const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
     const genAI = useMemo(() => new GoogleGenerativeAI(GEMINI_API_KEY), [GEMINI_API_KEY]);
@@ -220,10 +169,6 @@ const SifunaChatbot = () => {
         return () => { unsubKb(); unsubTiers(); unsubConfig(); };
     }, [isDemoMode]);
 
-    const currentTopics = useMemo(() =>
-        getPageTopics(location.pathname, chatLanguage, profile, tiers),
-        [location.pathname, chatLanguage, profile, tiers]
-    );
 
     useEffect(() => {
         if (isOpen && chatHistory.length === 0 && !chatLanguage) {
@@ -240,8 +185,8 @@ const SifunaChatbot = () => {
         const firstName = (profile?.fullName || user?.displayName || '').trim().split(' ')[0] || null;
         const sw = lang === 'sw';
         const welcome = sw
-            ? (firstName ? `Habari ${firstName}! Mimi ni Sifuna. Nawezaje kukusaidia leo?` : "Jambo! Mimi ni Sifuna. Nawezaje kukusaidia leo?")
-            : (firstName ? `Hello ${firstName}! I'm Sifuna. How can I help you today?` : "Hello! I'm Sifuna. How can I help you today?");
+            ? (firstName ? `Habari ${firstName}! Mimi ni Sifuna. Chagua mada unayohitaji msaada.` : "Jambo! Mimi ni Sifuna. Chagua mada unayohitaji msaada.")
+            : (firstName ? `Hello ${firstName}! I'm Sifuna. Please choose a category you need help with.` : "Hello! I'm Sifuna. Please choose a category you need help with.");
 
         setChatHistory(prev => [
             ...prev,
@@ -253,6 +198,7 @@ const SifunaChatbot = () => {
     const resetChat = () => {
         setChatHistory([]);
         setChatLanguage(null);
+        setSelectedCategory(null);
     };
 
     const sendMessageToAI = async (text) => {
@@ -317,7 +263,7 @@ RULES:
                 }
             });
 
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction });
             const chat = model.startChat({ history: cleanedHistory });
             const result = await chat.sendMessage(userMsg);
             const botResponse = result.response.text();
@@ -366,7 +312,7 @@ RULES:
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="absolute bottom-20 right-0 w-[85vw] max-w-sm bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col overflow-hidden h-[520px]"
+                        className="absolute bottom-20 right-0 w-[85vw] max-w-sm bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col overflow-hidden h-[540px]"
                     >
                         {/* Header */}
                         <div className="bg-orange-500 p-5 text-white flex justify-between items-center relative flex-shrink-0">
@@ -398,7 +344,7 @@ RULES:
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-100/30">
                             {chatHistory.map((msg, i) => (
                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[85%] p-3.5 rounded-3xl text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
@@ -421,51 +367,99 @@ RULES:
                             <div ref={chatEndRef} />
                         </div>
 
-                        {/* Topics / Language Selection */}
-                        <div className="p-3 bg-white border-t border-slate-100 flex-shrink-0">
+                        {/* Simplified Subject & FAQ Flow */}
+                        <div className="p-4 bg-white border-t border-slate-100 flex-shrink-0">
                             {!chatLanguage ? (
                                 <>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-2 px-1 tracking-widest">Select Language</p>
+                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-3 px-1 tracking-widest text-center">Select Language / Lugha</p>
                                     <div className="flex gap-2">
-                                        <button onClick={() => selectLanguage('en')} className="flex-1 py-2.5 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-2xl text-xs font-black transition-all border border-slate-100">English</button>
-                                        <button onClick={() => selectLanguage('sw')} className="flex-1 py-2.5 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-2xl text-xs font-black transition-all border border-slate-100">Kiswahili</button>
+                                        <button onClick={() => selectLanguage('en')} className="flex-1 py-4 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-3xl text-sm font-black transition-all border border-slate-100 shadow-sm active:scale-95">English</button>
+                                        <button onClick={() => selectLanguage('sw')} className="flex-1 py-4 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-3xl text-sm font-black transition-all border border-slate-100 shadow-sm active:scale-95">Kiswahili</button>
                                     </div>
                                 </>
                             ) : (
                                 <>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-2 px-1 tracking-widest">Ask about</p>
-                                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                                        {currentTopics.map(p => (
-                                            <button
-                                                key={p.id}
-                                                onClick={() => sendMessageToAI(p.label)}
-                                                className="px-3 py-1.5 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-full text-[11px] font-bold transition-all border border-slate-100 flex items-center gap-1 active:scale-95"
-                                            >
-                                                {p.label}
-                                                <ChevronRight className="w-3 h-3 flex-shrink-0" />
-                                            </button>
-                                        ))}
+                                    <div className="flex justify-between items-center mb-3 px-1">
+                                        <div className="flex items-center gap-2">
+                                            {selectedCategory && (
+                                                <button
+                                                    onClick={() => setSelectedCategory(null)}
+                                                    className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                                                >
+                                                    <ChevronRight className="w-4 h-4 rotate-180" />
+                                                </button>
+                                            )}
+                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                                {selectedCategory ? CHATBOT_CATEGORIES.find(c => c.id === selectedCategory)?.label[chatLanguage] : (chatLanguage === 'sw' ? 'MADA KUU' : 'SUBJECT TOPICS')}
+                                            </p>
+                                        </div>
+                                        <button onClick={resetChat} className="text-[9px] font-black text-slate-400 uppercase tracking-tighter hover:text-orange-500">Reset</button>
+                                    </div>
+
+                                    <div className="max-h-60 overflow-y-auto no-scrollbar pb-2">
+                                        {!selectedCategory ? (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {CHATBOT_CATEGORIES.map(cat => (
+                                                    <button
+                                                        key={cat.id}
+                                                        onClick={() => setSelectedCategory(cat.id)}
+                                                        className="flex flex-col items-center gap-2 p-4 bg-slate-50 hover:bg-white hover:border-orange-200 border border-transparent rounded-[2rem] transition-all shadow-sm active:scale-95 group text-center"
+                                                    >
+                                                        <span className="text-2xl group-hover:scale-110 transition-transform">{cat.icon}</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-tight text-slate-600 group-hover:text-orange-600 leading-tight">
+                                                            {cat.label[chatLanguage]}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2 animate-in slide-in-from-right-2 duration-300">
+                                                {CHATBOT_CATEGORIES.find(c => c.id === selectedCategory)?.faqs.map(faq => (
+                                                    <button
+                                                        key={faq.id}
+                                                        onClick={() => {
+                                                            const qText = faq.q[chatLanguage];
+                                                            setChatHistory(prev => [...prev,
+                                                            { role: 'user', parts: [{ text: qText }] },
+                                                            { role: 'model', parts: [{ text: faq.a }] }
+                                                            ]);
+                                                        }}
+                                                        className="w-full flex items-center justify-between p-4 bg-white hover:bg-orange-50/50 border border-slate-100 rounded-2xl transition-all shadow-sm active:scale-[0.98] text-left group"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                                                                <HelpCircle className="w-4 h-4" />
+                                                            </div>
+                                                            <span className="text-[11px] font-bold text-slate-700 leading-tight pr-4">
+                                                                {faq.q[chatLanguage]}
+                                                            </span>
+                                                        </div>
+                                                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-orange-500 transition-colors flex-shrink-0" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
                         </div>
 
-                        {/* Input */}
+                        {/* Input Area */}
                         <form onSubmit={handleFormSubmit} className="p-3 bg-white border-t border-slate-100 flex gap-2 flex-shrink-0">
                             <input
                                 type="text"
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
-                                placeholder={chatLanguage === 'sw' ? "Andika swali lako..." : "Ask Sifuna anything..."}
-                                className="flex-1 bg-slate-50 border-none rounded-2xl px-4 py-2.5 text-sm focus:ring-0 focus:outline-none"
+                                placeholder={chatLanguage === 'sw' ? "Andika swali..." : "Ask me anything..."}
+                                className="flex-1 bg-slate-50 border-none rounded-2xl px-5 py-3.5 text-sm focus:ring-0 focus:outline-none"
                                 disabled={!chatLanguage}
                             />
                             <button
                                 type="submit"
                                 disabled={!chatLanguage || isTyping || !inputValue.trim()}
-                                className="p-3 bg-orange-500 text-white rounded-2xl shadow-lg shadow-orange-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
+                                className="p-3.5 bg-orange-500 text-white rounded-2xl shadow-lg shadow-orange-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
                             >
-                                <Send className="w-4 h-4" />
+                                <Send className="w-5 h-5" />
                             </button>
                         </form>
                     </motion.div>

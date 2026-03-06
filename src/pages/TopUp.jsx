@@ -35,7 +35,7 @@ const TopUp = () => {
             // Since this is a test environment, let's use the explicit cloud function domain if deployed or localhost
             const functionUrl = window.location.hostname === 'localhost'
                 ? 'http://127.0.0.1:5001/hazina-b1cc7/us-central1/stkPush'
-                : 'https://us-central1-hazina-b1cc7.cloudfunctions.net/stkPush';
+                : 'https://stkpush-l5mloh4jka-uc.a.run.app';
 
             const stkResponse = await fetch(functionUrl, {
                 method: 'POST',

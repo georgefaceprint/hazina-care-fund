@@ -8,12 +8,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-comp
 // You should update this with your actual production config string to work properly.
 
 const firebaseConfig = {
-    apiKey: "REPLACE_WITH_ACTUAL_API_KEY",
-    authDomain: "REPLACE_WITH_ACTUAL_AUTH_DOMAIN",
-    projectId: "REPLACE_WITH_ACTUAL_PROJECT_ID",
-    storageBucket: "REPLACE_WITH_ACTUAL_STORAGE_BUCKET",
-    messagingSenderId: "REPLACE_WITH_ACTUAL_MESSAGING_SENDER_ID",
-    appId: "REPLACE_WITH_ACTUAL_APP_ID"
+    apiKey: "AIzaSyAL0pJSAeRpRg2XOlX_0_68W8mbL7NNugI",
+    authDomain: "hazina-b1cc7.web.app",
+    projectId: "hazina-b1cc7",
+    storageBucket: "gs://hazina-b1cc7.firebasestorage.app",
+    messagingSenderId: "852962299893",
+    appId: "1:852962299893:web:381a7ad3546fb3d2bf1abc"
 };
 
 // Initialize the Firebase app in the service worker by passing in the

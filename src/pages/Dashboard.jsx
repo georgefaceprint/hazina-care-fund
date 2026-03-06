@@ -335,6 +335,35 @@ const Dashboard = () => {
                     </div>
                 </div>
 
+                {/* Sifuna Hub / Concierge */}
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center px-1">
+                        <h4 className="font-black text-xs uppercase tracking-widest text-slate-400">{t('ask_sifuna') || 'Ask Sifuna AI'}</h4>
+                    </div>
+                    <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar -mx-2 px-2">
+                        {[
+                            { id: 'wallet', icon: '💰', label: language === 'sw' ? 'M-Pesa' : 'Wallet' },
+                            { id: 'shield', icon: '🛡️', label: language === 'sw' ? 'Ngao' : 'Shield' },
+                            { id: 'claims', icon: '🚑', label: language === 'sw' ? 'Madai' : 'Claims' },
+                            { id: 'family', icon: '👨‍👩‍👧', label: language === 'sw' ? 'Familia' : 'Family' },
+                            { id: 'referrals', icon: '🎁', label: language === 'sw' ? 'Zawadi' : 'Rewards' },
+                        ].map(cat => (
+                            <button
+                                key={cat.id}
+                                onClick={() => {
+                                    window.dispatchEvent(new CustomEvent('open-sifuna', {
+                                        detail: { category: cat.id }
+                                    }));
+                                }}
+                                className="flex-shrink-0 flex flex-col items-center gap-2 p-4 bg-white rounded-3xl shadow-sm border border-slate-100 hover:border-brand-primary/30 hover:shadow-md transition-all active:scale-95 min-w-[85px]"
+                            >
+                                <span className="text-2xl">{cat.icon}</span>
+                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">{cat.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 {/* Quick Actions */}
                 <div className="space-y-3">
                     <h4 className="font-black text-xs uppercase tracking-widest text-slate-400 ml-1">{t('guardian_services')}</h4>

@@ -97,7 +97,7 @@ const AdminPanel = () => {
             if (newStatus === 'approved') {
                 // Trigger M-Pesa B2C Disbursement
                 try {
-                    const response = await fetch('https://mpesab2c-yvpx72pzwq-uc.a.run.app', { // Example URL, in real usage it should be dynamic or from env
+                    const response = await fetch('https://mpesab2c-l5mloh4jka-uc.a.run.app', { // Example URL, in real usage it should be dynamic or from env
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

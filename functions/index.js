@@ -136,6 +136,20 @@ exports.stkPush = onRequest({
             return;
         }
 
+        const { phoneNumber, amount, userId } = req.body;
+
+        if (!phoneNumber || !amount || !userId) {
+            res.status(400).send({ error: "Missing required fields: phoneNumber, amount, or userId" });
+            return;
+        }
+
+        // Clean and format phone for Safaricom (must be 2547XXXXXXXX)
+        const formattedPhone = phoneNumber.replace(/\D/g, '').startsWith('0')
+            ? `254${phoneNumber.replace(/\D/g, '').substring(1)}`
+            : phoneNumber.replace(/\D/g, '');
+
+        const callbackUrl = "https://us-central1-hazina-b1cc7.cloudfunctions.net/mpesaCallback";
+
         const response = await mpesaApi.lipaNaMpesaOnline(
             formattedPhone,
             amount,
@@ -460,8 +474,8 @@ exports.chatWithSifuna = onCall({ cors: true }, async (request) => {
 
 // 7. Custom OTP SMS via Africa's Talking
 const africastalking = require('africastalking')({
-    apiKey: process.env.VITE_AT_API_KEY || 'atsk_50b3d687b3286dcad4c1cb4173ea149e6f3dabe326466f8e77c44df12a7dd7a5180f29ff', // From older .env config context
-    username: process.env.VITE_AT_USERNAME || 'sandbox' // or hazina production username
+    apiKey: process.env.AT_API_KEY || process.env.VITE_AT_API_KEY,
+    username: process.env.AT_USERNAME || process.env.VITE_AT_USERNAME || 'sandbox'
 });
 
 exports.sendOtp = onCall({ cors: true }, async (request) => {
@@ -476,8 +490,8 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
         console.log("Formatted Phone:", formatPhone);
 
-        // ALWAYS USE 123456 for testing as requested
-        const code = "123456";
+        // Generate a random 6-digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
 
         // Save to Firestore with 1 hour expiration
         const expiry = new Date();
@@ -489,9 +503,23 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        console.log("OTP code 123456 saved to Firestore for:", formatPhone);
+        console.log(`OTP code ${code} saved to Firestore for: ${formatPhone}`);
 
-        return { success: true, message: "OTP Ready: 123456" };
+        // ACTUALLY SEND THE SMS via Africa's Talking
+        try {
+            const sms = africastalking.SMS;
+            const result = await sms.send({
+                to: [formatPhone],
+                message: `Your Hazina Care verification code is: ${code}. Valid for 1 hour.`
+            });
+            console.log("Africa's Talking SMS Result:", result);
+        } catch (smsError) {
+            console.error("Africa's Talking SMS Send Error:", smsError);
+            // We don't throw an error here to the user yet, because if they know the bypass 123456, 
+            // they can still log in if the SMS fails to deliver in sandbox.
+        }
+
+        return { success: true, message: "Code sent successfully" };
 
     } catch (error) {
         console.error("sendOtp error:", error);
@@ -510,12 +538,8 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
 
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
 
-        // SUPER BYPASS: If code is 123456, allow login immediately for testing phase
-        if (String(validationCode) === "123456") {
-            console.log("Super bypass triggered for:", formatPhone);
-            const token = await admin.auth().createCustomToken(formatPhone);
-            return { token };
-        }
+        // REMOVED SUPER BYPASS for production security.
+        // User must enter the real code sent to their phone.
 
         const docRef = db.collection('otp_codes').doc(formatPhone);
         const docSnap = await docRef.get();

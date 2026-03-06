@@ -143,7 +143,9 @@ const translations = {
         example_phone: "Example: 0712 345 678",
         maturation_period: "Maturation Period",
         days: "Days",
-        maturation_desc: "waiting period for full protection"
+        maturation_desc: "waiting period for full protection",
+        ask_sifuna: "Ask Sifuna AI",
+        sifuna_hub: "Sifuna Hub"
     },
     sw: {
         // Global & Nav
@@ -289,7 +291,9 @@ const translations = {
         example_phone: "Mfano: 0712 345 678",
         maturation_period: "Kipindi cha Kukomaa",
         days: "Siku",
-        maturation_desc: "kipindi cha kusubiri ulinzi kamili"
+        maturation_desc: "kipindi cha kusubiri ulinzi kamili",
+        ask_sifuna: "Uliza Sifuna AI",
+        sifuna_hub: "Ripoti ya Sifuna"
     }
 };
 
