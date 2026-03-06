@@ -20,36 +20,42 @@ export const InstallProvider = ({ children }) => {
             return;
         }
 
-        const dismissed = localStorage.getItem('hazina_install_dismissed');
-        const lastDismissed = dismissed ? parseInt(dismissed) : 0;
-        const daysSinceDismissed = (Date.now() - lastDismissed) / (1000 * 60 * 60 * 24);
+        // 1. Check if window already has a prompt from main.jsx
+        if (window.deferredPrompt) {
+            console.log("📍 PWA: Found stale deferredPrompt on window");
+            setDeferredPrompt(window.deferredPrompt);
+            setShowBanner(true);
+        }
+
+        // 2. Catch beforeinstallprompt for Android/Chrome
+        const handler = (e) => {
+            console.log("📍 PWA: beforeinstallprompt event fired!");
+            e.preventDefault();
+            setDeferredPrompt(e);
+            window.deferredPrompt = e; // Sync back to window just in case
+            setShowBanner(true);
+        };
+
+        window.addEventListener('beforeinstallprompt', handler);
+
+        // Fallback: Show banner after a delay even if no prompt (for instructions)
+        const timer = setTimeout(() => {
+            if (!isInstalled) {
+                setShowBanner(true);
+            }
+        }, 5000);
 
         // iOS detection for specific instructions
         const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         if (isIosDevice) {
             setIsIOS(true);
-            // Show iOS banner after a short delay since it doesn't need beforeinstallprompt
-            if (daysSinceDismissed > 3) {
-                const timer = setTimeout(() => setShowBanner(true), 5000);
-                return () => clearTimeout(timer);
-            }
         }
 
-        // Catch beforeinstallprompt for Android/Chrome
-        const handler = (e) => {
-            console.log("📍 PWA: beforeinstallprompt event fired!");
-            e.preventDefault();
-            setDeferredPrompt(e);
-
-            // Show banner ONLY after we have the prompt and it wasn't recently dismissed
-            if (daysSinceDismissed > 3) {
-                setShowBanner(true);
-            }
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handler);
+            clearTimeout(timer);
         };
-
-        window.addEventListener('beforeinstallprompt', handler);
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
+    }, [isInstalled]);
 
     const triggerInstall = async () => {
         if (!deferredPrompt) {
