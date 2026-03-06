@@ -53,16 +53,17 @@ export const InstallProvider = ({ children }) => {
 
     const triggerInstall = async () => {
         if (!deferredPrompt) {
-            console.warn("📍 PWA: Attempted to install but deferredPrompt is null.");
+            if (isIOS) {
+                // iOS doesn't use the prompt, they use the Share menu
+                return;
+            }
+            alert("To install: Tap the three dots (menu) in your browser and select 'Add to Home Screen' or 'Install App'.");
             return;
         }
 
         try {
-            console.log("📍 PWA: Triggering native install prompt...");
             await deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log("📍 PWA: User choice result:", outcome);
-
             if (outcome === 'accepted') {
                 setDeferredPrompt(null);
                 setShowBanner(false);
@@ -70,6 +71,7 @@ export const InstallProvider = ({ children }) => {
             }
         } catch (err) {
             console.error("📍 PWA: Install prompt failed:", err);
+            alert("Please use your browser's 'Add to Home Screen' menu option to install.");
         }
     };
 
@@ -79,10 +81,10 @@ export const InstallProvider = ({ children }) => {
     };
 
     return (
-        <InstallContext.Provider value={{ triggerInstall, isIOS, isInstalled, canInstall: !!deferredPrompt || isIOS, isAndroid: !isIOS && !isInstalled }}>
+        <InstallContext.Provider value={{ triggerInstall, isIOS, isInstalled, canInstall: true, isAndroid: !isIOS && !isInstalled }}>
             {children}
             {showBanner && !isInstalled && (
-                <InstallBanner isIOS={isIOS} onInstall={triggerInstall} onDismiss={dismiss} canInstall={!!deferredPrompt} />
+                <InstallBanner isIOS={isIOS} onInstall={triggerInstall} onDismiss={dismiss} canInstall={true} />
             )}
         </InstallContext.Provider>
     );
