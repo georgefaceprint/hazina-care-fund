@@ -107,7 +107,14 @@ const LoginPage = () => {
                 navigate('/complete-profile');
             } else {
                 const userData = userSnap.data();
-                await setDoc(userRef, { uid: user.uid }, { merge: true });
+                const updates = { uid: user.uid };
+
+                // Ensure legacy users have a referral code
+                if (!userData.referral_code) {
+                    updates.referral_code = generateReferralCode(6);
+                }
+
+                await setDoc(userRef, updates, { merge: true });
 
                 if (!userData.profile_completed) {
                     navigate('/complete-profile');

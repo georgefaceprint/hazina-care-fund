@@ -10,7 +10,7 @@ const Referrals = () => {
     const navigate = useNavigate();
     const [copied, setCopied] = useState(false);
 
-    const referralCode = profile?.referral_code || profile?.id?.substring(0, 6) || 'HAZINA';
+    const referralCode = profile?.referral_code || 'HAZINA';
     const referralCount = profile?.referral_count || 0;
     const hazinaPoints = profile?.hazina_points || 0;
 
