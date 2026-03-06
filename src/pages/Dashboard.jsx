@@ -40,32 +40,28 @@ const Dashboard = () => {
             try {
                 if (!db) { setLoading(false); return; }
 
-                // Fetch Dependents
+                // Fetch Unified Transactions for Activity Timeline
+                const transQ = query(
+                    collection(db, 'transactions'),
+                    where('user_id', '==', profile.id),
+                    orderBy('timestamp', 'desc'),
+                    limit(10)
+                );
+                const transSnap = await getDocs(transQ);
+                const transData = transSnap.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    date: doc.data().timestamp?.toDate()
+                }));
+
+                // Fetch Claims and Dependents for other UI elements
+                const claimsQ = query(collection(db, 'claims'), where('guardian_id', '==', profile.id), orderBy('createdAt', 'desc'), limit(5));
+                const claimsSnap = await getDocs(claimsQ);
                 const depQ = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
                 const depSnap = await getDocs(depQ);
                 setDependents(depSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-                // Fetch Claims
-                const claimsQ = query(collection(db, 'claims'), where('guardian_id', '==', profile.id), orderBy('createdAt', 'desc'), limit(5));
-                const claimsSnap = await getDocs(claimsQ);
-                const claimsData = claimsSnap.docs.map(doc => ({
-                    id: doc.id,
-                    type: 'claim',
-                    ...doc.data(),
-                    date: doc.data().createdAt?.toDate()
-                }));
-
-                // Fetch Topups
-                const topupsQ = query(collection(db, 'topups'), where('guardian_id', '==', profile.id), orderBy('createdAt', 'desc'), limit(5));
-                const topupsSnap = await getDocs(topupsQ);
-                const topupsData = topupsSnap.docs.map(doc => ({
-                    id: doc.id,
-                    type: 'topup',
-                    ...doc.data(),
-                    date: doc.data().createdAt?.toDate()
-                }));
-
-                // Treat recently added dependents as activity
+                // Combine with manual dependent added activity if needed
                 const depActivity = depSnap.docs.map(doc => ({
                     id: doc.id,
                     type: 'dependent',
@@ -74,10 +70,10 @@ const Dashboard = () => {
                     date: doc.data().createdAt?.toDate()
                 }));
 
-                // Combine and Sort
-                const combined = [...claimsData, ...topupsData, ...depActivity]
+                // Combine and Final Sort
+                const combined = [...transData, ...depActivity]
                     .sort((a, b) => (b.date || 0) - (a.date || 0))
-                    .slice(0, 7);
+                    .slice(0, 10);
 
                 setActivities(combined);
 

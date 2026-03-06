@@ -7,8 +7,8 @@ const SplashScreen = ({ onFinish }) => {
     useEffect(() => {
         const timer = setTimeout(() => {
             setIsVisible(false);
-            if (onFinish) setTimeout(onFinish, 500); // Give time for exit animation
-        }, 2500);
+            if (onFinish) setTimeout(onFinish, 1500); // Wait for the 1.5s fade to complete
+        }, 3000); // Show for 3 seconds
 
         return () => clearTimeout(timer);
     }, [onFinish]);
@@ -19,7 +19,7 @@ const SplashScreen = ({ onFinish }) => {
                 <motion.div
                     initial={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
                     className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-8 overflow-hidden"
                     style={{ height: '100dvh' }}
                 >

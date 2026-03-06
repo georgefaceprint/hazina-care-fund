@@ -280,7 +280,7 @@ exports.mpesaCallback = onRequest(async (req, res) => {
             batch.set(transRef, {
                 user_id: requestInfo.userId,
                 amount,
-                type: "top-up",
+                type: "topup",
                 method: "mpesa",
                 receipt,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()

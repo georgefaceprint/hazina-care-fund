@@ -71,10 +71,10 @@ const App = () => {
       sessionStorage.setItem('hazina_referrer', ref);
     }
 
-    // Hide splash screen after 2.5 seconds
+    // Hide splash screen after 3 seconds
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 2500); // 2.5 seconds
+    }, 3000); // 3 seconds
 
     return () => clearTimeout(timer);
   }, []);

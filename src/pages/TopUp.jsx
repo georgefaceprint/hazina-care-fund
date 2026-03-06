@@ -54,8 +54,18 @@ const TopUp = () => {
                 console.error("STK Push error: ", errorData);
 
                 if (isTestMode) {
+                    // Create transaction record immediately in test mode
+                    await addDoc(collection(db, 'transactions'), {
+                        user_id: profile.id,
+                        amount: Number(amount),
+                        type: "topup",
+                        method: "mpesa_test",
+                        status: "success",
+                        timestamp: serverTimestamp()
+                    });
+
                     setStatus('success');
-                    console.log("📍 Test Mode bypass: Treating failed STK trigger as success for UI testing.");
+                    console.log("📍 Test Mode bypass: Created transaction record directly.");
                     return;
                 }
 
