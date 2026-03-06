@@ -18,24 +18,27 @@ const RecentActivity = ({ activities }) => {
                 <div key={act.id} className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
                     <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-xl ${act.type === 'topup' ? 'bg-emerald-50 text-emerald-600' :
-                            act.type === 'claim' ? 'bg-red-50 text-red-600' :
-                                act.type === 'dependent' ? 'bg-blue-50 text-blue-600' :
-                                    act.type === 'upgrade' ? 'bg-amber-50 text-amber-600' :
-                                        'bg-slate-50 text-slate-600'
+                                act.type === 'claim' ? 'bg-red-50 text-red-600' :
+                                    act.type === 'daily-burn' ? 'bg-amber-50 text-amber-600' :
+                                        act.type === 'dependent' ? 'bg-blue-50 text-blue-600' :
+                                            act.type === 'upgrade' ? 'bg-amber-50 text-amber-600' :
+                                                'bg-slate-50 text-slate-600'
                             }`}>
                             {act.type === 'topup' ? <ArrowUpRight className="w-5 h-5" /> :
                                 act.type === 'claim' ? <ArrowDownLeft className="w-5 h-5" /> :
-                                    act.type === 'dependent' ? <Users className="w-5 h-5" /> :
-                                        act.type === 'upgrade' ? <Zap className="w-5 h-5" /> :
-                                            <Clock className="w-5 h-5" />}
+                                    act.type === 'daily-burn' ? <Zap className="w-5 h-5" /> :
+                                        act.type === 'dependent' ? <Users className="w-5 h-5" /> :
+                                            act.type === 'upgrade' ? <Zap className="w-5 h-5" /> :
+                                                <Clock className="w-5 h-5" />}
                         </div>
                         <div>
                             <p className="font-bold text-slate-900 text-sm">
                                 {act.label || (act.type === 'topup' ? t('wallet_topup') :
                                     act.type === 'claim' ? t('crisis_claim') :
-                                        act.type === 'dependent' ? t('new_member') :
-                                            act.type === 'upgrade' ? t('tier_upgrade_activity') :
-                                                t('recent_activity'))}
+                                        act.type === 'daily-burn' ? t('daily_burn') :
+                                            act.type === 'dependent' ? t('new_member') :
+                                                act.type === 'upgrade' ? t('tier_upgrade_activity') :
+                                                    t('recent_activity'))}
                             </p>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
                                 {act.date ? format(act.date, 'MMM dd, HH:mm') : t('in_waiting')}
