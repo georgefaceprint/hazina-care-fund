@@ -175,6 +175,63 @@ exports.stkPush = onRequest({
     }
 });
 
+// 5. Manual Deduction (For Testing/Demo)
+exports.manualDeduction = onCall(async (request) => {
+    // In production, you would check auth here: if (!request.auth) throw new HttpsError('unauthenticated', '...');
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'User must be logged in.');
+
+    // Find user by UID (Admin) or by phone (Regular)
+    const usersSnap = await db.collection("users").where("uid", "==", uid).limit(1).get();
+    if (usersSnap.empty) throw new HttpsError('not-found', 'User record not found.');
+
+    const userDoc = usersSnap.docs[0];
+    const profile = userDoc.data();
+    const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
+
+    let totalDeduction = TIER_COSTS[profile.active_tier] || 0;
+
+    // Sum up dependents costs
+    const dependentsSnap = await db.collection("dependents")
+        .where("guardian_id", "==", userDoc.id)
+        .get();
+
+    dependentsSnap.forEach(depDoc => {
+        const dep = depDoc.data();
+        totalDeduction += TIER_COSTS[dep.active_tier] || 0;
+    });
+
+    const batch = db.batch();
+
+    // Deduct from Balance
+    const newBalance = (profile.balance || 0) - totalDeduction;
+    batch.update(userDoc.ref, {
+        balance: newBalance,
+        last_deduction: admin.firestore.FieldValue.serverTimestamp(),
+        last_deduction_amount: totalDeduction
+    });
+
+    // Log Transaction
+    const transRef = db.collection("transactions").doc();
+    batch.set(transRef, {
+        user_id: userDoc.id,
+        amount: -totalDeduction,
+        type: "daily-burn",
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Update global analytics
+    const statsRef = db.collection("totals").doc("liquidity");
+    batch.set(statsRef, {
+        total_fund: admin.firestore.FieldValue.increment(-totalDeduction),
+        total_burn: admin.firestore.FieldValue.increment(totalDeduction),
+        last_updated: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await batch.commit();
+    return { success: true, newBalance, deduction: totalDeduction };
+});
+
 // 4. M-Pesa Callback Handler
 exports.mpesaCallback = onRequest(async (req, res) => {
     try {

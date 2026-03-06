@@ -40,46 +40,48 @@ const AppLayout = () => {
                 <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-secondary rounded-full -ml-32 -mb-32 blur-3xl"></div>
             </div>
 
-            <main className="relative z-0 max-w-md mx-auto min-h-screen pb-24 border-x border-slate-100/50 bg-white/40 shadow-2xl backdrop-blur-3xl">
+            <main className="relative z-0 w-full max-w-lg mx-auto min-h-screen pb-28 border-x border-slate-100/50 bg-white/40 shadow-2xl backdrop-blur-3xl">
                 <Outlet />
             </main>
 
             <SifunaChatbot />
 
             {/* Bottom Navigation */}
-            <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white p-4 border-t border-slate-100 z-50 rounded-t-[2.5rem] shadow-[0_-10px_30px_rgba(16,185,129,0.08)]">
-                <div className="flex justify-around items-center h-12">
-                    <NavLink to="/dashboard" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <Home className="w-6 h-6" />
-                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('home')}</span>
-                    </NavLink>
-                    <NavLink to="/family" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <Users className="w-6 h-6" />
-                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('family')}</span>
-                    </NavLink>
-                    <div
-                        onClick={() => navigate('/claim')}
-                        className="relative -mt-16 bg-white p-3 rounded-full shadow-2xl border-2 border-slate-50 group active:scale-90 transition-all cursor-pointer"
-                    >
-                        <div className="bg-gradient-to-br from-brand-primary to-emerald-600 p-4 rounded-full text-white shadow-[0_10px_20px_rgba(16,185,129,0.3)]">
-                            <Zap className="w-8 h-8" />
+            <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
+                <div className="w-full max-w-lg bg-white/95 backdrop-blur-lg px-6 pt-3 pb-[env(safe-area-inset-bottom,1.5rem)] border-t border-slate-100 rounded-t-[2.5rem] shadow-[0_-15px_40px_rgba(0,0,0,0.08)]">
+                    <div className="flex justify-around items-center h-14 relative">
+                        <NavLink to="/dashboard" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <Home className="w-6 h-6" />
+                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('home')}</span>
+                        </NavLink>
+                        <NavLink to="/family" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <Users className="w-6 h-6" />
+                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('family')}</span>
+                        </NavLink>
+                        <div
+                            onClick={() => navigate('/claim')}
+                            className="relative -mt-16 bg-white p-3 rounded-full shadow-2xl border-2 border-slate-50 group active:scale-90 transition-all cursor-pointer"
+                        >
+                            <div className="bg-gradient-to-br from-brand-primary to-emerald-600 p-4 rounded-full text-white shadow-[0_10px_20px_rgba(16,185,129,0.3)]">
+                                <Zap className="w-8 h-8" />
+                            </div>
                         </div>
+                        {isAdmin ? (
+                            <NavLink to="/admin" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                                <ShieldCheck className="w-6 h-6" />
+                                <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('admin')}</span>
+                            </NavLink>
+                        ) : (
+                            <NavLink to="/topup" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                                <CreditCard className="w-6 h-6" />
+                                <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('wallet')}</span>
+                            </NavLink>
+                        )}
+                        <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <User className="w-6 h-6" />
+                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('profile')}</span>
+                        </NavLink>
                     </div>
-                    {isAdmin ? (
-                        <NavLink to="/admin" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <ShieldCheck className="w-6 h-6" />
-                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('admin')}</span>
-                        </NavLink>
-                    ) : (
-                        <NavLink to="/topup" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <CreditCard className="w-6 h-6" />
-                            <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('wallet')}</span>
-                        </NavLink>
-                    )}
-                    <NavLink to="/settings" className={({ isActive }) => `flex flex-col items-center gap-1 group transition-all ${isActive ? 'text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <User className="w-6 h-6" />
-                        <span className="text-[9px] font-black uppercase tracking-widest transition-all">{t('profile')}</span>
-                    </NavLink>
                 </div>
             </nav>
         </div>

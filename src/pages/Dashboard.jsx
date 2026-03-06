@@ -9,11 +9,13 @@ import { db } from '../services/firebase';
 import TierUpgradeModal from '../components/TierUpgradeModal';
 import RecentActivity from '../components/RecentActivity';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 
 const Dashboard = () => {
     const { profile, user, isDemoMode } = useAuth();
     const { t, language, toggleLanguage } = useLanguage();
     const navigate = useNavigate();
+    const toast = useToast();
     const [dependents, setDependents] = useState([]);
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -130,15 +132,36 @@ const Dashboard = () => {
     const multipliers = { daily: 1, weekly: 7, monthly: 30, yearly: 365 };
     const calculatedBurn = totalDailyBurn * multipliers[burnPeriod];
 
+    const runTestDeduction = async () => {
+        if (isDemoMode) {
+            toast.info("Test deduction simulated in Demo Mode.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const { httpsCallable } = await import('firebase/functions');
+            const { functions } = await import('../services/firebase');
+            const manualDeduct = httpsCallable(functions, 'manualDeduction');
+            await manualDeduct();
+            toast.success("Daily deduction processed successfully!");
+        } catch (error) {
+            console.error("Test deduction failed:", error);
+            toast.error("Failed to run deduction: " + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-slate-50 pb-24">
+        <div className="min-h-[100dvh] bg-slate-50 pb-24">
             {/* Header Profile Section */}
-            <div className="bg-brand-secondary text-white pt-12 pb-24 px-6 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
+            <div className="bg-brand-secondary text-white pt-12 pb-24 rounded-b-[3rem] shadow-2xl relative overflow-hidden mobile-px">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-                <div className="flex justify-between items-center mb-10 relative">
+                <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
-                            <Shield className="w-8 h-8 text-brand-primary" />
+                        <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                            <Shield className="w-7 h-7 text-brand-primary" />
                         </div>
                         <div>
                             <h2 className="text-xl font-bold font-heading">{t('dashboard')}</h2>
@@ -147,21 +170,20 @@ const Dashboard = () => {
                     </div>
                     <button
                         onClick={toggleLanguage}
-                        className="flex items-center gap-2 p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 hover:bg-white/20 transition-all font-bold text-xs uppercase"
+                        className="flex items-center gap-2 p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 hover:bg-white/20 transition-all font-bold text-xs uppercase min-h-[56px]"
                     >
                         <Globe className="w-5 h-5 text-white" />
                         <span>{language === 'en' ? 'SW' : 'EN'}</span>
                     </button>
                 </div>
 
-                {/* Digital ID Card */}
                 <div className="relative group perspective-1000 -mt-2">
-                    <div className="bg-gradient-to-br from-brand-primary via-brand-secondary to-[#1a0406] p-8 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative overflow-hidden transform-gpu hover:rotate-y-3 transition-all duration-700">
+                    <div className="bg-gradient-to-br from-brand-primary via-brand-secondary to-[#1a0406] p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative overflow-hidden transform-gpu hover:rotate-y-3 transition-all duration-700">
                         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                         <div className="flex justify-between items-start mb-10">
-                            <div className="flex items-center gap-5">
+                            <div className="flex items-center gap-4 sm:gap-5">
                                 {profile.id_photo_url ? (
-                                    <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl flex-shrink-0 relative">
+                                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl flex-shrink-0 relative">
                                         <img
                                             src={profile.id_photo_url}
                                             alt="ID Photo"
@@ -222,7 +244,7 @@ const Dashboard = () => {
             </div>
 
             {/* Stats and Info Area */}
-            <div className="px-6 -mt-10 space-y-6 relative">
+            <div className="mobile-px -mt-10 space-y-6 relative">
                 {profile?.status === 'pending_payment' && (
                     <div className="p-4 bg-amber-50 rounded-[2rem] border border-amber-200 shadow-lg animate-in fade-in slide-in-from-top-4">
                         <div className="flex items-center gap-4">
@@ -232,7 +254,7 @@ const Dashboard = () => {
                             <div>
                                 <h4 className="font-bold text-amber-900 text-sm">{t('action_required')}</h4>
                                 <p className="text-xs text-amber-800 opacity-80 mt-0.5">{t('activate_shield')}</p>
-                                <button onClick={() => navigate('/topup')} className="mt-2 text-xs font-black uppercase text-amber-950 flex items-center gap-1">
+                                <button onClick={() => navigate('/topup')} className="mt-2 text-xs font-black uppercase text-amber-950 flex items-center gap-1 min-h-[56px]">
                                     {t('fund_now')} <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
@@ -241,7 +263,7 @@ const Dashboard = () => {
                 )}
 
                 {/* Daily Burn Card */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="card-grid">
                     <div className="card bg-white border-none shadow-md overflow-hidden relative group">
                         <div className="absolute top-0 right-0 w-16 h-16 bg-brand-primary/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
                         <div className="flex items-center justify-between mb-3 relative z-10">
@@ -252,7 +274,7 @@ const Dashboard = () => {
                                 <select
                                     value={burnPeriod}
                                     onChange={(e) => setBurnPeriod(e.target.value)}
-                                    className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter bg-transparent border-none p-0 pr-4 focus:ring-0 cursor-pointer outline-none"
+                                    className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter bg-transparent border-none p-0 pr-4 focus:ring-0 cursor-pointer outline-none min-h-[56px]"
                                 >
                                     <option value="daily">{t('daily_burn')}</option>
                                     <option value="weekly">{t('weekly_burn')}</option>
@@ -298,12 +320,26 @@ const Dashboard = () => {
 
                     <div className="w-full h-5 bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner border border-slate-50">
                         <div
-                            className={`h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm ${isMatured ? 'bg-gradient-to-r from-brand-primary to-brand-accent' : 'bg-gradient-to-r from-yellow-400 to-orange-400'
-                                }`}
+                            className="h-full bg-gradient-to-r from-brand-primary to-emerald-500 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                             style={{ width: `${progressPercent}%` }}
                         >
                             <div className="absolute top-0 right-0 h-full w-full bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:24px_24px] animate-shimmer"></div>
                         </div>
+                    </div>
+
+                    {/* Test Deduction Trigger (Only for testers/admin in this phase) */}
+                    <div className="mt-8 pt-6 border-t border-slate-50">
+                        <button
+                            onClick={runTestDeduction}
+                            disabled={loading}
+                            className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+                        >
+                            <TrendingUp className="w-4 h-4 text-emerald-400" />
+                            {loading ? "Processing..." : "Run Daily Burn Test"}
+                        </button>
+                        <p className="text-[9px] text-center text-slate-400 mt-3 font-bold uppercase tracking-tighter">
+                            🛠️ Tester Tool: Trigger one-day deduction of KSh {totalDailyBurn}
+                        </p>
                     </div>
 
                     {!isMatured && (

@@ -104,7 +104,7 @@ const FamilyMembers = () => {
     if (loading) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 pt-8 px-6 pb-32">
+        <div className="min-h-[100dvh] bg-slate-50 pt-8 mobile-px pb-32">
             <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
                     <button

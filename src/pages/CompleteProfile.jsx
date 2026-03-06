@@ -69,8 +69,8 @@ const CompleteProfile = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-            <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl border border-slate-100 p-8 space-y-8 relative overflow-hidden">
+        <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center mobile-px">
+            <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl border border-slate-100 responsive-p-box space-y-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
 
                 <div className="text-center relative">

@@ -14,7 +14,7 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 min-h-screen font-sans;
+    @apply bg-slate-50 text-slate-900 min-h-[100dvh] font-sans overflow-x-hidden;
   }
 }
 
@@ -24,17 +24,44 @@
   }
 
   .btn-primary {
-    @apply bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2;
+    @apply bg-brand-primary hover:bg-brand-primary/90 text-white font-semibold min-h-[56px] px-6 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2;
   }
 
   .card {
-    @apply bg-white p-6 rounded-2xl shadow-sm border border-slate-100;
+    @apply bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-100;
+  }
+
+  .responsive-p-box {
+    @apply p-5 sm:p-8;
   }
 }
 
 @layer utilities {
   .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+
+  /* Responsive Grid for small screens */
+  .card-grid {
+    @apply grid gap-4 grid-cols-2;
+  }
+
+  @media (max-width: 400px) {
+    .card-grid {
+      @apply grid-cols-1;
+    }
+
+    .mobile-px {
+      @apply px-4;
+    }
+
+    .mobile-py {
+      @apply py-4;
+    }
   }
 
   @keyframes slide-up {

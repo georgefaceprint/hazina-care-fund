@@ -144,7 +144,7 @@ const translations = {
         maturation_period: "Maturation Period",
         days: "Days",
         maturation_desc: "waiting period for full protection",
-        ask_sifuna: "Ask Sifuna AI",
+        ask_sifuna: "Ask Sifuna",
         sifuna_hub: "Sifuna Hub"
     },
     sw: {
@@ -292,7 +292,7 @@ const translations = {
         maturation_period: "Kipindi cha Kukomaa",
         days: "Siku",
         maturation_desc: "kipindi cha kusubiri ulinzi kamili",
-        ask_sifuna: "Uliza Sifuna AI",
+        ask_sifuna: "Uliza Sifuna",
         sifuna_hub: "Ripoti ya Sifuna"
     }
 };

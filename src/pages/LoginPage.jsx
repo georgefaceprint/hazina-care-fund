@@ -125,8 +125,8 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
-            <div className="max-w-md w-full glass p-8 rounded-3xl space-y-8">
+        <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center mobile-px">
+            <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl border border-slate-100 responsive-p-box space-y-8 relative overflow-hidden">
                 <div className="text-center">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-primary/10 rounded-2xl mb-4">
                         <Shield className="w-8 h-8 text-brand-primary" />
@@ -182,7 +182,7 @@ const LoginPage = () => {
                                 const formatPhone = formatKenyanPhone(phoneNumber);
                                 enableDemoMode(phoneNumber ? formatPhone : '+254712345678');
                             }}
-                            className="w-full py-4 text-sm font-bold text-slate-500 hover:text-brand-primary bg-slate-100/80 rounded-2xl transition-colors shadow-inner"
+                            className="w-full py-4 text-sm font-bold text-slate-500 hover:text-brand-primary bg-slate-100/80 rounded-2xl transition-colors shadow-inner min-h-[56px]"
                         >
                             {t('view_app_demo')}
                         </button>
