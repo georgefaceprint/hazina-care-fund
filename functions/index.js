@@ -139,7 +139,9 @@ const initiateSasapayC2B = async (phoneNumber, amount, userId, networkCode = "63
         : phoneNumber.replace(/\D/g, '');
 
     const token = await getSasapayToken();
-    const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app"; // Update after deploy
+    const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
+
+
 
     const payload = {
         MerchantCode: SASAPAY_MERCHANT_CODE,
@@ -369,9 +371,11 @@ exports.sasapayB2C = onRequest({
         }
 
         const token = await getSasapayToken();
-        const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app"; // Re-use same for simplicity or dedicated
+        const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
+
 
         const payload = {
+
             MerchantCode: SASAPAY_MERCHANT_CODE,
             MerchantTransactionReference: claimId.substring(0, 12),
             Amount: Number(amount),
@@ -581,10 +585,14 @@ exports.chatWithSifuna = onCall({ cors: true }, async (request) => {
 });
 
 // 7. Custom OTP SMS via Africa's Talking
+const AT_API_KEY = process.env.AT_API_KEY || process.env.VITE_AT_API_KEY || 'PLACEHOLDER';
+const AT_USERNAME = process.env.AT_USERNAME || process.env.VITE_AT_USERNAME || 'sandbox';
+
 const africastalking = require('africastalking')({
-    apiKey: process.env.AT_API_KEY || process.env.VITE_AT_API_KEY,
-    username: process.env.AT_USERNAME || process.env.VITE_AT_USERNAME || 'sandbox'
+    apiKey: AT_API_KEY,
+    username: AT_USERNAME
 });
+
 
 exports.sendOtp = onCall({ cors: true }, async (request) => {
     try {
