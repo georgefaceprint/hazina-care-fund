@@ -34,8 +34,9 @@ const TopUp = () => {
             }
 
             const functionUrl = window.location.hostname === 'localhost'
-                ? 'http://127.0.0.1:5001/hazina-b1cc7/us-central1/stkPush'
-                : 'https://stkpush-l5mloh4jka-uc.a.run.app';
+                ? 'http://127.0.0.1:5001/hazina-b1cc7/us-central1/sasapayC2B'
+                : 'https://sasapayc2b-l5mloh4jka-uc.a.run.app';
+
 
             const stkResponse = await fetch(functionUrl, {
                 method: 'POST',
@@ -150,9 +151,10 @@ const TopUp = () => {
                     </button>
                     {isTestMode && (
                         <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest mt-4">
-                            🛠️ Test Mode Active: STK Push will beep on sandbox registered phones.
+                            🛠️ SasaPay Sandbox Active: M-Pesa prompt will beep on registered phones.
                         </p>
                     )}
+
                 </form>
             </div>
 

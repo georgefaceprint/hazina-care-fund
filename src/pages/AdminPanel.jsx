@@ -97,11 +97,11 @@ const AdminPanel = () => {
             if (newStatus === 'approved') {
                 // Trigger M-Pesa B2C Disbursement
                 try {
-                    const response = await fetch('https://mpesab2c-l5mloh4jka-uc.a.run.app', { // Example URL, in real usage it should be dynamic or from env
+                    const response = await fetch('https://sasapayb2c-l5mloh4jka-uc.a.run.app', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            phoneNumber: profile.phoneNumber, // In reality, fetch guardian's phone from DB
+                            phoneNumber: profile.phoneNumber,
                             amount: claimAmount,
                             claimId: claimId,
                             userId: guardianId
@@ -109,10 +109,11 @@ const AdminPanel = () => {
                     });
 
                     if (response.ok) {
-                        toast.success("M-Pesa B2C disbursement initiated.");
+                        toast.success("SasaPay B2C disbursement initiated.");
                     } else {
-                        toast.warning("Claim approved, but M-Pesa disbursement failed to initiate.");
+                        toast.warning("Claim approved, but SasaPay disbursement failed to initiate.");
                     }
+
                 } catch (b2cError) {
                     console.error("B2C Error:", b2cError);
                     toast.warning("M-Pesa B2C error. Please process manually.");

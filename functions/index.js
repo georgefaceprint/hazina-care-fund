@@ -3,7 +3,9 @@ const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https")
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const axios = require("axios");
-const Mpesa = require("mpesa-node");
+
+
+
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -108,26 +110,68 @@ exports.checkMaturation = onSchedule({
     console.log("Maturation statuses updated.");
 });
 
-// Using hardcoded Sandbox credentials for testing to avoid CLI configuration issues
-const DARAJA_CONSUMER_KEY = 'dynrvGIy2cFwJStWnB7m9gNJAON7V7AITncKbczTvJIZDd69';
-const DARAJA_CONSUMER_SECRET = 'EI9ygGKeyl62BxioiKQoZwlp9vvdGR0siA9E1ypDZ7RS9McvPcMS7rHLPdQC6otb';
-const DARAJA_SHORTCODE = '174379';
-const DARAJA_PASSKEY = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72a1ed25d2c91';
-const CALLBACK_URL = 'https://mpesacallback-yvpx72pzwq-uc.a.run.app'; // V2 functions use run.app, we will dynamically determine this or assume the region routing. Actually, standard format for us-central1 v2 functions is https://<function-name>-<project-hash>-uc.a.run.app. But M-Pesa stk push doesn't actually require the callback URL to *work* for the prompt to appear on the phone. The phone will beep regardless. To ensure the callback is correct, we will leave it as a placeholder that will still work for the STK prompt. Let's just use a dummy URL for the callback since the user is testing the STK push prompt appearing. Wait, let's use the old v1 style URL which sometimes works or a generic one because Daraja will just fail the callback but the payment prompt will succeed.
-const DUMMY_CALLBACK = 'https://us-central1-hazina-b1cc7.cloudfunctions.net/mpesaCallback';
+// --- 3. SasaPay Configuration (Kenya) ---
+const SASAPAY_CLIENT_ID = process.env.SASAPAY_CLIENT_ID || 'B1tnESQjLEyaGAG9KXf7Og9vf7DLDpfL1Fkc7sgZ';
+const SASAPAY_CLIENT_SECRET = process.env.SASAPAY_CLIENT_SECRET || 'aqRafb6tWAjw0MWVCllHIsk7AygSKylMwPR81VaoeevldIScPFx8qPX2GySaVvcBEwxbkgWGOZmsmcMlgfP41T8PXha4sEPCx7PUI6QX2as1lXr1CWK6RadskX9RpRzN';
 
-const mpesaApi = new Mpesa({
-    consumerKey: DARAJA_CONSUMER_KEY,
-    consumerSecret: DARAJA_CONSUMER_SECRET,
-    environment: 'sandbox',
-    shortCode: DARAJA_SHORTCODE,
-    lipaNaMpesaShortCode: DARAJA_SHORTCODE,
-    lipaNaMpesaShortPass: DARAJA_PASSKEY,
-    initiatorName: 'testapi',
-    securityCredential: 'SecurityCredentialPlaceholder'
-});
+const SASAPAY_MERCHANT_CODE = process.env.SASAPAY_MERCHANT_CODE || '600980'; // Default sandbox merchant code
+const SASAPAY_BASE_URL = 'https://sandbox.sasapay.app/api/v1'; // Sandbox URL
 
-exports.stkPush = onRequest({
+// Helper to get SasaPay Access Token
+const getSasapayToken = async () => {
+    try {
+        const auth = Buffer.from(`${SASAPAY_CLIENT_ID}:${SASAPAY_CLIENT_SECRET}`).toString('base64');
+        const response = await axios.get(`${SASAPAY_BASE_URL}/auth/token/?grant_type=client_credentials`, {
+            headers: { Authorization: `Basic ${auth}` }
+        });
+
+        return response.data.access_token;
+    } catch (error) {
+        console.error("SasaPay Auth Error:", error.response?.data || error.message);
+        throw new Error("Failed to authenticate with SasaPay");
+    }
+};
+
+// Internal Helper to initiate SasaPay C2B
+const initiateSasapayC2B = async (phoneNumber, amount, userId, networkCode = "63902") => {
+    const formattedPhone = phoneNumber.replace(/\D/g, '').startsWith('0')
+        ? `254${phoneNumber.replace(/\D/g, '').substring(1)}`
+        : phoneNumber.replace(/\D/g, '');
+
+    const token = await getSasapayToken();
+    const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app"; // Update after deploy
+
+    const payload = {
+        MerchantCode: SASAPAY_MERCHANT_CODE,
+        NetworkCode: networkCode,
+        "Transaction Fee": 0,
+        Currency: "KES",
+        Amount: amount.toString(),
+        CallBackURL: callbackUrl,
+        PhoneNumber: formattedPhone,
+        TransactionDesc: "Hazina Wallet Top Up",
+        AccountReference: `Hazina-${userId.substring(0, 5)}`
+    };
+
+    const response = await axios.post(`${SASAPAY_BASE_URL}/payments/request-payment/`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (response.data.status) {
+        await admin.firestore().collection("stk_requests").doc(response.data.CheckoutRequestID).set({
+            userId,
+            amount: Number(amount),
+            status: "pending",
+            gateway: "SasaPay",
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    return response.data;
+};
+
+// 4. SasaPay C2B Request Payment
+exports.sasapayC2B = onRequest({
     cors: true,
 }, async (req, res) => {
     try {
@@ -136,44 +180,28 @@ exports.stkPush = onRequest({
             return;
         }
 
-        const { phoneNumber, amount, userId } = req.body;
+        const { phoneNumber, amount, userId, networkCode } = req.body;
 
         if (!phoneNumber || !amount || !userId) {
             res.status(400).send({ error: "Missing required fields: phoneNumber, amount, or userId" });
             return;
         }
 
-        // Clean and format phone for Safaricom (must be 2547XXXXXXXX)
-        const formattedPhone = phoneNumber.replace(/\D/g, '').startsWith('0')
-            ? `254${phoneNumber.replace(/\D/g, '').substring(1)}`
-            : phoneNumber.replace(/\D/g, '');
+        const result = await initiateSasapayC2B(phoneNumber, amount, userId, networkCode);
 
-        const callbackUrl = "https://us-central1-hazina-b1cc7.cloudfunctions.net/mpesaCallback";
-
-        const response = await mpesaApi.lipaNaMpesaOnline(
-            formattedPhone,
-            amount,
-            callbackUrl,
-            `Hazina-${userId.substring(0, 5)}`,
-            "Hazina Care Top Up"
-        );
-        const reqData = response.data || response;
-
-        // Store checkout request to link the callback
-        await db.collection("stk_requests").doc(reqData.CheckoutRequestID).set({
-            userId,
-            amount: Number(amount),
-            status: "pending",
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        res.status(200).send({ success: true, data: reqData });
+        if (result.status) {
+            res.status(200).send({ success: true, data: result });
+        } else {
+            res.status(400).send({ error: result.detail || "SasaPay request failed" });
+        }
     } catch (error) {
-        console.error("STK Push error: ", error.response?.data || error.message);
-        const errorMsg = error.response?.data?.errorMessage || error.message || "Failed to initiate STK Push";
-        res.status(500).send({ error: `Safaricom API Error: ${errorMsg}` });
+        console.error("SasaPay C2B Error: ", error.response?.data || error.message);
+        const errorMsg = error.response?.data?.detail || error.message || "Failed to initiate SasaPay payment";
+        res.status(500).send({ error: `SasaPay API Error: ${errorMsg}` });
     }
 });
+
+
 
 // 5. Manual Deduction (For Testing/Demo)
 exports.manualDeduction = onCall(async (request) => {
@@ -232,33 +260,36 @@ exports.manualDeduction = onCall(async (request) => {
     return { success: true, newBalance, deduction: totalDeduction };
 });
 
-// 4. M-Pesa Callback Handler
-exports.mpesaCallback = onRequest(async (req, res) => {
+// 5. SasaPay Callback Handler (Unified)
+exports.sasapayCallback = onRequest(async (req, res) => {
     try {
-        const callbackData = req.body.Body.stkCallback;
+        console.log("SasaPay Callback Received:", JSON.stringify(req.body));
+
+        const callbackData = req.body;
         const checkoutRequestId = callbackData.CheckoutRequestID;
         const resultCode = callbackData.ResultCode;
+
+        if (!checkoutRequestId) {
+            console.log("No CheckoutRequestID in callback body");
+            res.status(200).send("Acknowledged");
+            return;
+        }
 
         const requestDocRef = db.collection("stk_requests").doc(checkoutRequestId);
         const requestDoc = await requestDocRef.get();
 
         if (!requestDoc.exists) {
-            console.log(`CheckoutRequestID not found: ${checkoutRequestId}`);
+            console.log(`CheckoutRequestID not found in DB: ${checkoutRequestId}`);
             res.status(200).send("Acknowledged");
             return;
         }
 
         const requestInfo = requestDoc.data();
 
-        if (resultCode === 0) {
+        if (resultCode === "0" || resultCode === 0) {
             // Payment successful
-            const meta = callbackData.CallbackMetadata.Item;
-            const amountItem = meta.find(item => item.Name === "Amount");
-            const mpesaReceiptItem = meta.find(item => item.Name === "MpesaReceiptNumber");
-            const sourcePhoneItem = meta.find(item => item.Name === "PhoneNumber");
-
-            const amount = amountItem ? amountItem.Value : requestInfo.amount;
-            const receipt = mpesaReceiptItem ? mpesaReceiptItem.Value : "UNKNOWN";
+            const amount = Number(callbackData.TransAmount || requestInfo.amount);
+            const receipt = callbackData.TransactionCode || callbackData.ThirdPartyTransID || "UNKNOWN";
 
             const batch = db.batch();
 
@@ -266,7 +297,8 @@ exports.mpesaCallback = onRequest(async (req, res) => {
             batch.update(requestDocRef, {
                 status: "completed",
                 receipt,
-                completedAt: admin.firestore.FieldValue.serverTimestamp()
+                completedAt: admin.firestore.FieldValue.serverTimestamp(),
+                rawCallback: callbackData
             });
 
             // 2. Add to User Balance
@@ -281,7 +313,8 @@ exports.mpesaCallback = onRequest(async (req, res) => {
                 user_id: requestInfo.userId,
                 amount,
                 type: "topup",
-                method: "mpesa",
+                method: "sasapay",
+                provider: callbackData.SourceChannel || "UNKNOWN",
                 receipt,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
@@ -295,28 +328,31 @@ exports.mpesaCallback = onRequest(async (req, res) => {
                 last_updated: admin.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
 
-            console.log(`Payment successful for user: ${requestInfo.userId}, Amount: ${amount}`);
+            console.log(`Payment successful via SasaPay for user: ${requestInfo.userId}, Amount: ${amount}`);
         } else {
             // Payment failed or cancelled
             await requestDocRef.update({
                 status: "failed",
-                errorMsg: callbackData.ResultDesc
+                errorMsg: callbackData.ResultDesc,
+                rawCallback: callbackData
             });
             console.log(`Payment failed: ${callbackData.ResultDesc}`);
         }
 
         res.status(200).send("Success");
     } catch (error) {
-        console.error("Callback processing error: ", error);
+        console.error("SasaPay Callback processing error: ", error);
         res.status(200).send("Acknowledged with error");
     }
 });
+
 
 /**
  * 4.5 M-Pesa B2C Disbursement (Disburse funds to member)
  * Triggered by Admin approval in the frontend
  */
-exports.mpesaB2C = onRequest({
+// 6. SasaPay B2C Disbursement
+exports.sasapayB2C = onRequest({
     cors: true,
 }, async (req, res) => {
     try {
@@ -332,38 +368,51 @@ exports.mpesaB2C = onRequest({
             return;
         }
 
-        const response = await mpesaApi.b2c(
-            DARAJA_SHORTCODE,
-            phoneNumber.startsWith('+') ? phoneNumber.substring(1) : phoneNumber,
-            amount,
-            DUMMY_CALLBACK,
-            DUMMY_CALLBACK,
-            "BusinessPayment",
-            "testapi",
-            `Hazina Claim Approval: ${claimId.substring(0, 8)}`,
-            "Crisis Fund Disbursement"
-        );
-        const resData = response.data || response;
+        const token = await getSasapayToken();
+        const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app"; // Re-use same for simplicity or dedicated
 
-        // Update claim with B2C conversation ID
-        await db.collection("claims").doc(claimId).update({
-            b2c_conversation_id: resData.ConversationID,
-            status: "disbursing"
+        const payload = {
+            MerchantCode: SASAPAY_MERCHANT_CODE,
+            MerchantTransactionReference: claimId.substring(0, 12),
+            Amount: Number(amount),
+            Currency: "KES",
+            ReceiverNumber: phoneNumber.replace(/\D/g, ''),
+            Channel: "63902", // M-Pesa in Kenya
+            Reason: `Hazina Claim Approval: ${claimId.substring(0, 8)}`,
+            CallBackURL: callbackUrl
+        };
+
+        const response = await axios.post(`${SASAPAY_BASE_URL}/payments/b2c/`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
         });
 
-        // Update global analytics (decrement liquefaction)
-        await db.collection("totals").doc("liquidity").set({
-            total_fund: admin.firestore.FieldValue.increment(-Number(amount)),
-            total_claims_paid: admin.firestore.FieldValue.increment(Number(amount)),
-            last_updated: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        const resData = response.data;
 
-        res.status(200).send({ success: true, data: resData });
+        if (resData.status) {
+            // Update claim with SasaPay conversation ID or equivalent
+            await db.collection("claims").doc(claimId).update({
+                gateway_transaction_id: resData.TransactionReference || "PENDING",
+                status: "disbursing"
+            });
+
+            // Update global analytics (decrement liquefaction)
+            await db.collection("totals").doc("liquidity").set({
+                total_fund: admin.firestore.FieldValue.increment(-Number(amount)),
+                total_claims_paid: admin.firestore.FieldValue.increment(Number(amount)),
+                last_updated: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            res.status(200).send({ success: true, data: resData });
+        } else {
+            res.status(400).send({ error: resData.detail || "SasaPay B2C initiation failed" });
+        }
     } catch (error) {
-        console.error("B2C Disbursement error: ", error.response?.data || error.message);
-        res.status(500).send({ error: "Failed to initiate B2C disbursement" });
+        console.error("SasaPay B2C Disbursement error: ", error.response?.data || error.message);
+        const errorMsg = error.response?.data?.detail || error.message || "Failed to initiate B2C disbursement";
+        res.status(500).send({ error: `SasaPay B2C Error: ${errorMsg}` });
     }
 });
+
 
 // 5. Africa's Talking USSD Webhook Handler
 exports.ussd = onRequest(async (req, res) => {
@@ -421,15 +470,17 @@ exports.ussd = onRequest(async (req, res) => {
                 response = `CON Select Claim Type:\n1. Medical Crisis\n2. Bereavement\n3. School Fees`;
             }
         } else if (text === "4" && userExists) {
-            // Top up via USSD using STK Push
+            // Top up via USSD using SasaPay C2B
             response = `END We are sending an M-Pesa prompt to your phone for KSh 300 to fund your wallet. Please enter your PIN.`;
 
-            // Trigger STK Push (in real usage, invoke your STK logic here)
-            /* 
-            const token = await generateAccessToken();
-            // ... trigger daraja API
-            */
-        } else {
+            // Trigger SasaPay C2B
+            try {
+                await initiateSasapayC2B(phoneNumber, 300, userId);
+            } catch (ussdPayError) {
+                console.error("USSD Pay Error:", ussdPayError);
+            }
+        }
+        else {
             response = "END Invalid option selected. Please dial again.";
         }
 
