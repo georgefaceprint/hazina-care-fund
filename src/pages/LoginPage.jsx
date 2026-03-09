@@ -3,7 +3,7 @@ import { signInWithCustomToken } from 'firebase/auth';
 import { auth, db, functions } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, Phone, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatKenyanPhone } from '../utils/phoneUtils';
@@ -23,6 +23,13 @@ const LoginPage = () => {
     useEffect(() => {
         if (isDemoMode && user) {
             navigate('/dashboard');
+        }
+
+        // Capture Agent Recruitment Code from URL ?ref=AGENT001
+        const params = new URLSearchParams(window.location.search);
+        const refCode = params.get('ref');
+        if (refCode) {
+            sessionStorage.setItem('hazina_agent_code', refCode);
         }
     }, [isDemoMode, user, navigate]);
 
@@ -102,6 +109,7 @@ const LoginPage = () => {
                     profile_completed: false,
                     grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
                     referrer_id: referrerId || null,
+                    recruited_by: sessionStorage.getItem('hazina_agent_code') || null,
                     referral_code: generateReferralCode(6)
                 });
                 navigate('/complete-profile');

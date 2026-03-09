@@ -54,5 +54,28 @@ service cloud.firestore {
       // Prevents deletion or modification of history
       allow update, delete: if false;
     }
+    // Recruitment System
+    match /agents/{agentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (isAdmin() || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'master_agent' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master');
+    }
+
+    match /master_agents/{masterId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (isAdmin() || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master');
+    }
+
+    match /recruitment_logs/{logId} {
+      allow read: if isAuthenticated() && (
+        resource.data.agentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agent_code ||
+        resource.data.masterAgentId == request.auth.uid ||
+        isAdmin() || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master'
+      );
+      allow create: if false; // Only via Cloud Functions
+    }
   }
 }

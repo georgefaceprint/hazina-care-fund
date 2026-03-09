@@ -178,7 +178,10 @@ export const AuthProvider = ({ children }) => {
         enableDemoMode,
         loginWithEmail,
         logout,
-        isDemoMode
+        isDemoMode,
+        isAgent: profile?.role === 'agent',
+        isMasterAgent: profile?.role === 'master_agent',
+        isSuperMaster: profile?.role === 'super_master'
     };
 
     return (

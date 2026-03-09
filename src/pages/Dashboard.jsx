@@ -121,12 +121,14 @@ const Dashboard = () => {
         return () => unsub();
     }, []);
 
-    const baseDailyBurn = tierConfig[profile.active_tier]?.cost || 0;
-    const dependentBurn = dependents.reduce((sum, dep) => sum + (tierConfig[dep.active_tier]?.cost || 0), 0);
+    const baseDailyBurn = tierConfig[profile.active_tier?.toLowerCase()]?.cost || 0;
+    const dependentBurn = (dependents || []).reduce((sum, dep) => sum + (tierConfig[dep.active_tier?.toLowerCase()]?.cost || 0), 0);
     const totalDailyBurn = baseDailyBurn + dependentBurn;
+    const peopleCount = 1 + (dependents?.length || 0);
 
     const multipliers = { daily: 1, weekly: 7, monthly: 30, yearly: 365 };
     const calculatedBurn = totalDailyBurn * multipliers[burnPeriod];
+
 
     const runTestDeduction = async () => {
         if (isDemoMode) {
@@ -280,9 +282,11 @@ const Dashboard = () => {
                             </div>
                         </div>
                         <p className="text-3xl font-black text-slate-900 relative z-10">KSh {calculatedBurn.toLocaleString()}</p>
-                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic relative z-10">
-                            <AlertCircle className="w-3 h-3" /> {t('auto_deducted')}
+                        <p className="text-[10px] text-slate-400 mt-1 flex items-center justify-between gap-1 italic relative z-10">
+                            <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {t('auto_deducted')}</span>
+                            <span className="font-bold text-brand-primary/60 not-italic font-sans">{peopleCount} {t('people')} × KSh {totalDailyBurn}/day</span>
                         </p>
+
                     </div>
                     <div className="card bg-white border-none shadow-md overflow-hidden relative group cursor-pointer" onClick={() => navigate('/topup')}>
                         <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>

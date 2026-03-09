@@ -1,5 +1,6 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const axios = require("axios");
@@ -447,7 +448,7 @@ exports.ussd = onRequest(async (req, res) => {
             } else {
                 response = `CON Welcome to Hazina Care.\n` +
                     `Register to protect your family.\n` +
-                    `1. Register (KSh 100/mo Bronze)\n` +
+                    `1. Register (KSh 300/mo Bronze)\n` +
                     `2. Learn More`;
             }
         } else if (text === "1") {
@@ -692,5 +693,51 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         // We throw http errors directly to frontend so don't mask valid specific ones.
         if (error instanceof HttpsError) { throw error; }
         throw new HttpsError('internal', `Verification failed: ${error.message || 'Unknown error'}`);
+    }
+});
+
+/**
+ * Super Master / Master Agent Recruitment Processor
+ * Triggered when a new user profile is created.
+ */
+exports.onUserCreated = onDocumentCreated("users/{userId}", async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) return;
+
+    const newUser = snapshot.data();
+    const userId = event.params.userId;
+    const agentCode = newUser.recruited_by;
+
+    if (!agentCode) return;
+
+    try {
+        const agentDoc = await db.collection("agents").doc(agentCode).get();
+        if (!agentDoc.exists) {
+            console.log(`Agent ${agentCode} not found in DB.`);
+            return;
+        }
+
+        const agentData = agentDoc.data();
+        const masterAgentId = agentData.masterAgentId || null;
+        const tariff = agentData.tariffRate || 15;
+
+        // Log the recruitment record
+        await db.collection("recruitment_logs").add({
+            userId,
+            agentId: agentCode,
+            masterAgentId,
+            tariffApplied: tariff,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update Agent's total count
+        await db.collection("agents").doc(agentCode).update({
+            totalSignups: admin.firestore.FieldValue.increment(1),
+            lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log(`User ${userId} recruited by ${agentCode} processed.`);
+    } catch (error) {
+        console.error("Recruitment trigger error:", error);
     }
 });

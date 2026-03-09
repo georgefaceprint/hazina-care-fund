@@ -18,11 +18,14 @@ const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'));
 const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
+const AgentApp = lazy(() => import('./pages/AgentApp'));
+const MasterDashboard = lazy(() => import('./pages/MasterDashboard'));
+const SuperMasterDashboard = lazy(() => import('./pages/SuperMasterDashboard'));
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
 import SplashScreen from './components/SplashScreen';
 
-const ProtectedRoute = ({ children, requireAdmin = false }) => {
+const ProtectedRoute = ({ children, requireAdmin = false, requireAgent = false, requireMaster = false, requireSuper = false }) => {
   const { user, profile, loading } = useAuth();
 
   // Wait for initial auth loading
@@ -53,6 +56,18 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   if (requireAdmin && profile?.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireAgent && profile?.role !== 'agent') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireMaster && profile?.role !== 'master_agent') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireSuper && profile?.role !== 'super_master') {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -112,6 +127,24 @@ const App = () => {
                     <Route path="/referrals" element={<Referrals />} />
                     <Route path="/settings" element={<ProfileSettings />} />
                     <Route path="/complete-profile" element={<CompleteProfile />} />
+
+                    {/* Recruitment Portals */}
+                    <Route path="/agent" element={
+                      <ProtectedRoute requireAgent={true}>
+                        <AgentApp />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/master" element={
+                      <ProtectedRoute requireMaster={true}>
+                        <MasterDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/super" element={
+                      <ProtectedRoute requireSuper={true}>
+                        <SuperMasterDashboard />
+                      </ProtectedRoute>
+                    } />
+
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   </Route>
                 </Routes>

@@ -145,7 +145,8 @@ const translations = {
         days: "Days",
         maturation_desc: "waiting period for full protection",
         ask_sifuna: "Ask Sifuna",
-        sifuna_hub: "Sifuna Hub"
+        sifuna_hub: "Sifuna Hub",
+        people: "People"
     },
     sw: {
         // Global & Nav
@@ -293,7 +294,8 @@ const translations = {
         days: "Siku",
         maturation_desc: "kipindi cha kusubiri ulinzi kamili",
         ask_sifuna: "Uliza Sifuna",
-        sifuna_hub: "Ripoti ya Sifuna"
+        sifuna_hub: "Ripoti ya Sifuna",
+        people: "Watu"
     }
 };
 
