@@ -51,6 +51,146 @@ const ProfileSettings = () => {
         }
     };
 
+    const isRecruiter = profile?.role === 'agent' || profile?.role === 'master_agent' || profile?.role === 'super_master';
+
+    if (isRecruiter) {
+        return (
+            <div className="space-y-10 max-w-5xl mx-auto pb-20">
+                <header>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Security & Preferences</h1>
+                    <p className="text-slate-500 font-medium">Manage your professional identity and hub settings</p>
+                </header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column: Profile Card */}
+                    <div className="lg:col-span-1 space-y-6">
+                        <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                            <div className="w-24 h-24 bg-gradient-to-br from-slate-800 to-slate-950 rounded-[2rem] flex items-center justify-center text-white font-black text-3xl shadow-xl mb-6 relative group">
+                                {profile?.fullName?.charAt(0) || 'A'}
+                            </div>
+                            <h2 className="text-xl font-black text-slate-900 leading-tight">{profile?.fullName}</h2>
+                            <p className="text-[10px] font-black uppercase text-brand-primary tracking-[0.2em] mt-2 italic">
+                                {profile?.role?.replace('_', ' ')}
+                            </p>
+
+                            <div className="w-full mt-8 pt-8 border-t border-slate-50 space-y-4">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Phone</span>
+                                    <span className="text-slate-900 font-bold">{profile?.phoneNumber}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">National ID</span>
+                                    <span className="text-slate-900 font-bold">{profile?.nationalId || profile?.national_id || 'Not set'}</span>
+                                </div>
+                                {profile?.agentCode && (
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Agent Code</span>
+                                        <span className="text-brand-primary font-black uppercase">{profile.agentCode}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={handleLogout}
+                                disabled={isLoggingOut}
+                                className="w-full mt-8 flex items-center justify-center gap-3 py-4 bg-rose-50 text-rose-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-rose-100 transition-all active:scale-95 border border-rose-100"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                {isLoggingOut ? "Signing Out..." : "Sign Out"}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Middle/Right Column: Settings Groups */}
+                    <div className="lg:col-span-2 space-y-8">
+                        {/* Governance & Preferences */}
+                        <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+                            <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Hub Preferences</h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white rounded-lg shadow-sm">
+                                                <Bell className="w-4 h-4 text-brand-primary" />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700">Push Alerts</span>
+                                        </div>
+                                        <button
+                                            onClick={handleNotificationToggle}
+                                            disabled={isPushEnabling}
+                                            className={`w-10 h-5 rounded-full relative p-0.5 transition-colors ${profile?.notificationsEnabled ? 'bg-brand-primary' : 'bg-slate-300'}`}
+                                        >
+                                            <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${profile?.notificationsEnabled ? 'ml-5' : 'ml-0'}`} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white rounded-lg shadow-sm">
+                                                <Moon className="w-4 h-4 text-slate-600" />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700">Dark Interface</span>
+                                        </div>
+                                        <button
+                                            onClick={() => document.documentElement.classList.toggle('dark')}
+                                            className="w-10 h-5 bg-slate-300 rounded-full relative p-0.5"
+                                        >
+                                            <div className="w-4 h-4 bg-white rounded-full shadow" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white rounded-lg shadow-sm">
+                                                <Globe className="w-4 h-4 text-emerald-600" />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700">Display Language</span>
+                                        </div>
+                                        <select
+                                            value={language}
+                                            onChange={(e) => setLanguage(e.target.value)}
+                                            className="bg-transparent text-xs font-black uppercase text-brand-primary border-none outline-none cursor-pointer"
+                                        >
+                                            <option value="en">EN</option>
+                                            <option value="sw">SW</option>
+                                        </select>
+                                    </div>
+
+                                    {!isInstalled && (canInstall || isIOS) && (
+                                        <button
+                                            onClick={!isIOS ? triggerInstall : undefined}
+                                            className="w-full flex items-center justify-between p-4 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10 active:scale-95 transition-all"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Smartphone className="w-4 h-4 text-white/50" />
+                                                <span className="text-xs font-black uppercase tracking-widest">Install Hub</span>
+                                            </div>
+                                            <ChevronRight className="w-4 h-4 text-white/30" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Security Info */}
+                        <div className="bg-emerald-50 rounded-[2.5rem] p-8 border border-emerald-100 flex items-start gap-4">
+                            <Shield className="w-8 h-8 text-emerald-600 shrink-0 mt-1" />
+                            <div>
+                                <h4 className="text-lg font-black text-emerald-900">Secure Access Active</h4>
+                                <p className="text-sm text-emerald-700 font-medium leading-relaxed mt-1">
+                                    Your account is protected by hardware-based identity verification. Any changes to your bank details or agent identity require administrative verification from Hazina HQ.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 pt-8 px-6 pb-32 font-sans relative overflow-hidden">
             {/* Background elements */}
