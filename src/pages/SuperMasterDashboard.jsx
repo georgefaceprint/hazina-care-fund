@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { formatKenyanPhone } from '../utils/phoneUtils';
 import { db } from '../services/firebase';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Shield, Activity, Plus, TrendingUp, Map, Edit2, Trash2 } from 'lucide-react';
@@ -7,7 +9,8 @@ import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SuperMasterDashboard = () => {
-    const { profile } = useAuth();
+    const { profile, impersonate } = useAuth();
+    const navigate = useNavigate();
     const toast = useToast();
     const [masters, setMasters] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -69,9 +72,11 @@ const SuperMasterDashboard = () => {
     const handleAddMaster = async (e) => {
         e.preventDefault();
         try {
-            const masterRef = doc(db, 'master_agents', newMaster.phoneNumber);
+            const formattedPhone = formatKenyanPhone(newMaster.phoneNumber);
+            const masterRef = doc(db, 'master_agents', formattedPhone);
             const masterData = {
                 ...newMaster,
+                phoneNumber: formattedPhone,
                 regions: newMaster.regions.split(',').map(r => r.trim()),
                 role: 'master_agent',
                 status: 'active',
@@ -80,10 +85,10 @@ const SuperMasterDashboard = () => {
 
             await setDoc(masterRef, masterData);
 
-            const userRef = doc(db, 'users', newMaster.phoneNumber);
+            const userRef = doc(db, 'users', formattedPhone);
             await setDoc(userRef, {
                 fullName: newMaster.fullName,
-                phoneNumber: newMaster.phoneNumber,
+                phoneNumber: formattedPhone,
                 role: 'master_agent',
                 status: 'active'
             }, { merge: true });
@@ -211,6 +216,15 @@ const SuperMasterDashboard = () => {
                                         {master.fullName.charAt(0)}
                                     </div>
                                     <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                impersonate(master);
+                                                navigate('/master');
+                                            }}
+                                            className="px-3 py-1.5 bg-slate-50 text-[10px] font-black text-slate-600 rounded-xl hover:bg-brand-primary hover:text-white transition-all uppercase tracking-widest border border-slate-100"
+                                        >
+                                            Login As
+                                        </button>
                                         <button
                                             onClick={() => setEditingMaster(master)}
                                             className="p-2 text-slate-400 hover:text-brand-primary hover:bg-brand-50 rounded-xl transition-all"

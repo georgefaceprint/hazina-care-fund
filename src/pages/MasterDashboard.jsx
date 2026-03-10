@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { formatKenyanPhone } from '../utils/phoneUtils';
 import { db } from '../services/firebase';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, orderBy, Timestamp, limit, serverTimestamp } from 'firebase/firestore';
 import { Users, UserPlus, MapPin, Search, Filter, TrendingUp, DollarSign, ChevronRight, MoreVertical, Activity, Briefcase, Edit2, Trash2 } from 'lucide-react';
@@ -7,7 +9,8 @@ import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MasterDashboard = () => {
-    const { profile } = useAuth();
+    const { profile, impersonate } = useAuth();
+    const navigate = useNavigate();
     const toast = useToast();
     const [agents, setAgents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -87,9 +90,11 @@ const MasterDashboard = () => {
         if (!newAgent.agentCode) return;
 
         try {
+            const formattedPhone = formatKenyanPhone(newAgent.phoneNumber);
             const agentRef = doc(db, 'agents', newAgent.agentCode.toUpperCase());
             await setDoc(agentRef, {
                 ...newAgent,
+                phoneNumber: formattedPhone,
                 agentCode: newAgent.agentCode.toUpperCase(),
                 masterAgentId: masterId,
                 tariffRate: 15,
@@ -98,10 +103,10 @@ const MasterDashboard = () => {
                 createdAt: serverTimestamp()
             });
 
-            const userRef = doc(db, 'users', newAgent.phoneNumber);
+            const userRef = doc(db, 'users', formattedPhone);
             await setDoc(userRef, {
                 fullName: newAgent.fullName,
-                phoneNumber: newAgent.phoneNumber,
+                phoneNumber: formattedPhone,
                 role: 'agent',
                 agent_code: newAgent.agentCode.toUpperCase(),
                 status: 'active'
@@ -263,6 +268,15 @@ const MasterDashboard = () => {
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
+                                    <button
+                                        onClick={() => {
+                                            impersonate(agent);
+                                            navigate('/agent');
+                                        }}
+                                        className="px-3 py-1 bg-slate-50 text-[9px] font-black text-slate-500 rounded-lg hover:bg-brand-primary hover:text-white transition-all uppercase tracking-widest border border-slate-100"
+                                    >
+                                        View Console
+                                    </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setEditingAgent(agent); }}
                                         className="p-2 text-slate-400 hover:text-brand-primary hover:bg-brand-50 rounded-xl transition-all"

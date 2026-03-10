@@ -127,7 +127,9 @@ const LoginPage = () => {
                 const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(userData.role);
 
                 if (isRecruiter) {
-                    navigate('/dashboard');
+                    if (userData.role === 'super_master') navigate('/super');
+                    else if (userData.role === 'master_agent') navigate('/master');
+                    else navigate('/agent');
                 } else if (!userData.profile_completed) {
                     navigate('/complete-profile');
                 } else {

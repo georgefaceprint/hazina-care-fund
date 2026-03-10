@@ -9,14 +9,30 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState(null);
+    const [realProfile, setRealProfile] = useState(null);
+    const [impersonatedProfile, setImpersonatedProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isDemoMode, setIsDemoMode] = useState(false);
+
+    // Computed profile: returns impersonated one if active, otherwise real one
+    const profile = impersonatedProfile || realProfile;
+
+    const impersonate = (targetProfile) => {
+        if (realProfile?.role !== 'super_master' && realProfile?.role !== 'master_agent') {
+            console.error("Insufficient permissions to impersonate.");
+            return;
+        }
+        setImpersonatedProfile(targetProfile);
+    };
+
+    const stopImpersonating = () => {
+        setImpersonatedProfile(null);
+    };
 
     const enableDemoMode = (phone = '+254712345678') => {
         setIsDemoMode(true);
         setUser({ uid: 'demo-user', phoneNumber: phone });
-        setProfile({
+        setRealProfile({
             id: 'demo-profile-12345',
             fullName: 'George Demo',
             role: 'admin',
@@ -46,7 +62,8 @@ export const AuthProvider = ({ children }) => {
         if (isDemoMode) {
             setIsDemoMode(false);
             setUser(null);
-            setProfile(null);
+            setRealProfile(null);
+            setImpersonatedProfile(null);
             return;
         }
         if (auth) {
@@ -115,12 +132,11 @@ export const AuthProvider = ({ children }) => {
 
                     const unsubProfile = onSnapshot(profileRef, async (snap) => {
                         if (snap.exists()) {
-                            setProfile({ id: snap.id, ...snap.data() });
+                            setRealProfile({ id: snap.id, ...snap.data() });
                         } else {
                             console.warn("User profile document does not exist for ID:", profileRef.id);
                             if (authUser.email) {
                                 // Auto-provision an admin profile.
-                                // We first set it in memory so the UI immediately proceeds.
                                 const adminProfile = {
                                     id: authUser.uid,
                                     uid: authUser.uid,
@@ -129,9 +145,8 @@ export const AuthProvider = ({ children }) => {
                                     fullName: 'System Admin',
                                     status: 'active'
                                 };
-                                setProfile(adminProfile);
+                                setRealProfile(adminProfile);
 
-                                // Attempt to save to Firestore so it persists
                                 try {
                                     await setDoc(profileRef, {
                                         ...adminProfile,
@@ -141,8 +156,7 @@ export const AuthProvider = ({ children }) => {
                                     console.error("Could not auto-create admin doc:", e);
                                 }
                             } else {
-                                // For regular user without profile, set to false so App.jsx doesn't spin forever
-                                setProfile(false);
+                                setRealProfile(false);
                             }
                         }
                         setLoading(false);
@@ -156,13 +170,15 @@ export const AuthProvider = ({ children }) => {
                     };
                 } else {
                     setUser(null);
-                    setProfile(null);
+                    setRealProfile(null);
+                    setImpersonatedProfile(null);
                     setLoading(false);
                 }
             } catch (error) {
                 console.error("Auth state processing failed:", error);
                 setUser(null);
-                setProfile(null);
+                setRealProfile(null);
+                setImpersonatedProfile(null);
                 setLoading(false);
             }
         });
@@ -172,16 +188,21 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         user,
-        profile,
+        profile, // This will be the impersonated profile if it exists
+        realProfile, // Access to the underlying original user
+        impersonatedProfile,
         loading,
         isAuthenticated: !!user,
         enableDemoMode,
         loginWithEmail,
         logout,
+        impersonate,
+        stopImpersonating,
         isDemoMode,
         isAgent: profile?.role === 'agent',
         isMasterAgent: profile?.role === 'master_agent',
-        isSuperMaster: profile?.role === 'super_master'
+        isSuperMaster: profile?.role === 'super_master',
+        isActualSuperMaster: realProfile?.role === 'super_master'
     };
 
     return (

@@ -17,7 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RecruitmentLayout = () => {
-    const { profile, logout } = useAuth();
+    const { profile, logout, impersonatedProfile, stopImpersonating, realProfile } = useAuth();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
@@ -128,7 +128,38 @@ const RecruitmentLayout = () => {
                 </header>
 
                 {/* Content Area */}
-                <main className="flex-1 overflow-y-auto w-full max-w-[1600px] mx-auto">
+                <main className="flex-1 overflow-y-auto w-full max-w-[1600px] mx-auto relative">
+                    {/* Impersonation Banner */}
+                    <AnimatePresence>
+                        {impersonatedProfile && (
+                            <motion.div
+                                initial={{ y: -50, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: -50, opacity: 0 }}
+                                className="sticky top-0 z-[60] bg-slate-900 border-b border-white/10 px-8 py-3 flex items-center justify-between shadow-2xl"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center animate-pulse">
+                                        <Users className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-400">Viewing Dashboard as:</p>
+                                        <p className="text-sm font-black text-white">{impersonatedProfile.fullName} <span className="text-[10px] text-brand-primary ml-2">({impersonatedProfile.role?.replace('_', ' ')})</span></p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        stopImpersonating();
+                                        navigate(realProfile?.role === 'super_master' ? '/super' : '/master');
+                                    }}
+                                    className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 border border-white/10"
+                                >
+                                    Exit View & Back to HQ
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     <div className="p-8">
                         <Outlet />
                     </div>
