@@ -19,9 +19,18 @@ service cloud.firestore {
     // Users collection
     match /users/{userId} {
       // Users can read/write their own profile
-      allow read, update: if isAuthenticated() && isOwner(userId);
+      // Supports both UID-based IDs and Phone-based IDs by checking the internal uid field
+      allow read, update: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        (resource != null && resource.data.uid == request.auth.uid)
+      );
+      
       // New users can create their profile
-      allow create: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        request.resource.data.uid == request.auth.uid
+      );
+
       // Admins and Super Masters can read and manage all users
       allow read, create, update: if isAuthenticated() && isAdmin();
     }

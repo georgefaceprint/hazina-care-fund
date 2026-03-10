@@ -18,11 +18,26 @@ const LoginPage = () => {
     const { t } = useLanguage();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { enableDemoMode, isDemoMode, user } = useAuth();
+    const { enableDemoMode, isDemoMode, user, profile, loading: authLoading } = useAuth();
 
     useEffect(() => {
         if (isDemoMode && user) {
             navigate('/dashboard');
+            return;
+        }
+
+        // If user is already authenticated and has a profile, redirect appropriately
+        if (user && profile && !authLoading) {
+            const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(profile.role);
+            if (isRecruiter) {
+                if (profile.role === 'super_master') navigate('/super');
+                else if (profile.role === 'master_agent') navigate('/master');
+                else navigate('/agent');
+            } else if (!profile.profile_completed) {
+                navigate('/complete-profile');
+            } else {
+                navigate('/dashboard');
+            }
         }
 
         // Capture Agent Recruitment Code from URL ?ref=AGENT001
@@ -31,7 +46,7 @@ const LoginPage = () => {
         if (refCode) {
             sessionStorage.setItem('hazina_agent_code', refCode);
         }
-    }, [isDemoMode, user, navigate]);
+    }, [isDemoMode, user, profile, loading, navigate]);
 
 
 

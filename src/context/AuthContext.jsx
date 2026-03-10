@@ -132,9 +132,35 @@ export const AuthProvider = ({ children }) => {
 
                     const unsubProfile = onSnapshot(profileRef, async (snap) => {
                         if (snap.exists()) {
-                            setRealProfile({ id: snap.id, ...snap.data() });
+                            const userData = snap.data();
+                            let combinedProfile = { id: snap.id, ...userData };
+
+                            // If user is an agent/recruiter, fetch their stats from the 'agents' collection
+                            if (['agent', 'master_agent', 'super_master'].includes(userData.role)) {
+                                const agentCode = userData.agent_code || snap.id;
+                                const agentRef = doc(db, 'agents', agentCode);
+
+                                // Set initial profile
+                                setRealProfile(combinedProfile);
+
+                                // Real-time listener for agent stats
+                                onSnapshot(agentRef, (aSnap) => {
+                                    if (aSnap.exists()) {
+                                        setRealProfile(prev => ({
+                                            ...prev,
+                                            ...aSnap.data(),
+                                            agentDocId: aSnap.id
+                                        }));
+                                    }
+                                });
+                            } else {
+                                setRealProfile(combinedProfile);
+                            }
+                            setLoading(false);
                         } else {
                             console.warn("User profile document does not exist for ID:", profileRef.id);
+
+                            // Check if this is a fresh login (email based)
                             if (authUser.email) {
                                 // Auto-provision an admin profile.
                                 const adminProfile = {
@@ -155,11 +181,17 @@ export const AuthProvider = ({ children }) => {
                                 } catch (e) {
                                     console.error("Could not auto-create admin doc:", e);
                                 }
+                                setLoading(false);
                             } else {
-                                setRealProfile(false);
+                                // For phone users, wait a second to allow LoginPage to create the doc
+                                setTimeout(() => {
+                                    if (!snap.exists()) {
+                                        setRealProfile(false);
+                                        setLoading(false);
+                                    }
+                                }, 2000);
                             }
                         }
-                        setLoading(false);
                     }, (err) => {
                         console.error("Profile snapshot error:", err);
                         setLoading(false);

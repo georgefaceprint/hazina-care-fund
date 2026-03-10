@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../services/firebase';
-import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { Users, TrendingUp, DollarSign, QrCode, Share2, Clipboard, ChevronRight, Award, Zap, Activity } from 'lucide-react';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp, doc, onSnapshot } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { Users, TrendingUp, DollarSign, QrCode, Share2, Clipboard, ChevronRight, Award, Zap, Activity, ArrowUpRight, Wallet, User, Smartphone, XCircle } from 'lucide-react';
+import { functions } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
 import { motion } from 'framer-motion';
 
@@ -18,49 +19,89 @@ const AgentApp = () => {
     });
     const [recentLogs, setRecentLogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [withdrawing, setWithdrawing] = useState(false);
+    const [withdrawPhone, setWithdrawPhone] = useState(profile?.phoneNumber || '');
 
     const agentCode = profile?.agent_code || profile?.id; // Fallback to profile ID if no specific agent_code
     const registrationLink = `${window.location.origin}/r/${agentCode}`;
 
+    const fetchStats = async () => {
+        if (!agentCode) return;
+
+        try {
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startOfYesterday = new Date(startOfToday);
+            startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+            const logsRef = collection(db, 'recruitment_logs');
+
+            // 1. Fetch recruitment counts from logs
+            const todayQuery = query(logsRef, where('agentCode', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
+            const yesterdayQuery = query(logsRef, where('agentCode', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
+
+            const [todaySnap, yesterdaySnap] = await Promise.all([getDocs(todayQuery), getDocs(yesterdayQuery)]);
+
+            // 2. Fetch Recent Logs
+            const recentQuery = query(logsRef, where('agentCode', '==', agentCode), orderBy('timestamp', 'desc'), limit(15));
+            const recentSnap = await getDocs(recentQuery);
+            setRecentLogs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+            setStats({
+                today: todaySnap.size,
+                yesterday: yesterdaySnap.size,
+                total: profile?.totalSignups || 0,
+                earnings: profile?.totalEarnings || 0,
+                walletBalance: profile?.walletBalance || 0
+            });
+        } catch (error) {
+            console.error("Error fetching agent stats:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchStats = async () => {
-            if (!agentCode) return;
-
-            try {
-                const now = new Date();
-                const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                const startOfYesterday = new Date(startOfToday);
-                startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-
-                const logsRef = collection(db, 'recruitment_logs');
-
-                // 1. Fetch Stats
-                const todayQuery = query(logsRef, where('agentCode', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
-                const yesterdayQuery = query(logsRef, where('agentCode', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
-
-                const [todaySnap, yesterdaySnap] = await Promise.all([getDocs(todayQuery), getDocs(yesterdayQuery)]);
-
-                // 2. Fetch Recent Logs
-                const recentQuery = query(logsRef, where('agentCode', '==', agentCode), orderBy('timestamp', 'desc'), limit(10));
-                const recentSnap = await getDocs(recentQuery);
-                setRecentLogs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-                setStats({
-                    today: todaySnap.size,
-                    yesterday: yesterdaySnap.size,
-                    total: profile?.totalSignups || 0,
-                    earnings: (profile?.totalSignups || 0) * 15,
-                    walletBalance: profile?.walletBalance || 0
-                });
-            } catch (error) {
-                console.error("Error fetching agent stats:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchStats();
     }, [agentCode, profile?.totalSignups, profile?.walletBalance]);
+
+    useEffect(() => {
+        if (profile?.phoneNumber && !withdrawPhone) {
+            setWithdrawPhone(profile.phoneNumber);
+        }
+    }, [profile?.phoneNumber]);
+
+    const handleWithdraw = async (e) => {
+        e.preventDefault();
+        if (!withdrawAmount || Number(withdrawAmount) < 50) {
+            toast.error("Minimum withdrawal is KSh 50");
+            return;
+        }
+
+        setWithdrawing(true);
+        try {
+            const initiateWithdrawal = httpsCallable(functions, 'initiateAgentWithdrawal');
+            const result = await initiateWithdrawal({
+                amount: Number(withdrawAmount),
+                phoneNumber: withdrawPhone
+            });
+
+            if (result.data.success) {
+                toast.success("Withdrawal initiated! Funds will be sent shortly.");
+                setShowWithdrawModal(false);
+                setWithdrawAmount('');
+                // Refresh stats
+                fetchStats();
+            }
+        } catch (error) {
+            console.error("Withdrawal error:", error);
+            toast.error(error.message || "Failed to initiate withdrawal.");
+        } finally {
+            setWithdrawing(false);
+        }
+    };
 
     const copyLink = () => {
         navigator.clipboard.writeText(registrationLink);
@@ -99,15 +140,25 @@ const AgentApp = () => {
                             <h2 className="text-6xl font-black tracking-tight">{stats.walletBalance.toLocaleString()}</h2>
                         </div>
 
-                        <div className="mt-auto pt-10 grid grid-cols-2 gap-8 border-t border-white/5">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Conversions</p>
-                                <p className="text-3xl font-black">{stats.total}</p>
+                        <div className="mt-auto pt-10 flex justify-between items-end border-t border-white/5">
+                            <div className="grid grid-cols-2 gap-8">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Conversions</p>
+                                    <p className="text-3xl font-black">{stats.total}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Commission Rate</p>
+                                    <p className="text-2xl font-black text-brand-primary">15.00 <span className="text-xs font-bold text-slate-500">/user</span></p>
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Active Tariff</p>
-                                <p className="text-2xl font-black text-brand-primary">15.00 <span className="text-xs font-bold text-slate-500">/user</span></p>
-                            </div>
+
+                            <button
+                                onClick={() => setShowWithdrawModal(true)}
+                                className="px-6 py-3 bg-brand-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 hover:scale-105 transition-all active:scale-95 flex items-center gap-2"
+                            >
+                                <ArrowUpRight className="w-4 h-4" />
+                                Withdraw
+                            </button>
                         </div>
                     </div>
                 </motion.div>
@@ -202,6 +253,87 @@ const AgentApp = () => {
                     </div>
                 </div>
             </div>
+            {/* Withdrawal Modal */}
+            {showWithdrawModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
+                        onClick={() => !withdrawing && setShowWithdrawModal(false)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl relative z-10"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-black text-slate-900">Withdraw Earnings</h3>
+                            <button
+                                onClick={() => setShowWithdrawModal(false)}
+                                className="text-slate-300 hover:text-slate-900 transition-colors"
+                            >
+                                <XCircle className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleWithdraw} className="space-y-6">
+                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center">
+                                <p className="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-1">Available Balance</p>
+                                <p className="text-4xl font-black text-slate-900 text-brand-primary">KSh {stats.walletBalance.toLocaleString()}</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 ml-1">Withdraw Amount (KSh)</label>
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">KSh</div>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-slate-100 border-none rounded-2xl pl-14 pr-4 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-black text-lg"
+                                        placeholder="Min 50"
+                                        value={withdrawAmount}
+                                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                                        required
+                                        min="50"
+                                        max={stats.walletBalance}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 ml-1">M-Pesa Number</label>
+                                <div className="relative">
+                                    <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                                    <input
+                                        type="tel"
+                                        className="w-full bg-slate-100 border-none rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                        placeholder="07XX XXX XXX"
+                                        value={withdrawPhone}
+                                        onChange={(e) => setWithdrawPhone(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={withdrawing || !withdrawAmount || Number(withdrawAmount) > stats.walletBalance}
+                                className="w-full bg-slate-900 text-white rounded-2xl py-5 font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/10 disabled:opacity-50"
+                            >
+                                {withdrawing ? (
+                                    <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                ) : (
+                                    <>Initiate M-Pesa Transfer <ArrowUpRight className="w-5 h-5" /></>
+                                )}
+                            </button>
+
+                            <p className="text-[10px] text-center text-slate-400 font-medium italic">
+                                * This will be sent as a B2C transfer to your M-Pesa number.
+                            </p>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 };

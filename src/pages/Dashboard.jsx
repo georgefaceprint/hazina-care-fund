@@ -35,12 +35,25 @@ const Dashboard = () => {
     }, [profile, loading, isSuperMaster, isMasterAgent, isAgent, navigate, isDemoMode]);
 
     useEffect(() => {
+        if (profile) {
+            const depQ = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
+            const unsubDeps = onSnapshot(depQ, (depSnap) => {
+                setDependents(depSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                if (loading) setLoading(false);
+            }, (err) => {
+                console.error("Error fetching dependents:", err);
+                if (loading) setLoading(false);
+            });
+            return () => unsubDeps();
+        }
+    }, [profile]);
+
+    useEffect(() => {
         const fetchData = async () => {
             if (!profile) return;
 
-            // Fetch Dependents
+            // Fetch Transactions & Claims
             if (isDemoMode) {
-                setDependents([{ id: 'demo-1', name: 'Demo Dependent', active_tier: 'gold', is_matured: false }]);
                 setActivities([
                     { id: '1', type: 'topup', amount: 500, status: 'success', date: new Date() },
                     { id: '2', type: 'claim', amount: 3000, status: 'pending_review', date: new Date(Date.now() - 86400000) }
@@ -66,20 +79,12 @@ const Dashboard = () => {
                     date: doc.data().timestamp?.toDate()
                 }));
 
-                // Fetch Claims and Dependents for other UI elements
-                const claimsQ = query(collection(db, 'claims'), where('guardian_id', '==', profile.id), orderBy('createdAt', 'desc'), limit(5));
-                const claimsSnap = await getDocs(claimsQ);
-                const depQ = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
-                const depSnap = await getDocs(depQ);
-                setDependents(depSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-                // Combine with manual dependent added activity if needed
-                const depActivity = depSnap.docs.map(doc => ({
+                const depActivity = dependents.map(doc => ({
                     id: doc.id,
                     type: 'dependent',
-                    label: doc.data().name,
+                    label: doc.name,
                     status: 'completed',
-                    date: doc.data().createdAt?.toDate()
+                    date: doc.createdAt?.toDate()
                 }));
 
                 // Combine and Final Sort
@@ -90,14 +95,12 @@ const Dashboard = () => {
                 setActivities(combined);
 
             } catch (error) {
-                console.error("Error fetching data:", error);
-            } finally {
-                setLoading(false);
+                console.error("Error fetching activity data:", error);
             }
         };
 
         fetchData();
-    }, [profile, isDemoMode]);
+    }, [profile, isDemoMode, dependents.length]);
 
     if (!profile) return null;
 
@@ -133,15 +136,26 @@ const Dashboard = () => {
         return () => unsub();
     }, []);
 
-    const baseDailyBurn = tierConfig[profile.active_tier?.toLowerCase()]?.cost || 0;
-    const dependentBurn = (dependents || []).reduce((sum, dep) => sum + (tierConfig[dep.active_tier?.toLowerCase()]?.cost || 0), 0);
+    const getTierCost = (tierName) => {
+        if (!tierName) return 0;
+        const normalizedKey = tierName.toLowerCase();
+        // Check case-insensitively
+        const config = tierConfig[normalizedKey] ||
+            tierConfig[tierName.charAt(0).toUpperCase() + tierName.slice(1)] ||
+            tierConfig[tierName.toUpperCase()] ||
+            { cost: 0 };
+        return config.cost || 0;
+    };
+
+    const baseDailyBurn = getTierCost(profile.active_tier);
+    const dependentBurn = (dependents || []).reduce((sum, dep) => sum + getTierCost(dep.active_tier), 0);
     const totalDailyBurn = baseDailyBurn + dependentBurn;
     const peopleCount = 1 + (dependents?.length || 0);
 
     const multipliers = { daily: 1, weekly: 7, monthly: 30, yearly: 365 };
     const calculatedBurn = totalDailyBurn * multipliers[burnPeriod];
 
-    // Per-person rate (average or specific if we want to be detailed)
+    // Per-person rate
     const perPersonRate = peopleCount > 0 ? (totalDailyBurn / peopleCount).toFixed(0) : 0;
 
 
@@ -312,7 +326,7 @@ const Dashboard = () => {
                                 {dependents.map(dep => (
                                     <div key={dep.id} className="flex justify-between text-[9px] font-medium text-slate-400 uppercase">
                                         <span>{dep.name} ({dep.active_tier})</span>
-                                        <span>KSh {tierConfig[dep.active_tier?.toLowerCase()]?.cost || 0}/day</span>
+                                        <span>KSh {getTierCost(dep.active_tier)}/day</span>
                                     </div>
                                 ))}
                                 <div className="border-t border-slate-200 pt-1 mt-1 flex justify-between text-[10px] font-black text-brand-primary uppercase">

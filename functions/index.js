@@ -35,7 +35,8 @@ exports.calculateDailyDeduction = onSchedule({
 
     for (const userDoc of usersSnap.docs) {
         const profile = userDoc.data();
-        let totalDeduction = TIER_COSTS[profile.active_tier] || 0;
+        const getCost = (tier) => TIER_COSTS[tier?.toLowerCase()] || 0;
+        let totalDeduction = getCost(profile.active_tier);
 
         // Sum up dependents costs
         const dependentsSnap = await db.collection("dependents")
@@ -44,7 +45,7 @@ exports.calculateDailyDeduction = onSchedule({
 
         dependentsSnap.forEach(depDoc => {
             const dep = depDoc.data();
-            totalDeduction += TIER_COSTS[dep.active_tier] || 0;
+            totalDeduction += getCost(dep.active_tier);
         });
 
         // Check for Payment Holiday
@@ -220,7 +221,8 @@ exports.manualDeduction = onCall(async (request) => {
     const profile = userDoc.data();
     const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
 
-    let totalDeduction = TIER_COSTS[profile.active_tier] || 0;
+    const getCost = (tier) => TIER_COSTS[tier?.toLowerCase()] || 0;
+    let totalDeduction = getCost(profile.active_tier);
 
     // Sum up dependents costs
     const dependentsSnap = await db.collection("dependents")
@@ -229,7 +231,7 @@ exports.manualDeduction = onCall(async (request) => {
 
     dependentsSnap.forEach(depDoc => {
         const dep = depDoc.data();
-        totalDeduction += TIER_COSTS[dep.active_tier] || 0;
+        totalDeduction += getCost(dep.active_tier);
     });
 
     const batch = db.batch();
@@ -748,5 +750,95 @@ exports.onUserCreated = onDocumentCreated("users/{userId}", async (event) => {
         console.log(`User ${userId} recruited by ${agentCode} processed.`);
     } catch (error) {
         console.error("Recruitment trigger error:", error);
+    }
+});
+
+// 8. Agent Withdrawal (B2C)
+exports.initiateAgentWithdrawal = onCall({ cors: true }, async (request) => {
+    const { amount, phoneNumber } = request.data;
+    const uid = request.auth?.uid;
+
+    if (!uid) {
+        throw new HttpsError('unauthenticated', 'User must be logged in.');
+    }
+
+    if (!amount || amount < 50) {
+        throw new HttpsError('invalid-argument', 'Minimum withdrawal is KSh 50.');
+    }
+
+    const formatPhone = phoneNumber.replace(/\D/g, '').startsWith('0')
+        ? `254${phoneNumber.replace(/\D/g, '').substring(1)}`
+        : phoneNumber.replace(/\D/g, '');
+
+    try {
+        // 1. Find user to get their agent_code
+        // Note: Auth UID is the phone number for SMS users
+        const userDoc = await db.collection("users").doc(uid).get();
+        if (!userDoc.exists) {
+            throw new HttpsError('not-found', 'User profile not found.');
+        }
+
+        const userData = userDoc.data();
+        const agentCode = userData.agent_code || userData.phoneNumber || uid;
+
+        // 2. Check Agent Balance
+        const agentRef = db.collection("agents").doc(agentCode);
+        const agentDoc = await agentRef.get();
+
+        if (!agentDoc.exists) {
+            throw new HttpsError('not-found', 'Agent record not found.');
+        }
+
+        const agentData = agentDoc.data();
+        const currentBalance = agentData.walletBalance || 0;
+
+        if (currentBalance < amount) {
+            throw new HttpsError('failed-precondition', `Insufficient wallet balance. Available: KSh ${currentBalance}`);
+        }
+
+        // 3. Initiate SasaPay B2C
+        const token = await getSasapayToken();
+        const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
+
+        const payload = {
+            MerchantCode: SASAPAY_MERCHANT_CODE,
+            MerchantTransactionReference: `WD-${Date.now().toString().substring(5)}`,
+            Amount: Number(amount),
+            Currency: "KES",
+            ReceiverNumber: formatPhone,
+            Channel: "63902", // M-Pesa
+            Reason: `Hazina Agent Withdrawal: ${agentCode}`,
+            CallBackURL: callbackUrl
+        };
+
+        const response = await axios.post(`${SASAPAY_BASE_URL}/payments/b2c/`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.status) {
+            // 4. Update Balance and Log
+            await agentRef.update({
+                walletBalance: admin.firestore.FieldValue.increment(-amount)
+            });
+
+            await db.collection("recruitment_logs").add({
+                agentId: agentCode,
+                type: 'withdrawal',
+                amount: amount,
+                phoneNumber: formatPhone,
+                status: 'processing',
+                transactionReference: response.data.TransactionReference,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { success: true, message: "Withdrawal initiated successfully." };
+        } else {
+            throw new HttpsError('internal', response.data.detail || "SasaPay B2C failed.");
+        }
+
+    } catch (error) {
+        console.error("Withdrawal Error:", error);
+        if (error instanceof HttpsError) throw error;
+        throw new HttpsError('internal', error.message || 'Withdrawal failed.');
     }
 });
