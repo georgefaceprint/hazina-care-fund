@@ -21,6 +21,7 @@ const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
 const AgentApp = lazy(() => import('./pages/AgentApp'));
 const MasterDashboard = lazy(() => import('./pages/MasterDashboard'));
 const SuperMasterDashboard = lazy(() => import('./pages/SuperMasterDashboard'));
+import RecruitmentLayout from './layouts/RecruitmentLayout';
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
 import SplashScreen from './components/SplashScreen';
@@ -113,7 +114,7 @@ const App = () => {
                     </ProtectedRoute>
                   } />
 
-                  {/* Mobile App Layout */}
+                  {/* Mobile App Layout - Consumer Facing */}
                   <Route element={
                     <ProtectedRoute>
                       <AppLayout />
@@ -127,8 +128,15 @@ const App = () => {
                     <Route path="/referrals" element={<Referrals />} />
                     <Route path="/settings" element={<ProfileSettings />} />
                     <Route path="/complete-profile" element={<CompleteProfile />} />
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  </Route>
 
-                    {/* Recruitment Portals */}
+                  {/* Recruitment Portals - Professional Management Layout */}
+                  <Route element={
+                    <ProtectedRoute>
+                      <RecruitmentLayout />
+                    </ProtectedRoute>
+                  }>
                     <Route path="/agent" element={
                       <ProtectedRoute requireAgent={true}>
                         <AgentApp />
@@ -144,8 +152,6 @@ const App = () => {
                         <SuperMasterDashboard />
                       </ProtectedRoute>
                     } />
-
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   </Route>
                 </Routes>
               </Suspense>

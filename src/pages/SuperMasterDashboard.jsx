@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
-import { collection, query, getDocs, doc, setDoc, orderBy, serverTimestamp, limit, Timestamp } from 'firebase/firestore';
-import { Globe, Shield, Users, Briefcase, Activity, Plus, TrendingUp, Map, UserCheck } from 'lucide-react';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { Shield, Activity, Plus, TrendingUp, Map, Edit2, Trash2 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,6 +12,7 @@ const SuperMasterDashboard = () => {
     const [masters, setMasters] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingMaster, setEditingMaster] = useState(null);
     const [newMaster, setNewMaster] = useState({
         fullName: '',
         phoneNumber: '',
@@ -25,44 +26,45 @@ const SuperMasterDashboard = () => {
     });
 
     useEffect(() => {
-        const fetchGlobalData = async () => {
-            setLoading(true);
-            try {
-                // Fetch Master Agents
-                const mastersSnap = await getDocs(collection(db, 'master_agents'));
-                const mastersList = mastersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setMasters(mastersList);
-
-                // Fetch Agents count
-                const agentsSnap = await getDocs(collection(db, 'agents'));
-
-                // Fetch Global Signups (Today)
-                const now = new Date();
-                const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                const logsRef = collection(db, 'recruitment_logs');
-                const todayQuery = query(logsRef, where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
-                const todaySnap = await getDocs(todayQuery);
-
-                // For total signups, we can sum from the agents collection totals for efficiency
-                const totalSignups = agentsSnap.docs.reduce((sum, doc) => sum + (doc.data().totalSignups || 0), 0);
-
-                setStats({
-                    totalSignups,
-                    activeMasters: mastersSnap.size,
-                    activeAgents: agentsSnap.size,
-                    todayGrowth: todaySnap.size
-                });
-
-            } catch (error) {
-                console.error("Error fetching global data:", error);
-                toast.error("Failed to load global metrics.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchGlobalData();
     }, []);
+
+    const fetchGlobalData = async () => {
+        setLoading(true);
+        try {
+            if (!db) return;
+
+            // Fetch Master Agents
+            const mastersSnap = await getDocs(collection(db, 'master_agents'));
+            const mastersList = mastersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setMasters(mastersList);
+
+            // Fetch Agents count
+            const agentsSnap = await getDocs(collection(db, 'agents'));
+
+            // Fetch Global Signups (Today)
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const logsRef = collection(db, 'recruitment_logs');
+            const todayQuery = query(logsRef, where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
+            const todaySnap = await getDocs(todayQuery);
+
+            const totalSignups = agentsSnap.docs.reduce((sum, doc) => sum + (doc.data().totalSignups || 0), 0);
+
+            setStats({
+                totalSignups,
+                activeMasters: mastersSnap.size,
+                activeAgents: agentsSnap.size,
+                todayGrowth: todaySnap.size
+            });
+
+        } catch (error) {
+            console.error("Error fetching global data:", error);
+            toast.error("Failed to load global metrics.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleAddMaster = async (e) => {
         e.preventDefault();
@@ -78,7 +80,6 @@ const SuperMasterDashboard = () => {
 
             await setDoc(masterRef, masterData);
 
-            // Update user role
             const userRef = doc(db, 'users', newMaster.phoneNumber);
             await setDoc(userRef, {
                 fullName: newMaster.fullName,
@@ -88,7 +89,7 @@ const SuperMasterDashboard = () => {
             }, { merge: true });
 
             toast.success("Master Agent enabled!");
-            setMasters([...masters, { id: newMaster.phoneNumber, ...masterData }]);
+            fetchGlobalData();
             setShowAddModal(false);
             setNewMaster({ fullName: '', phoneNumber: '', regions: '' });
         } catch (error) {
@@ -97,28 +98,78 @@ const SuperMasterDashboard = () => {
         }
     };
 
+    const handleUpdateMaster = async (e) => {
+        e.preventDefault();
+        try {
+            const masterRef = doc(db, 'master_agents', editingMaster.id);
+            const updateData = {
+                fullName: editingMaster.fullName,
+                regions: Array.isArray(editingMaster.regions) ? editingMaster.regions : editingMaster.regions.split(',').map(r => r.trim()),
+                status: editingMaster.status || 'active'
+            };
+
+            await updateDoc(masterRef, updateData);
+
+            // Update user profile too
+            const userRef = doc(db, 'users', editingMaster.id);
+            await updateDoc(userRef, {
+                fullName: editingMaster.fullName,
+                status: editingMaster.status || 'active'
+            });
+
+            toast.success("Master Agent updated!");
+            fetchGlobalData();
+            setEditingMaster(null);
+        } catch (error) {
+            console.error("Error updating master:", error);
+            toast.error("Failed to update master agent.");
+        }
+    };
+
+    const handleDeleteMaster = async (id) => {
+        if (!window.confirm("Are you sure you want to remove this Master Agent? They will lose access to the portal.")) return;
+
+        try {
+            await deleteDoc(doc(db, 'master_agents', id));
+
+            // Just demote the user role instead of deleting the user entirely
+            await updateDoc(doc(db, 'users', id), {
+                role: 'user', // demote back to standard user
+                status: 'inactive'
+            });
+
+            toast.success("Master Agent removed.");
+            fetchGlobalData();
+        } catch (error) {
+            console.error("Error deleting master:", error);
+            toast.error("Failed to remove master agent.");
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-[#F8FAFC] p-8 font-sans">
-            <header className="flex justify-between items-center mb-10">
+        <div className="space-y-10">
+            <header className="mb-10 lg:flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                        <Shield className="w-8 h-8 text-brand-primary" />
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                        <Shield className="w-10 h-10 text-brand-primary" />
                         Hazina Global HQ
                     </h1>
-                    <p className="text-slate-500 font-medium">System-wide recruitment oversight</p>
+                    <p className="text-slate-500 font-medium text-lg">System-wide recruitment oversight</p>
                 </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10"
-                >
-                    <Plus className="w-5 h-5" />
-                    New Master Agent
-                </button>
+                <div className="mt-4 lg:mt-0">
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-95"
+                    >
+                        <Plus className="w-6 h-6" />
+                        Register Master Agent
+                    </button>
+                </div>
             </header>
 
             {/* Global Multi-Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/5 rounded-full -mr-12 -mt-12 transition-all group-hover:scale-150"></div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Global Signups</p>
                     <div className="flex items-center gap-2">
@@ -141,23 +192,38 @@ const SuperMasterDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Master Agents List */}
                 <div className="lg:col-span-2 space-y-4">
                     <h3 className="text-xl font-black text-slate-900 ml-2">Master Agent Networks</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {loading ? (
-                            <div className="col-span-2 p-12 text-center text-slate-400">Loading networks...</div>
+                            <div className="col-span-2 p-12 text-center text-slate-400 italic font-medium">Synchronizing network data...</div>
+                        ) : masters.length === 0 ? (
+                            <div className="col-span-2 p-12 text-center text-slate-400 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                No Master Agents registered yet.
+                            </div>
                         ) : masters.map(master => (
                             <motion.div
                                 key={master.id}
-                                whileHover={{ scale: 1.02 }}
-                                className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                                className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all relative group"
                             >
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="w-12 h-12 bg-slate-50 text-slate-900 rounded-2xl flex items-center justify-center font-black text-xl border border-slate-100 group-hover:bg-brand-primary group-hover:text-white transition-colors">
                                         {master.fullName.charAt(0)}
                                     </div>
-                                    <Activity className="w-5 h-5 text-slate-200 group-hover:text-brand-primary/40 transition-colors" />
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setEditingMaster(master)}
+                                            className="p-2 text-slate-400 hover:text-brand-primary hover:bg-brand-50 rounded-xl transition-all"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteMaster(master.id)}
+                                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
                                 <h4 className="font-bold text-slate-900 text-lg mb-1">{master.fullName}</h4>
                                 <p className="text-xs text-slate-400 mb-4">{master.phoneNumber}</p>
@@ -172,7 +238,6 @@ const SuperMasterDashboard = () => {
                     </div>
                 </div>
 
-                {/* Regional Activity / Heatmap Mockup */}
                 <div className="space-y-4">
                     <h3 className="text-xl font-black text-slate-900 ml-2">Regional Performance</h3>
                     <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 h-[400px] flex flex-col">
@@ -220,29 +285,29 @@ const SuperMasterDashboard = () => {
                                         <input
                                             type="text"
                                             required
-                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold text-slate-900"
                                             placeholder="John Doe"
                                             value={newMaster.fullName}
                                             onChange={e => setNewMaster({ ...newMaster, fullName: e.target.value })}
                                         />
                                     </div>
-                                    <div>
+                                    <div className="col-span-2 md:col-span-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number (ID)</label>
                                         <input
                                             type="tel"
                                             required
-                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold text-slate-900"
                                             placeholder="+2547..."
                                             value={newMaster.phoneNumber}
                                             onChange={e => setNewMaster({ ...newMaster, phoneNumber: e.target.value })}
                                         />
                                     </div>
-                                    <div>
+                                    <div className="col-span-2 md:col-span-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Regions (Comma separated)</label>
                                         <input
                                             type="text"
                                             required
-                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold text-slate-900"
                                             placeholder="Nairobi, Mombasa"
                                             value={newMaster.regions}
                                             onChange={e => setNewMaster({ ...newMaster, regions: e.target.value })}
@@ -263,6 +328,75 @@ const SuperMasterDashboard = () => {
                                         className="flex-[2] py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl shadow-slate-900/10 active:scale-95 transition-all hover:bg-slate-800"
                                     >
                                         Authorize Network
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Master Modal */}
+            <AnimatePresence>
+                {editingMaster && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/60">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl"
+                        >
+                            <h2 className="text-3xl font-black text-slate-900 mb-8 tracking-tight">Modify Master</h2>
+
+                            <form onSubmit={handleUpdateMaster} className="space-y-6">
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="col-span-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold text-slate-900"
+                                            value={editingMaster.fullName}
+                                            onChange={e => setEditingMaster({ ...editingMaster, fullName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Regions (Comma separated)</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold text-slate-900"
+                                            value={Array.isArray(editingMaster.regions) ? editingMaster.regions.join(', ') : editingMaster.regions}
+                                            onChange={e => setEditingMaster({ ...editingMaster, regions: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                                        <select
+                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold text-slate-900"
+                                            value={editingMaster.status}
+                                            onChange={e => setEditingMaster({ ...editingMaster, status: e.target.value })}
+                                        >
+                                            <option value="active">Active</option>
+                                            <option value="suspended">Suspended</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingMaster(null)}
+                                        className="flex-1 py-4 bg-slate-100 text-slate-500 font-bold rounded-2xl active:scale-95 transition-all outline-none"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-[2] py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl shadow-slate-900/10 active:scale-95 transition-all outline-none"
+                                    >
+                                        Save Changes
                                     </button>
                                 </div>
                             </form>
