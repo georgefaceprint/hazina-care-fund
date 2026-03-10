@@ -36,6 +36,7 @@ const AdminPanel = () => {
     const [masterAgents, setMasterAgents] = useState([]);
     const [recruitmentLogs, setRecruitmentLogs] = useState([]);
     const [recruitmentStats, setRecruitmentStats] = useState({ today: 0, total_payouts: 0 });
+    const [recruitmentConfig, setRecruitmentConfig] = useState({ agentCommission: 15, masterCommission: 5 });
 
 
     // Hardcode admin role check for MVP purposes (In production this should be a role in Firestore/Custom Claims)
@@ -116,10 +117,17 @@ const AdminPanel = () => {
             }
         );
 
+        const configUnsubscribe = onSnapshot(doc(db, 'config', 'recruitment'), (docSnap) => {
+            if (docSnap.exists()) {
+                setRecruitmentConfig(docSnap.data());
+            }
+        });
+
         return () => {
             unsubscribe(); usersUnsubscribe(); transUnsubscribe();
             statsUnsubscribe(); kbUnsubscribe(); tiersUnsubscribe();
             agentsUnsubscribe(); masterAgentsUnsubscribe(); logsUnsubscribe();
+            configUnsubscribe();
         };
     }, [isAdmin, loading, navigate]);
 
@@ -822,6 +830,50 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                             Authorize Admin
                                         </button>
                                     </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recruitment Settings */}
+                        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+                            <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-900">
+                                <TrendingUp className="w-6 h-6 text-brand-primary" />
+                                Onboarding & Commission Configuration
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Field Agent Commission (KSh per Signup)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">KSh</span>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-slate-50 p-4 pl-14 rounded-2xl border border-slate-100 font-black text-slate-900 focus:ring-2 focus:ring-brand-primary outline-none transition-all"
+                                            value={recruitmentConfig.agentCommission || 15}
+                                            onChange={async (e) => {
+                                                const val = Number(e.target.value);
+                                                setRecruitmentConfig(prev => ({ ...prev, agentCommission: val }));
+                                                await setDoc(doc(db, 'config', 'recruitment'), { agentCommission: val }, { merge: true });
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 italic mt-1">Direct payout to the agent for every successfully onboarded user.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Master Agent Override (KSh per Signup)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">KSh</span>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-slate-50 p-4 pl-14 rounded-2xl border border-slate-100 font-black text-slate-900 focus:ring-2 focus:ring-brand-primary outline-none transition-all"
+                                            value={recruitmentConfig.masterCommission || 5}
+                                            onChange={async (e) => {
+                                                const val = Number(e.target.value);
+                                                setRecruitmentConfig(prev => ({ ...prev, masterCommission: val }));
+                                                await setDoc(doc(db, 'config', 'recruitment'), { masterCommission: val }, { merge: true });
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 italic mt-1">Override commission paid to the Master Agent for every signup in their network.</p>
                                 </div>
                             </div>
                         </div>

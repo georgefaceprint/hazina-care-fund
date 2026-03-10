@@ -19,6 +19,7 @@ const SuperMasterDashboard = () => {
     const [newMaster, setNewMaster] = useState({
         fullName: '',
         phoneNumber: '',
+        nationalId: '',
         regions: ''
     });
     const [stats, setStats] = useState({
@@ -77,6 +78,7 @@ const SuperMasterDashboard = () => {
             const masterData = {
                 ...newMaster,
                 phoneNumber: formattedPhone,
+                nationalId: newMaster.nationalId,
                 regions: newMaster.regions.split(',').map(r => r.trim()),
                 role: 'master_agent',
                 status: 'active',
@@ -96,7 +98,7 @@ const SuperMasterDashboard = () => {
             toast.success("Master Agent enabled!");
             fetchGlobalData();
             setShowAddModal(false);
-            setNewMaster({ fullName: '', phoneNumber: '', regions: '' });
+            setNewMaster({ fullName: '', phoneNumber: '', nationalId: '', regions: '' });
         } catch (error) {
             console.error("Error adding master:", error);
             toast.error("Failed to register master agent.");
@@ -109,6 +111,7 @@ const SuperMasterDashboard = () => {
             const masterRef = doc(db, 'master_agents', editingMaster.id);
             const updateData = {
                 fullName: editingMaster.fullName,
+                nationalId: editingMaster.nationalId || '',
                 regions: Array.isArray(editingMaster.regions) ? editingMaster.regions : editingMaster.regions.split(',').map(r => r.trim()),
                 status: editingMaster.status || 'active'
             };
@@ -317,6 +320,17 @@ const SuperMasterDashboard = () => {
                                         />
                                     </div>
                                     <div className="col-span-2 md:col-span-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">National ID Number</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full bg-slate-50 rounded-2xl px-6 py-4 border-none focus:ring-2 focus:ring-brand-primary transition-all font-bold text-slate-900"
+                                            placeholder="12345678"
+                                            value={newMaster.nationalId}
+                                            onChange={e => setNewMaster({ ...newMaster, nationalId: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Regions (Comma separated)</label>
                                         <input
                                             type="text"

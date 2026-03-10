@@ -98,6 +98,7 @@ const MasterDashboard = () => {
                 agentCode: newAgent.agentCode.toUpperCase(),
                 masterAgentId: masterId,
                 tariffRate: 15,
+                nationalId: newAgent.nationalId,
                 totalSignups: 0,
                 status: 'active',
                 createdAt: serverTimestamp()
@@ -109,6 +110,7 @@ const MasterDashboard = () => {
                 phoneNumber: formattedPhone,
                 role: 'agent',
                 agent_code: newAgent.agentCode.toUpperCase(),
+                nationalId: newAgent.nationalId,
                 status: 'active'
             }, { merge: true });
 
@@ -128,6 +130,7 @@ const MasterDashboard = () => {
             const agentRef = doc(db, 'agents', editingAgent.id);
             const updateData = {
                 fullName: editingAgent.fullName,
+                nationalId: editingAgent.nationalId || '',
                 region: editingAgent.region,
                 status: editingAgent.status || 'active'
             };
