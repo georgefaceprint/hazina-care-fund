@@ -15,14 +15,14 @@ const Referrals = () => {
     const hazinaPoints = profile?.hazina_points || 0;
 
     const copyToClipboard = () => {
-        const shareUrl = `${window.location.origin}/signup?ref=${referralCode}`;
+        const shareUrl = `${window.location.origin}/r/${referralCode}`;
         navigator.clipboard.writeText(shareUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
     const handleShare = async () => {
-        const shareUrl = `${window.location.origin}/signup?ref=${referralCode}`;
+        const shareUrl = `${window.location.origin}/r/${referralCode}`;
         const shareData = {
             title: 'Join Hazina Protection',
             text: `Join me on Hazina and get instant crisis protection for your family!`,

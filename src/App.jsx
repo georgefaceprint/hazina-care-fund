@@ -22,6 +22,7 @@ const AgentApp = lazy(() => import('./pages/AgentApp'));
 const MasterDashboard = lazy(() => import('./pages/MasterDashboard'));
 const SuperMasterDashboard = lazy(() => import('./pages/SuperMasterDashboard'));
 const RegisterFee = lazy(() => import('./pages/RegisterFee'));
+const ShortRedirect = lazy(() => import('./pages/ShortRedirect'));
 import RecruitmentLayout from './layouts/RecruitmentLayout';
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -106,6 +107,7 @@ const App = () => {
               <Suspense fallback={<SplashScreen />}>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/r/:agentCode" element={<ShortRedirect />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
 
                   {/* Independent Admin Portal */}

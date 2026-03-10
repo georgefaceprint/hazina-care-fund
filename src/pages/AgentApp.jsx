@@ -20,7 +20,7 @@ const AgentApp = () => {
     const [loading, setLoading] = useState(true);
 
     const agentCode = profile?.agent_code || profile?.id; // Fallback to profile ID if no specific agent_code
-    const registrationLink = `https://hazina-care-fund.web.app/login?ref=${agentCode}`;
+    const registrationLink = `${window.location.origin}/r/${agentCode}`;
 
     useEffect(() => {
         const fetchStats = async () => {
