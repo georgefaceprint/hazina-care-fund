@@ -129,6 +129,9 @@ const Dashboard = () => {
     const multipliers = { daily: 1, weekly: 7, monthly: 30, yearly: 365 };
     const calculatedBurn = totalDailyBurn * multipliers[burnPeriod];
 
+    // Per-person rate (average or specific if we want to be detailed)
+    const perPersonRate = peopleCount > 0 ? (totalDailyBurn / peopleCount).toFixed(0) : 0;
+
 
     const runTestDeduction = async () => {
         if (isDemoMode) {
@@ -282,10 +285,30 @@ const Dashboard = () => {
                             </div>
                         </div>
                         <p className="text-3xl font-black text-slate-900 relative z-10">KSh {calculatedBurn.toLocaleString()}</p>
-                        <p className="text-[10px] text-slate-400 mt-1 flex items-center justify-between gap-1 italic relative z-10">
-                            <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {t('auto_deducted')}</span>
-                            <span className="font-bold text-brand-primary/60 not-italic font-sans">{peopleCount} {t('people')} × KSh {totalDailyBurn}/day</span>
-                        </p>
+                        <div className="flex flex-col mt-2 relative z-10">
+                            <p className="text-[10px] text-slate-400 flex items-center gap-1 italic">
+                                <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {t('auto_deducted')}</span>
+                                <span className="font-bold text-brand-primary/60 not-italic font-sans ml-auto">
+                                    {peopleCount} {t('people')} Total
+                                </span>
+                            </p>
+                            <div className="mt-2 p-2 bg-slate-50 rounded-xl space-y-1">
+                                <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase">
+                                    <span>You ({profile.active_tier})</span>
+                                    <span>KSh {baseDailyBurn}/day</span>
+                                </div>
+                                {dependents.map(dep => (
+                                    <div key={dep.id} className="flex justify-between text-[9px] font-medium text-slate-400 uppercase">
+                                        <span>{dep.name} ({dep.active_tier})</span>
+                                        <span>KSh {tierConfig[dep.active_tier?.toLowerCase()]?.cost || 0}/day</span>
+                                    </div>
+                                ))}
+                                <div className="border-t border-slate-200 pt-1 mt-1 flex justify-between text-[10px] font-black text-brand-primary uppercase">
+                                    <span>Total Rate</span>
+                                    <span>KSh {totalDailyBurn}/day</span>
+                                </div>
+                            </div>
+                        </div>
 
                     </div>
                     <div className="card bg-white border-none shadow-md overflow-hidden relative group cursor-pointer" onClick={() => navigate('/topup')}>
