@@ -21,6 +21,15 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const [burnPeriod, setBurnPeriod] = useState('daily');
+    const { isAgent, isMasterAgent, isSuperMaster } = useAuth();
+
+    useEffect(() => {
+        if (!loading && profile) {
+            if (isSuperMaster) navigate('/super');
+            else if (isMasterAgent) navigate('/master');
+            else if (isAgent) navigate('/agent');
+        }
+    }, [profile, loading, isSuperMaster, isMasterAgent, isAgent, navigate]);
 
     useEffect(() => {
         const fetchData = async () => {

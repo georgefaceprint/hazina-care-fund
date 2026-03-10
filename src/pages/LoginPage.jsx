@@ -124,7 +124,11 @@ const LoginPage = () => {
 
                 await setDoc(userRef, updates, { merge: true });
 
-                if (!userData.profile_completed) {
+                const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(userData.role);
+
+                if (isRecruiter) {
+                    navigate('/dashboard');
+                } else if (!userData.profile_completed) {
                     navigate('/complete-profile');
                 } else {
                     navigate('/dashboard');
