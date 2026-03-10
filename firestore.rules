@@ -12,7 +12,8 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return role == 'admin' || role == 'super_master';
     }
 
     // Users collection
@@ -21,8 +22,8 @@ service cloud.firestore {
       allow read, update: if isAuthenticated() && isOwner(userId);
       // New users can create their profile
       allow create: if isAuthenticated() && isOwner(userId);
-      // Admins can read and manage all users
-      allow read, update: if isAuthenticated() && isAdmin();
+      // Admins and Super Masters can read and manage all users
+      allow read, create, update: if isAuthenticated() && isAdmin();
     }
     
     // Dependents collection
