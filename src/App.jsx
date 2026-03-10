@@ -21,6 +21,7 @@ const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
 const AgentApp = lazy(() => import('./pages/AgentApp'));
 const MasterDashboard = lazy(() => import('./pages/MasterDashboard'));
 const SuperMasterDashboard = lazy(() => import('./pages/SuperMasterDashboard'));
+const RegisterFee = lazy(() => import('./pages/RegisterFee'));
 import RecruitmentLayout from './layouts/RecruitmentLayout';
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -128,6 +129,7 @@ const App = () => {
                     <Route path="/referrals" element={<Referrals />} />
                     <Route path="/settings" element={<ProfileSettings />} />
                     <Route path="/complete-profile" element={<CompleteProfile />} />
+                    <Route path="/pay-registration" element={<RegisterFee />} />
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   </Route>
 

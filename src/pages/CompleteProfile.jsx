@@ -57,7 +57,7 @@ const CompleteProfile = () => {
             });
 
             toast.success("Profile completed successfully!");
-            navigate('/dashboard');
+            navigate('/pay-registration');
         } catch (error) {
             console.error("Error updating profile:", error);
             // Log the attempted ID for better debugging

@@ -13,8 +13,10 @@ const AgentApp = () => {
         today: 0,
         yesterday: 0,
         total: 0,
-        earnings: 0
+        earnings: 0,
+        walletBalance: 0
     });
+    const [recentLogs, setRecentLogs] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const agentCode = profile?.agent_code || profile?.id; // Fallback to profile ID if no specific agent_code
@@ -32,30 +34,23 @@ const AgentApp = () => {
 
                 const logsRef = collection(db, 'recruitment_logs');
 
-                // Today's Query
-                const todayQuery = query(
-                    logsRef,
-                    where('agentId', '==', agentCode),
-                    where('timestamp', '>=', Timestamp.fromDate(startOfToday))
-                );
-                const todaySnap = await getDocs(todayQuery);
+                // 1. Fetch Stats
+                const todayQuery = query(logsRef, where('agentCode', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
+                const yesterdayQuery = query(logsRef, where('agentCode', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
 
-                // Yesterday's Query
-                const yesterdayQuery = query(
-                    logsRef,
-                    where('agentId', '==', agentCode),
-                    where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)),
-                    where('timestamp', '<', Timestamp.fromDate(startOfToday))
-                );
-                const yesterdaySnap = await getDocs(yesterdayQuery);
+                const [todaySnap, yesterdaySnap] = await Promise.all([getDocs(todayQuery), getDocs(yesterdayQuery)]);
 
-                const totalSignups = profile?.totalSignups || 0;
+                // 2. Fetch Recent Logs
+                const recentQuery = query(logsRef, where('agentCode', '==', agentCode), orderBy('timestamp', 'desc'), limit(10));
+                const recentSnap = await getDocs(recentQuery);
+                setRecentLogs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
                 setStats({
                     today: todaySnap.size,
                     yesterday: yesterdaySnap.size,
-                    total: totalSignups,
-                    earnings: totalSignups * 15
+                    total: profile?.totalSignups || 0,
+                    earnings: (profile?.totalSignups || 0) * 15,
+                    walletBalance: profile?.walletBalance || 0
                 });
             } catch (error) {
                 console.error("Error fetching agent stats:", error);
@@ -65,7 +60,7 @@ const AgentApp = () => {
         };
 
         fetchStats();
-    }, [agentCode, profile?.totalSignups]);
+    }, [agentCode, profile?.totalSignups, profile?.walletBalance]);
 
     const copyLink = () => {
         navigator.clipboard.writeText(registrationLink);
@@ -101,7 +96,7 @@ const AgentApp = () => {
                         <p className="text-xs font-black uppercase tracking-[0.3em] text-brand-primary mb-4 italic">Earnings Statement</p>
                         <div className="flex items-baseline gap-2">
                             <span className="text-xl font-bold text-slate-500">KSh</span>
-                            <h2 className="text-6xl font-black tracking-tight">{stats.earnings.toLocaleString()}</h2>
+                            <h2 className="text-6xl font-black tracking-tight">{stats.walletBalance.toLocaleString()}</h2>
                         </div>
 
                         <div className="mt-auto pt-10 grid grid-cols-2 gap-8 border-t border-white/5">
@@ -173,16 +168,36 @@ const AgentApp = () => {
                         <ChevronRight className="w-6 h-6 text-slate-300" />
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
                         {loading ? (
-                            <p className="text-slate-400 italic">Syncing activity log...</p>
-                        ) : stats.total === 0 ? (
-                            <>
-                                <Users className="w-12 h-12 text-slate-100 mb-4" />
+                            <p className="text-slate-400 italic text-center py-10">Syncing activity log...</p>
+                        ) : recentLogs.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-10 opacity-30">
+                                <Users className="w-12 h-12 text-slate-300 mb-4" />
                                 <p className="text-slate-400 font-bold">No signups recorded.</p>
-                            </>
+                            </div>
                         ) : (
-                            <p className="text-slate-500 font-medium text-center">Historical data and details are summarized in the master portal.</p>
+                            recentLogs.map(log => (
+                                <div key={log.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl group hover:bg-slate-100 transition-all">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white rounded-xl shadow-sm">
+                                            <User className="w-5 h-5 text-brand-primary" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-900 text-sm">{log.userName}</p>
+                                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">
+                                                {log.tier.replace('_', ' ')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-black text-emerald-600 text-sm">+ KSh {log.commissionEarned}</p>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                                            {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleDateString() : 'Just now'}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
                         )}
                     </div>
                 </div>

@@ -28,8 +28,11 @@ const Dashboard = () => {
             if (isSuperMaster) navigate('/super');
             else if (isMasterAgent) navigate('/master');
             else if (isAgent) navigate('/agent');
+            else if (!profile.registration_fee_paid && !isDemoMode) {
+                navigate('/pay-registration');
+            }
         }
-    }, [profile, loading, isSuperMaster, isMasterAgent, isAgent, navigate]);
+    }, [profile, loading, isSuperMaster, isMasterAgent, isAgent, navigate, isDemoMode]);
 
     useEffect(() => {
         const fetchData = async () => {

@@ -110,6 +110,7 @@ const LoginPage = () => {
                     grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
                     referrer_id: referrerId || null,
                     recruited_by: sessionStorage.getItem('hazina_agent_code') || null,
+                    registration_fee_paid: false,
                     referral_code: generateReferralCode(6)
                 });
                 navigate('/complete-profile');
