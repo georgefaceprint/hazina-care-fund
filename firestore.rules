@@ -76,7 +76,25 @@ service cloud.firestore {
         isAdmin() || 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master'
       );
-      allow create: if false; // Only via Cloud Functions
+      allow create: if true; // Allow creation for recruitment tracking (can be restricted further if needed)
+    }
+
+    // Config Collection
+    match /config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // Totals/Global Metrics
+    match /totals/{totalId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // Sifuna Knowledge Base
+    match /sifuna_kb/{kbId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
     }
   }
 }
