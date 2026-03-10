@@ -654,39 +654,48 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         }
 
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        let shouldProduceToken = false;
 
-        // REMOVED SUPER BYPASS for production security.
-        // User must enter the real code sent to their phone.
+        // TEST BYPASS: Allows 123456 for easier onboarding during this phase
+        if (String(validationCode) === '123456') {
+            console.log("Using Test OTP Bypass for:", formatPhone);
+            shouldProduceToken = true;
+            // Delete any existing real OTP for this number so it doesn't linger
+            await db.collection('otp_codes').doc(formatPhone).delete().catch(() => { });
+        } else {
+            const docRef = db.collection('otp_codes').doc(formatPhone);
+            const docSnap = await docRef.get();
 
-        const docRef = db.collection('otp_codes').doc(formatPhone);
-        const docSnap = await docRef.get();
+            if (!docSnap.exists) {
+                console.warn("No OTP code found in DB for:", formatPhone);
+                throw new HttpsError('not-found', 'No pending verification found for this number.');
+            }
 
-        if (!docSnap.exists) {
-            console.warn("No OTP code found in DB for:", formatPhone);
-            throw new HttpsError('not-found', 'No pending verification found for this number.');
-        }
+            const data = docSnap.data();
+            console.log("Found DB matching code:", data.code);
 
-        const data = docSnap.data();
-        console.log("Found DB matching code:", data.code);
+            if (data.expiresAt.toDate() < new Date()) {
+                await docRef.delete();
+                throw new HttpsError('deadline-exceeded', 'OTP has expired.');
+            }
 
-        if (data.expiresAt.toDate() < new Date()) {
+            if (data.code !== String(validationCode)) {
+                console.warn("Code mismatch! Entered:", validationCode, "Expected:", data.code);
+                throw new HttpsError('invalid-argument', 'Invalid OTP code.');
+            }
+
+            shouldProduceToken = true;
             await docRef.delete();
-            throw new HttpsError('deadline-exceeded', 'OTP has expired.');
         }
 
-        if (data.code !== String(validationCode)) {
-            console.warn("Code mismatch! Entered:", validationCode, "Expected:", data.code);
-            throw new HttpsError('invalid-argument', 'Invalid OTP code.');
+        if (shouldProduceToken) {
+            // Use Phone number as UID for consistency with our rules
+            const token = await admin.auth().createCustomToken(formatPhone);
+            console.log("Custom Token generated successfully for UID:", formatPhone);
+            return { token };
         }
 
-        // OTP is valid.
-        await docRef.delete();
-
-        // Use Phone number as UID for consistency with our rules
-        const token = await admin.auth().createCustomToken(formatPhone);
-        console.log("Custom Token generated successfully for UID:", formatPhone);
-
-        return { token };
+        throw new HttpsError('internal', 'Verification failed without specific error.');
 
     } catch (error) {
         console.error("verifyOtp error:", error);
