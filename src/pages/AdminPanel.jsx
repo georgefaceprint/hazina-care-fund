@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { format, subDays, startOfDay } from 'date-fns';
+import { formatKenyanPhone } from '../utils/phoneUtils';
 
 const getSafeDate = (dateVal) => {
     if (!dateVal) return new Date();
@@ -783,7 +784,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                         onSubmit={async (e) => {
                                             e.preventDefault();
                                             const name = e.target.fullName.value;
-                                            const phone = e.target.phone.value;
+                                            const phone = formatKenyanPhone(e.target.phone.value);
                                             if (!name || !phone) return;
 
                                             try {
