@@ -24,7 +24,7 @@ const Dashboard = () => {
     const { isAgent, isMasterAgent, isSuperMaster } = useAuth();
 
     useEffect(() => {
-        if (!loading && profile) {
+        if (profile) {
             if (isSuperMaster) navigate('/super');
             else if (isMasterAgent) navigate('/master');
             else if (isAgent) navigate('/agent');

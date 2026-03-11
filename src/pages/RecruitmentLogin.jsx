@@ -1,0 +1,228 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { Shield, Phone, ArrowRight, Loader2, CheckCircle2, RotateCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { auth, db, functions } from '../services/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { signInWithCustomToken } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { formatKenyanPhone } from '../utils/phoneUtils';
+
+const RecruitmentLogin = () => {
+    const navigate = useNavigate();
+    const { user, profile, loading: authLoading } = useAuth();
+    const toast = useToast();
+    
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
+    const [confirmationResult, setConfirmationResult] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        // If user is already authenticated and has a professional role, redirect appropriately
+        if (user && profile && !authLoading) {
+            if (profile.role === 'super_master') navigate('/super');
+            else if (profile.role === 'master_agent') navigate('/master');
+            else if (profile.role === 'agent') navigate('/agent');
+            else navigate('/dashboard'); // Fallback for guardians
+        }
+    }, [user, profile, authLoading, navigate]);
+
+    const onSignInSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        const formatPhone = formatKenyanPhone(phoneNumber);
+
+        try {
+            const sendOtp = httpsCallable(functions, 'sendOtp');
+            await sendOtp({ phoneNumber: formatPhone });
+            setConfirmationResult(true);
+            toast.success("Verification code sent to " + formatPhone);
+        } catch (error) {
+            console.error('sendOtp error:', error);
+            setError(error.message || 'Failed to send SMS. Please check your number.');
+            toast.error("Bridge Connection Failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const onOtpSubmit = async (e) => {
+        e.preventDefault();
+        if (!verificationCode) return;
+
+        setError('');
+        setLoading(true);
+
+        try {
+            const formatPhone = formatKenyanPhone(phoneNumber);
+            const verifyOtpFunc = httpsCallable(functions, 'verifyOtp');
+
+            const result = await verifyOtpFunc({
+                phoneNumber: formatPhone,
+                validationCode: verificationCode
+            });
+
+            const { token } = result.data;
+            const authResult = await signInWithCustomToken(auth, token);
+            
+            // Check role immediately for redirection
+            const userRef = doc(db, 'users', formatPhone);
+            const userSnap = await getDoc(userRef);
+
+            if (userSnap.exists()) {
+                const userData = userSnap.data();
+                if (['super_master', 'master_agent', 'agent'].includes(userData.role)) {
+                    toast.success(`Access Authorized: ${userData.fullName}`);
+                    if (userData.role === 'super_master') navigate('/super');
+                    else if (userData.role === 'master_agent') navigate('/master');
+                    else navigate('/agent');
+                } else {
+                    toast.info("Identification success. Redirecting to Guardian Hub.");
+                    navigate('/dashboard');
+                }
+            } else {
+                toast.error("Professional profile not found. Access denied.");
+                await auth.signOut();
+            }
+        } catch (error) {
+            console.error('OTP verification error:', error);
+            setError(error.message || 'Invalid authorization code.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden font-sans">
+            {/* Background Decor */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-primary/5 rounded-full blur-[120px] -mr-64 -mt-64"></div>
+            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[100px] -ml-48 -mb-48"></div>
+
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="max-w-md w-full relative z-10"
+            >
+                <div className="bg-white border border-slate-200 p-10 rounded-[3rem] shadow-2xl">
+                    <div className="text-center mb-10">
+                        <div className="w-20 h-20 bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-slate-900/20">
+                            <Shield className="w-10 h-10 text-brand-primary" />
+                        </div>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">Hazina HQ</h1>
+                        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2 bg-slate-50 inline-block px-4 py-1.5 rounded-full border border-slate-100">
+                            Management Portal
+                        </p>
+                    </div>
+
+                    <AnimatePresence mode='wait'>
+                        {!confirmationResult ? (
+                            <motion.form
+                                key="phone"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                onSubmit={onSignInSubmit} 
+                                className="space-y-6"
+                            >
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest block">Authorization ID (Phone)</label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
+                                        <input
+                                            type="tel"
+                                            required
+                                            placeholder="07XX XXX XXX"
+                                            className="w-full bg-slate-50 border-none rounded-[1.5rem] pl-14 pr-6 py-5 text-slate-900 focus:ring-2 focus:ring-brand-primary transition-all text-sm outline-none font-bold"
+                                            value={phoneNumber}
+                                            onChange={(e) => setPhoneNumber(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={loading || phoneNumber.length < 9}
+                                    className="w-full py-5 bg-slate-900 hover:bg-brand-primary text-white font-black uppercase tracking-[0.2em] rounded-[1.5rem] transition-all shadow-xl shadow-slate-900/20 flex items-center justify-center gap-3 group active:scale-95 disabled:opacity-50"
+                                >
+                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                        <>Request Access <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>
+                                    )}
+                                </button>
+                            </motion.form>
+                        ) : (
+                            <motion.form
+                                key="otp"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                onSubmit={onOtpSubmit} 
+                                className="space-y-8"
+                            >
+                                <div className="text-center">
+                                    <p className="text-sm font-bold text-slate-600 mb-1">Authorization Code Sent</p>
+                                    <p className="text-xs font-black text-brand-primary font-mono">{formatKenyanPhone(phoneNumber)}</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        maxLength="6"
+                                        placeholder="••••••"
+                                        className="w-full text-center bg-slate-50 border-none rounded-[1.5rem] py-6 focus:ring-2 focus:ring-brand-primary transition-all text-4xl font-black tracking-[0.5em] text-slate-900"
+                                        value={verificationCode}
+                                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    <button
+                                        type="submit"
+                                        disabled={loading || verificationCode.length !== 6}
+                                        className="w-full py-5 bg-brand-primary text-white font-black uppercase tracking-[0.2em] rounded-[1.5rem] transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                                    >
+                                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                            <>Verify Identity <CheckCircle2 className="w-5 h-5" /></>
+                                        )}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmationResult(null)}
+                                        className="w-full py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+                                    >
+                                        <RotateCcw className="w-4 h-4" /> Reset Authorization
+                                    </button>
+                                </div>
+                            </motion.form>
+                        )}
+                    </AnimatePresence>
+
+                    <div className="mt-12 pt-8 border-t border-slate-50 text-center">
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
+                            Infrastructure Monitor: Active<br/>
+                            <span className="text-brand-primaryOpacity-50">Authorized Recruitment Personnel Only</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div className="mt-10 text-center">
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="text-slate-400 hover:text-slate-900 text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center mx-auto gap-2"
+                    >
+                        Switch to Guardian Login
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+export default RecruitmentLogin;

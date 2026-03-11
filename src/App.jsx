@@ -23,13 +23,29 @@ const MasterDashboard = lazy(() => import('./pages/MasterDashboard'));
 const SuperMasterDashboard = lazy(() => import('./pages/SuperMasterDashboard'));
 const RegisterFee = lazy(() => import('./pages/RegisterFee'));
 const ShortRedirect = lazy(() => import('./pages/ShortRedirect'));
+const RecruitmentLogin = lazy(() => import('./pages/RecruitmentLogin'));
 import RecruitmentLayout from './layouts/RecruitmentLayout';
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
 import SplashScreen from './components/SplashScreen';
 
+const RoleBasedRedirect = () => {
+  const { profile, loading } = useAuth();
+  if (loading) return null;
+  if (!profile) return <Navigate to="/login" replace />;
+
+  if (profile.role === 'admin') return <Navigate to="/admin" replace />;
+  if (profile.role === 'super_master') return <Navigate to="/super" replace />;
+  if (profile.role === 'master_agent') return <Navigate to="/master" replace />;
+  if (profile.role === 'agent') return <Navigate to="/agent" replace />;
+
+  return <Navigate to="/dashboard" replace />;
+};
+
 const ProtectedRoute = ({ children, requireAdmin = false, requireAgent = false, requireMaster = false, requireSuper = false }) => {
   const { user, profile, loading } = useAuth();
+
+  const isProfessionalPath = requireAgent || requireMaster || requireSuper;
 
   // Wait for initial auth loading
   if (loading) return (
@@ -55,23 +71,25 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireAgent = false, 
   }
 
   if (!user) {
-    return <Navigate to={requireAdmin ? "/admin/login" : "/login"} replace />;
+    if (requireAdmin) return <Navigate to="/admin/login" replace />;
+    if (isProfessionalPath) return <Navigate to="/hq/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (requireAdmin && profile?.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+    return <RoleBasedRedirect />;
   }
 
   if (requireAgent && profile?.role !== 'agent') {
-    return <Navigate to="/dashboard" replace />;
+    return <RoleBasedRedirect />;
   }
 
   if (requireMaster && profile?.role !== 'master_agent') {
-    return <Navigate to="/dashboard" replace />;
+    return <RoleBasedRedirect />;
   }
 
   if (requireSuper && profile?.role !== 'super_master') {
-    return <Navigate to="/dashboard" replace />;
+    return <RoleBasedRedirect />;
   }
 
   return children;
@@ -107,6 +125,7 @@ const App = () => {
               <Suspense fallback={<SplashScreen />}>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/hq/login" element={<RecruitmentLogin />} />
                   <Route path="/r/:agentCode" element={<ShortRedirect />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
 
@@ -132,7 +151,7 @@ const App = () => {
                     <Route path="/settings" element={<ProfileSettings />} />
                     <Route path="/complete-profile" element={<CompleteProfile />} />
                     <Route path="/pay-registration" element={<RegisterFee />} />
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/" element={<RoleBasedRedirect />} />
                   </Route>
 
                   {/* Recruitment Portals - Professional Management Layout */}

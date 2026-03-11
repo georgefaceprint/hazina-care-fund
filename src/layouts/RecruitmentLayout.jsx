@@ -52,7 +52,7 @@ const RecruitmentLayout = () => {
 
     const handleLogout = async () => {
         await logout();
-        navigate('/login');
+        navigate('/hq/login');
     };
 
     return (

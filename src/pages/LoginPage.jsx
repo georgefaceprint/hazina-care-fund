@@ -265,7 +265,13 @@ const LoginPage = () => {
                     </form>
                 )}
 
-                <div className="pt-8 border-t border-slate-100 text-center">
+                <div className="pt-8 border-t border-slate-100 text-center space-y-4">
+                    <button
+                        onClick={() => navigate('/hq/login')}
+                        className="text-[10px] font-black uppercase text-slate-400 hover:text-brand-primary tracking-widest transition-colors block w-full"
+                    >
+                        Management & Recruitment Portal
+                    </button>
                     <p className="text-xs text-slate-400">
                         {t('by_continuing')}
                     </p>
