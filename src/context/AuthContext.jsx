@@ -184,12 +184,18 @@ export const AuthProvider = ({ children }) => {
                                 setLoading(false);
                             } else {
                                 // For phone users, wait a second to allow LoginPage to create the doc
-                                setTimeout(() => {
+                                // If it still doesn't exist, this is likely a stale session after a wipe
+                                setTimeout(async () => {
                                     if (!snap.exists()) {
+                                        console.warn("📍 Auth: Profile missing for authenticated user. Clearing stale session.");
                                         setRealProfile(false);
                                         setLoading(false);
+                                        // Auto-logout for stale sessions
+                                        if (auth.currentUser && !auth.currentUser.email) {
+                                            await auth.signOut();
+                                        }
                                     }
-                                }, 2000);
+                                }, 2500);
                             }
                         }
                     }, (err) => {
