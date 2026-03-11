@@ -823,6 +823,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                                     role: 'super_master',
                                                     status: 'active',
                                                     registration_fee_paid: true,
+                                                    profile_completed: true,
                                                     createdAt: serverTimestamp()
                                                 }, { merge: true });
                                                 toast.success("Super Master created successfully!");

@@ -42,10 +42,12 @@ const RoleBasedRedirect = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
-const ProtectedRoute = ({ children, requireAdmin = false, requireAgent = false, requireMaster = false, requireSuper = false }) => {
+const RoleProtectedRoute = ({ children, requireAdmin = false, requireAgent = false, requireMaster = false, requireSuper = false, noRecruiters = false }) => {
   const { user, profile, loading } = useAuth();
+  const navigate = useNavigate();
 
   const isProfessionalPath = requireAgent || requireMaster || requireSuper;
+  const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(profile?.role);
 
   // Wait for initial auth loading
   if (loading) return (
@@ -54,8 +56,14 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireAgent = false, 
     </div>
   );
 
+  if (!user) {
+    if (requireAdmin) return <Navigate to="/admin/login" replace />;
+    if (isProfessionalPath) return <Navigate to="/hq/login" replace />;
+    return <Navigate to="/login" replace />;
+  }
+
   // Still loading profile if user exists but profile is null
-  if (user && profile === null) {
+  if (profile === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
@@ -63,17 +71,13 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireAgent = false, 
     );
   }
 
-  // If profile is false, the user logged in but has no profile document. We log them out or redirect to a fallback.
-  // For now, if no profile, we can't let them in, but we shouldn't trap them in a spinner.
-  if (user && profile === false) {
-    // We could navigate them away, or just return an error UI. 
+  if (profile === false) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!user) {
-    if (requireAdmin) return <Navigate to="/admin/login" replace />;
-    if (isProfessionalPath) return <Navigate to="/hq/login" replace />;
-    return <Navigate to="/login" replace />;
+  // Stricter check: If we are in the guardian/consumer zone but the user is a recruiter, bounce them to HQ
+  if (noRecruiters && isRecruiter) {
+    return <RoleBasedRedirect />;
   }
 
   if (requireAdmin && profile?.role !== 'admin') {
@@ -124,6 +128,7 @@ const App = () => {
               {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
               <Suspense fallback={<SplashScreen />}>
                 <Routes>
+                  <Route path="/" element={<RoleProtectedRoute><RoleBasedRedirect /></RoleProtectedRoute>} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/hq/login" element={<RecruitmentLogin />} />
                   <Route path="/r/:agentCode" element={<ShortRedirect />} />
@@ -131,16 +136,16 @@ const App = () => {
 
                   {/* Independent Admin Portal */}
                   <Route path="/admin" element={
-                    <ProtectedRoute requireAdmin={true}>
+                    <RoleProtectedRoute requireAdmin={true}>
                       <AdminPanel />
-                    </ProtectedRoute>
+                    </RoleProtectedRoute>
                   } />
 
-                  {/* Mobile App Layout - Consumer Facing */}
+                  {/* Mobile App Layout - Consumer Facing (Guardians Only) */}
                   <Route element={
-                    <ProtectedRoute>
+                    <RoleProtectedRoute noRecruiters={true}>
                       <AppLayout />
-                    </ProtectedRoute>
+                    </RoleProtectedRoute>
                   }>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/topup" element={<TopUp />} />
@@ -151,29 +156,28 @@ const App = () => {
                     <Route path="/settings" element={<ProfileSettings />} />
                     <Route path="/complete-profile" element={<CompleteProfile />} />
                     <Route path="/pay-registration" element={<RegisterFee />} />
-                    <Route path="/" element={<RoleBasedRedirect />} />
                   </Route>
 
                   {/* Recruitment Portals - Professional Management Layout */}
                   <Route element={
-                    <ProtectedRoute>
+                    <RoleProtectedRoute>
                       <RecruitmentLayout />
-                    </ProtectedRoute>
+                    </RoleProtectedRoute>
                   }>
                     <Route path="/agent" element={
-                      <ProtectedRoute requireAgent={true}>
+                      <RoleProtectedRoute requireAgent={true}>
                         <AgentApp />
-                      </ProtectedRoute>
+                      </RoleProtectedRoute>
                     } />
                     <Route path="/master" element={
-                      <ProtectedRoute requireMaster={true}>
+                      <RoleProtectedRoute requireMaster={true}>
                         <MasterDashboard />
-                      </ProtectedRoute>
+                      </RoleProtectedRoute>
                     } />
                     <Route path="/super" element={
-                      <ProtectedRoute requireSuper={true}>
+                      <RoleProtectedRoute requireSuper={true}>
                         <SuperMasterDashboard />
-                      </ProtectedRoute>
+                      </RoleProtectedRoute>
                     } />
                   </Route>
                 </Routes>

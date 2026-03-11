@@ -112,7 +112,8 @@ const MasterDashboard = () => {
                 agent_code: newAgent.agentCode.toUpperCase(),
                 nationalId: newAgent.nationalId,
                 status: 'active',
-                registration_fee_paid: true
+                registration_fee_paid: true,
+                profile_completed: true
             }, { merge: true });
 
             toast.success("Agent registered successfully!");

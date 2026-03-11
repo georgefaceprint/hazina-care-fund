@@ -93,7 +93,8 @@ const SuperMasterDashboard = () => {
                 phoneNumber: formattedPhone,
                 role: 'master_agent',
                 status: 'active',
-                registration_fee_paid: true
+                registration_fee_paid: true,
+                profile_completed: true
             }, { merge: true });
 
             toast.success("Master Agent enabled!");
