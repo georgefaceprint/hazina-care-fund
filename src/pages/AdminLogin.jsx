@@ -25,7 +25,6 @@ const AdminLogin = () => {
         setLoading(true);
         try {
             // First, check if TOTP is enabled for this admin
-            const userSnap = await db.collection('users').where('email', '==', email).limit(1).get();
             // Note: In frontend, we can't directly query 'users' collection with 'where' unless rules allow.
             // Let's use a cloud function instead to be safe and clean.
             
