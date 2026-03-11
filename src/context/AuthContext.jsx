@@ -221,8 +221,43 @@ export const AuthProvider = ({ children }) => {
             }
         });
 
-        return () => unsubscribe();
-    }, [isDemoMode]);
+    // Global System Management (Cache Busting)
+    useEffect(() => {
+        const unsubscribeSystem = onSnapshot(doc(db, 'config', 'system'), async (snap) => {
+            if (snap.exists()) {
+                const { cache_version } = snap.data();
+                const localVersion = localStorage.getItem('hazina_cache_version');
+
+                if (cache_version && localVersion && cache_version.toString() !== localVersion) {
+                    console.log("🚀 System: New version detected. Purging cache...");
+                    localStorage.setItem('hazina_cache_version', cache_version.toString());
+
+                    // Clear PWA caches if available
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        for (let registration of registrations) {
+                            await registration.unregister();
+                        }
+                        const cacheNames = await caches.keys();
+                        for (let cacheName of cacheNames) {
+                            await caches.delete(cacheName);
+                        }
+                    }
+
+                    // Clear local storage and reload
+                    localStorage.removeItem('hazina_install_dismissed'); // Reset install prompt for fresh start
+                    window.location.reload(true); // Force reload
+                } else if (cache_version) {
+                    localStorage.setItem('hazina_cache_version', cache_version.toString());
+                }
+            }
+        });
+
+        return () => unsubscribeSystem();
+    }, []);
+
+    return () => unsubscribe();
+}, [isDemoMode]);
 
     const value = {
         user,

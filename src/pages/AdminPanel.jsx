@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc, serverTimestamp, setDoc, deleteDoc, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard, Trash2, RefreshCcw, Database } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { format, subDays, startOfDay } from 'date-fns';
 import { formatKenyanPhone } from '../utils/phoneUtils';
@@ -360,7 +360,8 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                         { id: 'pricing', label: 'Pricing' },
                         { id: 'recruitment', label: 'Recruitment' },
                         { id: 'transactions', label: 'Billing' },
-                        { id: 'analytics', label: 'Stats' }
+                        { id: 'analytics', label: 'Stats' },
+                        { id: 'system', label: 'System' }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -791,6 +792,115 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                         Live Liquidity
                                     </div>
                                     <div className="px-4 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 text-slate-500">Community Trust: 98%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'system' && (
+                    <div className="space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Local Cache Management */}
+                            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+                                <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                                    <Trash2 className="w-6 h-6 text-red-500" />
+                                    Client Device Tools
+                                </h3>
+                                <p className="text-sm text-slate-500 mb-6 font-medium">Use these if the app feels "stuck" or isn't showing new data on your device.</p>
+                                
+                                <div className="space-y-4">
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm("This will clear your local sessions and log you out. Continue?")) {
+                                                localStorage.clear();
+                                                sessionStorage.clear();
+                                                toast.success("Local storage cleared. Logging out...");
+                                                setTimeout(() => handleLogout(), 1000);
+                                            }
+                                        }}
+                                        className="w-full py-4 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-black uppercase tracking-widest rounded-2xl transition-all border border-slate-200 flex items-center justify-center gap-2"
+                                    >
+                                        <RefreshCcw className="w-5 h-5" />
+                                        Nuke Local Storage
+                                    </button>
+
+                                    <button
+                                        onClick={async () => {
+                                            if ('serviceWorker' in navigator) {
+                                                const registrations = await navigator.serviceWorker.getRegistrations();
+                                                for (let registration of registrations) {
+                                                    await registration.unregister();
+                                                }
+                                                const cacheNames = await caches.keys();
+                                                for (let cacheName of cacheNames) {
+                                                    await caches.delete(cacheName);
+                                                }
+                                                toast.success("Service Workers and Caches cleared.");
+                                                setTimeout(() => window.location.reload(), 1000);
+                                            }
+                                        }}
+                                        className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black uppercase tracking-widest rounded-2xl transition-all border border-slate-200 flex items-center justify-center gap-2"
+                                    >
+                                        <Database className="w-5 h-5" />
+                                        Purge PWA Assets
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Global Cache Management */}
+                            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+                                <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                                    <Zap className="w-6 h-6 text-amber-500" />
+                                    Global System Cache
+                                </h3>
+                                <p className="text-sm text-slate-500 mb-6 font-medium">Forces <strong>ALL</strong> connected users to clear their cache and reload the latest version of Hazina.</p>
+                                
+                                <div className="space-y-4">
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm("CRITICAL: This will force ALL users to reload their app. Only use after a major database change or wipe. Proceed?")) {
+                                                try {
+                                                    const newVersion = Date.now();
+                                                    await setDoc(doc(db, 'config', 'system'), {
+                                                        cache_version: newVersion,
+                                                        last_purge_by: profile.id,
+                                                        timestamp: serverTimestamp()
+                                                    }, { merge: true });
+                                                    toast.success("Global cache-bust signal sent!");
+                                                } catch (e) {
+                                                    toast.error("Failed to send global signal: " + e.message);
+                                                }
+                                            }
+                                        }}
+                                        className="w-full py-8 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-900/20 flex items-center justify-center gap-3 hover:bg-brand-primary active:scale-95 italic"
+                                    >
+                                        <RefreshCcw className="w-6 h-6 animate-spin-slow" />
+                                        Force Global Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Database Health Check */}
+                        <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
+                            <h3 className="text-lg font-black mb-6">Database Environment</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="p-4 bg-slate-50 rounded-2xl">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Users Document</p>
+                                    <p className="font-bold text-slate-900">{users.length} Records</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-2xl">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Active Claims</p>
+                                    <p className="font-bold text-slate-900">{claims.length} Records</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-2xl">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Knowledge Hub</p>
+                                    <p className="font-bold text-slate-900">{kbItems.length} Pairs</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-2xl">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Total Fund</p>
+                                    <p className="font-bold text-emerald-600">KSh {globalStats.total_fund?.toLocaleString() || 0}</p>
                                 </div>
                             </div>
                         </div>
