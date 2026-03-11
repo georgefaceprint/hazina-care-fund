@@ -24,7 +24,7 @@ export const InstallProvider = ({ children }) => {
         const checkDismissal = () => {
             const lastDismiss = localStorage.getItem('hazina_install_dismissed');
             if (!lastDismiss) return false;
-            const expiration = 24 * 60 * 60 * 1000; // 24 hours
+            const expiration = 6 * 60 * 60 * 1000; // 6 hours
             return (Date.now() - parseInt(lastDismiss)) < expiration;
         };
 
