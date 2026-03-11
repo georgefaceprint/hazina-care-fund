@@ -42,6 +42,12 @@ const RecruitmentLogin = () => {
         try {
             const sendOtp = httpsCallable(functions, 'sendOtp');
             const result = await sendOtp({ phoneNumber: formatPhone });
+
+            if (result.data?.success === false) {
+                setError(result.data.message);
+                return;
+            }
+
             setConfirmationResult(true);
             setIsTotpLogin(!!result.data?.totpEnabled);
             if (result.data?.totpEnabled) {

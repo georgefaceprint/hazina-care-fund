@@ -67,9 +67,17 @@ const LoginPage = () => {
             const sendOtp = httpsCallable(functions, 'sendOtp');
             const result = await sendOtp({ phoneNumber: formatPhone });
 
+            if (result.data?.success === false) {
+                setError(result.data.message);
+                return;
+            }
+
             // On success, set a local state to reveal OTP UI
             setConfirmationResult(true);
             setIsTotpLogin(!!result.data?.totpEnabled);
+            if (result.data?.totpEnabled) {
+                toast.success("Security token required.");
+            }
         } catch (error) {
             console.error('sendOtp error:', error);
             // Display the actual error message from the exception for better debugging.

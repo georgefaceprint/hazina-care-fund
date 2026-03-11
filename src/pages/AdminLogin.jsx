@@ -16,6 +16,7 @@ const AdminLogin = () => {
     const [password, setPassword] = useState('');
     const [totpCode, setTotpCode] = useState('');
     const [showTotp, setShowTotp] = useState(false);
+    const [isForced, setIsForced] = useState(false);
     const [loading, setLoading] = useState(false);
     const [setupClicks, setSetupClicks] = useState(0);
 
@@ -31,20 +32,25 @@ const AdminLogin = () => {
             if (!showTotp) {
                 const validateTotpFunc = httpsCallable(functions, 'validateAdminTotp');
                 try {
-                    // Try calling with just email to see if it requires TOTP (we'll modify the function to support this)
-                    await validateTotpFunc({ email, checkOnly: true });
-                    setShowTotp(true);
-                    setLoading(false);
-                    return; // Wait for TOTP input
-                } catch (err) {
-                    if (err.code === 'not-found' || err.message.includes('not enabled')) {
-                        // TOTP not enabled, proceed with normal email login
-                        await loginWithEmail(email, password);
-                        toast.success("Welcome, Administrator");
-                        navigate('/admin');
-                    } else {
-                        throw err;
+                    // Try calling with just email to see if it requires TOTP
+                    const result = await validateTotpFunc({ email, checkOnly: true });
+                    if (result.data.totpEnabled) {
+                        setShowTotp(true);
+                        setIsForced(!!result.data.forced);
+                        setLoading(false);
+                        return; // Wait for TOTP input
                     }
+                    
+                    // Not enabled and not forced, proceed with normal email login
+                    await loginWithEmail(email, password);
+                    toast.success("Welcome, Administrator");
+                    navigate('/admin');
+                } catch (err) {
+                    console.error("TOTP Check failed:", err);
+                    // Fallback to normal login if function fails but not explicitly forced
+                    await loginWithEmail(email, password);
+                    toast.success("Welcome, Administrator");
+                    navigate('/admin');
                 }
             } else {
                 // Verify TOTP and get token
@@ -166,7 +172,9 @@ const AdminLogin = () => {
                                 animate={{ opacity: 1, y: 0 }}
                                 className="space-y-2"
                             >
-                                <label className="text-[10px] font-black uppercase text-brand-primary ml-1 tracking-widest text-center block italic">Authenticator Code</label>
+                                <label className="text-[10px] font-black uppercase text-brand-primary ml-1 tracking-widest text-center block italic">
+                                    {isForced ? "⚠️ Mandatory Security Token" : "Authenticator Code"}
+                                </label>
                                 <div className="relative">
                                     <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-primary/50" />
                                     <input

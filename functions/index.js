@@ -495,17 +495,25 @@ exports.validateAdminTotp = onCall({ cors: true }, async (request) => {
     }
 
     const userData = userSnap.docs[0].data();
-    
+
+    // Check Mandatory 2FA Policy
+    const securitySnap = await db.collection('config').doc('security').get();
+    const forcedList = (securitySnap.exists && securitySnap.data().forced_totp_list) || [];
+    const isForced = forcedList.includes(email);
+
     // Check if TOTP is enabled
     if (!userData.totpEnabled || !userData.totpSecret) {
         if (checkOnly) {
-            return { totpEnabled: false };
+            return { totpEnabled: isForced, forced: isForced };
+        }
+        if (isForced) {
+             throw new HttpsError('permission-denied', 'Mandatory 2FA Enforcement Active. Contact system administrator.');
         }
         throw new HttpsError('permission-denied', 'TOTP not enabled for this account.');
     }
 
     if (checkOnly) {
-        return { totpEnabled: true };
+        return { totpEnabled: true, forced: isForced };
     }
 
     if (!token) {
@@ -712,11 +720,27 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
         console.log("Formatted Phone:", formatPhone);
 
-        // Check if user exists and has TOTP enabled
+        // 1. Check security policy (Mandatory TOTP List)
+        const securitySnap = await db.collection('config').doc('security').get();
+        const forcedList = (securitySnap.exists && securitySnap.data().forced_totp_list) || [];
+        const isForced = forcedList.includes(formatPhone);
+
+        // 2. Check user status
         const userSnap = await db.collection('users').doc(formatPhone).get();
-        if (userSnap.exists && userSnap.data().totpEnabled && userSnap.data().totpSecret) {
+        const userData = userSnap.exists ? userSnap.data() : null;
+
+        if (userData?.totpEnabled && userData?.totpSecret) {
             console.log("TOTP enabled for user, skipping SMS OTP.");
             return { success: true, totpEnabled: true, message: "Use your authenticator app." };
+        }
+
+        if (isForced) {
+            console.warn("User on Forced TOTP list but no secret found:", formatPhone);
+            return {
+                success: false,
+                forcedSetupRequired: true,
+                message: "Security Policy: Mandatory 2FA is active for this account but your device is not yet configured. Please contact the System Administrator to scan your QR code."
+            };
         }
 
         // Generate a random 6-digit code
@@ -766,18 +790,27 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
         let shouldProduceToken = false;
 
-        // 1. Check if user exists and has TOTP enabled
+        // 1. Check security policy (Mandatory TOTP List)
+        const securitySnap = await db.collection('config').doc('security').get();
+        const forcedList = (securitySnap.exists && securitySnap.data().forced_totp_list) || [];
+        const isForced = forcedList.includes(formatPhone);
+
+        // 2. Check if user has TOTP enabled
         const userSnap = await db.collection('users').doc(formatPhone).get();
-        if (userSnap.exists && userSnap.data().totpEnabled && userSnap.data().totpSecret) {
+        const userData = userSnap.exists ? userSnap.data() : null;
+
+        if (userData?.totpEnabled && userData?.totpSecret) {
             console.log("Verifying TOTP for:", formatPhone);
-            const isValid = authenticator.check(validationCode, userSnap.data().totpSecret);
+            const isValid = authenticator.check(validationCode, userData.totpSecret);
             if (isValid) {
                 shouldProduceToken = true;
             } else {
                 throw new HttpsError('invalid-argument', 'Invalid authenticator code.');
             }
+        } else if (isForced) {
+             throw new HttpsError('permission-denied', 'Mandatory 2FA required. SMS codes are disabled for this account.');
         } else {
-            // 2. Regular SMS OTP Flow
+            // 3. Regular SMS OTP Flow
             // TEST BYPASS: Allows 123456 for easier onboarding during this phase
             if (String(validationCode) === '123456') {
                 console.log("Using Test OTP Bypass for:", formatPhone);

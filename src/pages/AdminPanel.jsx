@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc, serverTimestamp, setDoc, deleteDoc, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard, Trash2, RefreshCcw, Database } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldAlert, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard, Trash2, RefreshCcw, Database } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { format, subDays, startOfDay } from 'date-fns';
 import { formatKenyanPhone } from '../utils/phoneUtils';
@@ -45,6 +45,8 @@ const AdminPanel = () => {
     const [totpStep, setTotpStep] = useState('idle'); // 'idle' | 'generated' | 'verifying'
     const [totpCode, setTotpCode] = useState('');
     const [isTotpLoading, setIsTotpLoading] = useState(false);
+    const [forcedTotpList, setForcedTotpList] = useState([]);
+    const [newForcedInput, setNewForcedInput] = useState('');
 
 
     // Hardcode admin role check for MVP purposes (In production this should be a role in Firestore/Custom Claims)
@@ -135,11 +137,15 @@ const AdminPanel = () => {
             }
         });
 
+        const securityUnsubscribe = onSnapshot(doc(db, 'config', 'security'), (snap) => {
+            if (snap.exists()) setForcedTotpList(snap.data().forced_totp_list || []);
+        });
+
         return () => {
             unsubscribe(); usersUnsubscribe(); transUnsubscribe();
             statsUnsubscribe(); kbUnsubscribe(); tiersUnsubscribe();
             agentsUnsubscribe(); masterAgentsUnsubscribe(); logsUnsubscribe();
-            configUnsubscribe();
+            configUnsubscribe(); securityUnsubscribe();
         };
     }, [isAdmin, loading, navigate]);
 
@@ -574,15 +580,57 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                         <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
                                             {u.role || 'guardian'}
                                         </span>
+                                        {u.totpEnabled ? (
+                                            <span className="flex items-center gap-1 text-[8px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded uppercase">
+                                                <ShieldCheck className="w-2.5 h-2.5" /> 2FA Active
+                                            </span>
+                                        ) : forcedTotpList.includes(u.phoneNumber || u.email) && (
+                                            <span className="flex items-center gap-1 text-[8px] font-black bg-red-100 text-red-700 px-1.5 py-0.5 rounded uppercase animate-pulse">
+                                                <ShieldAlert className="w-2.5 h-2.5" /> 2FA Mandatory
+                                            </span>
+                                        )}
                                         <span className="text-[10px] text-slate-400 uppercase tracking-tighter italic">ID: {u.id}</span>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => toggleAdmin(u.id, u.role)}
-                                    className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
-                                >
-                                    {u.role === 'admin' ? 'Demote' : 'Make Admin'}
-                                </button>
+                                <div className="flex gap-2">
+                                    {u.totpEnabled && (
+                                        <button
+                                            onClick={async () => {
+                                                if (window.confirm(`Are you sure you want to disable 2FA for ${u.phoneNumber || u.email}?`)) {
+                                                    await setDoc(doc(db, 'users', u.id), { totpEnabled: false, totpSecret: null }, { merge: true });
+                                                    toast.success("Security reset successful.");
+                                                }
+                                            }}
+                                            className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border border-red-100 text-red-600 hover:bg-red-50 transition-all active:scale-95"
+                                        >
+                                            Reset 2FA
+                                        </button>
+                                    )}
+                                        <button
+                                            onClick={async () => {
+                                                const identifier = u.phoneNumber || u.email;
+                                                const isEnforced = forcedTotpList.includes(identifier);
+                                                let updated;
+                                                if (isEnforced) {
+                                                    updated = forcedTotpList.filter(e => e !== identifier);
+                                                    toast.success("Enforcement removed.");
+                                                } else {
+                                                    updated = [...forcedTotpList, identifier];
+                                                    toast.success("Enforcement active.");
+                                                }
+                                                await setDoc(doc(db, 'config', 'security'), { forced_totp_list: updated }, { merge: true });
+                                            }}
+                                            className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all active:scale-95 ${forcedTotpList.includes(u.phoneNumber || u.email) ? 'bg-red-50 border-red-200 text-red-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                                        >
+                                            {forcedTotpList.includes(u.phoneNumber || u.email) ? 'Disable Forced 2FA' : 'Enforce 2FA'}
+                                        </button>
+                                        <button
+                                            onClick={() => toggleAdmin(u.id, u.role)}
+                                            className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
+                                        >
+                                            {u.role === 'admin' ? 'Demote' : 'Make Admin'}
+                                        </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -1036,6 +1084,65 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        </div>
+
+                        {/* Force 2FA Enforcement List */}
+                        <div className="bg-slate-900 p-10 rounded-[3rem] shadow-xl text-white relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                            <div className="relative z-10">
+                                <h3 className="text-xl font-black mb-2 flex items-center gap-2">
+                                    <ShieldAlert className="w-6 h-6 text-red-500" />
+                                    Mandatory 2FA Enforcement
+                                </h3>
+                                <p className="text-sm text-slate-400 mb-8 leading-relaxed">Numbers or Emails in this list will be <span className="text-white font-bold underline">completely blocked</span> from logging in via SMS. They MUST use an Authenticator App.</p>
+
+                                <div className="space-y-6">
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Enter Phone (+254...) or Email"
+                                            className="flex-1 bg-white/10 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold placeholder:text-white/20 focus:ring-2 focus:ring-brand-primary outline-none transition-all"
+                                            value={newForcedInput}
+                                            onChange={(e) => setNewForcedInput(e.target.value)}
+                                        />
+                                        <button
+                                            onClick={async () => {
+                                                if (!newForcedInput) return;
+                                                const identifier = newForcedInput.trim();
+                                                const updated = Array.from(new Set([...forcedTotpList, identifier]));
+                                                await setDoc(doc(db, 'config', 'security'), { forced_totp_list: updated }, { merge: true });
+                                                setNewForcedInput('');
+                                                toast.success("Enforcement policy updated.");
+                                            }}
+                                            className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+                                        >
+                                            Add to List
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {forcedTotpList.length === 0 ? (
+                                            <p className="text-xs text-slate-500 italic py-4">No accounts currently on the mandatory list.</p>
+                                        ) : (
+                                            forcedTotpList.map((entry, idx) => (
+                                                <div key={idx} className="bg-white/5 border border-white/5 p-4 rounded-xl flex justify-between items-center group">
+                                                    <span className="text-xs font-mono font-bold text-slate-300">{entry}</span>
+                                                    <button
+                                                        onClick={async () => {
+                                                            const updated = forcedTotpList.filter(e => e !== entry);
+                                                            await setDoc(doc(db, 'config', 'security'), { forced_totp_list: updated }, { merge: true });
+                                                            toast.success("Removed from enforcement list.");
+                                                        }}
+                                                        className="p-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
