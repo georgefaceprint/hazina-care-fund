@@ -18,7 +18,7 @@ const getSafeDate = (dateVal) => {
 };
 
 const AdminPanel = () => {
-    const { profile, isDemoMode, logout } = useAuth();
+    const { profile, isDemoMode, logout, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const toast = useToast();
 
@@ -54,7 +54,9 @@ const AdminPanel = () => {
     const isAdmin = profile?.role === 'admin';
 
     useEffect(() => {
-        if (!isAdmin && !loading) {
+        if (authLoading) return;
+
+        if (!isAdmin) {
             navigate('/dashboard');
             return;
         }
@@ -147,7 +149,7 @@ const AdminPanel = () => {
             agentsUnsubscribe(); masterAgentsUnsubscribe(); logsUnsubscribe();
             configUnsubscribe(); securityUnsubscribe();
         };
-    }, [isAdmin, loading, navigate]);
+    }, [isAdmin, authLoading, navigate, isDemoMode]);
 
 
     const handleAction = async (claimId, guardianId, claimAmount, newStatus) => {
