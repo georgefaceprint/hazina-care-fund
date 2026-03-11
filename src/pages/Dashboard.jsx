@@ -28,7 +28,7 @@ const Dashboard = () => {
             if (isSuperMaster) navigate('/super');
             else if (isMasterAgent) navigate('/master');
             else if (isAgent) navigate('/agent');
-            else if (!profile.registration_fee_paid && !isDemoMode) {
+            else if (profile.role === 'guardian' && !profile.registration_fee_paid && !isDemoMode) {
                 navigate('/pay-registration');
             }
         }

@@ -822,6 +822,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                                     phoneNumber: phone,
                                                     role: 'super_master',
                                                     status: 'active',
+                                                    registration_fee_paid: true,
                                                     createdAt: serverTimestamp()
                                                 }, { merge: true });
                                                 toast.success("Super Master created successfully!");

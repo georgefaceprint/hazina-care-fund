@@ -15,7 +15,7 @@ const RegisterFeePage = () => {
     const [paymentStatus, setPaymentStatus] = useState('idle'); // 'idle' | 'processing' | 'success'
 
     useEffect(() => {
-        if (profile?.registration_fee_paid) {
+        if (profile?.registration_fee_paid || (profile && profile.role !== 'guardian')) {
             navigate('/dashboard');
         }
     }, [profile, navigate]);
