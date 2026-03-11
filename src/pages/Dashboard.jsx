@@ -381,9 +381,9 @@ const Dashboard = () => {
                         <button
                             onClick={runTestDeduction}
                             disabled={loading}
-                            className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+                            className="w-full py-4 bg-brand-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-brand-secondary transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-brand-primary/20"
                         >
-                            <TrendingUp className="w-4 h-4 text-emerald-400" />
+                            <TrendingUp className="w-4 h-4 text-brand-accent" />
                             {loading ? "Processing..." : "Run Daily Burn Test"}
                         </button>
                         <p className="text-[9px] text-center text-slate-400 mt-3 font-bold uppercase tracking-tighter">

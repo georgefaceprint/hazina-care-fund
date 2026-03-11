@@ -185,7 +185,7 @@ const MasterDashboard = () => {
                 </div>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-95"
+                    className="bg-brand-primary text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-brand-secondary transition-all shadow-xl shadow-brand-primary/20 active:scale-95"
                 >
                     <UserPlus className="w-5 h-5" />
                     Expand Team
@@ -380,7 +380,7 @@ const MasterDashboard = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-[2] py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl shadow-slate-900/10 active:scale-95 transition-all hover:bg-slate-800"
+                                        className="flex-[2] py-4 bg-brand-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-brand-primary/20 active:scale-95 transition-all hover:bg-brand-secondary"
                                     >
                                         Authorize Agent
                                     </button>
@@ -449,7 +449,7 @@ const MasterDashboard = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-[2] py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl shadow-slate-900/10 active:scale-95 transition-all outline-none"
+                                        className="flex-[2] py-4 bg-brand-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-brand-primary/20 active:scale-95 transition-all outline-none"
                                     >
                                         Save Changes
                                     </button>

@@ -779,18 +779,18 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                             </div>
                         </div>
 
-                        <div className="bg-slate-900 p-12 rounded-[3.5rem] text-white overflow-hidden relative shadow-2xl shadow-slate-900/40">
-                            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary rounded-full blur-[120px] opacity-20 -mr-48 -mt-48"></div>
-                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500 rounded-full blur-[100px] opacity-10 -ml-32 -mb-32"></div>
+                        <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 overflow-hidden relative shadow-2xl shadow-slate-200/50">
+                            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary/5 rounded-full blur-[120px] -mr-48 -mt-48"></div>
+                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[100px] -ml-32 -mb-32"></div>
                             <div className="relative z-10">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-white/40 mb-3">Total System Portfolio</h4>
-                                <p className="text-6xl font-black tracking-tight italic">KSh {(globalStats.total_fund || 0).toLocaleString()}</p>
+                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Total System Portfolio</h4>
+                                <p className="text-6xl font-black tracking-tight italic text-slate-900">KSh {(globalStats.total_fund || 0).toLocaleString()}</p>
                                 <div className="mt-8 flex items-center gap-4">
-                                    <div className="px-4 py-2 bg-white/5 backdrop-blur-md rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2">
+                                    <div className="px-4 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 flex items-center gap-2 text-slate-600">
                                         <div className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-pulse"></div>
                                         Live Liquidity
                                     </div>
-                                    <div className="px-4 py-2 bg-white/5 backdrop-blur-md rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10">Community Trust: 98%</div>
+                                    <div className="px-4 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 text-slate-500">Community Trust: 98%</div>
                                 </div>
                             </div>
                         </div>

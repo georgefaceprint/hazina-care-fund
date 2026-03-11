@@ -58,14 +58,14 @@ const RecruitmentLayout = () => {
     return (
         <div className="min-h-screen bg-[#F8FAFC] flex font-sans">
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:flex flex-col w-72 bg-slate-900 text-white h-screen sticky top-0 p-8 shadow-2xl">
+            <aside className="hidden lg:flex flex-col w-72 bg-white text-slate-900 h-screen sticky top-0 p-8 border-r border-slate-200">
                 <div className="flex items-center gap-3 mb-12 px-2">
                     <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center shadow-lg shadow-brand-primary/20">
                         <Shield className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black tracking-tighter uppercase italic">HazinaHQ</h2>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">Recruitment Hub</p>
+                        <h2 className="text-xl font-black tracking-tighter uppercase italic text-slate-900">HazinaHQ</h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Recruitment Hub</p>
                     </div>
                 </div>
 
@@ -76,7 +76,7 @@ const RecruitmentLayout = () => {
                             to={item.path}
                             className={({ isActive }) => `
                                 flex items-center gap-4 px-4 py-4 rounded-2xl transition-all group
-                                ${isActive ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}
+                                ${isActive ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}
                             `}
                         >
                             <item.icon className={`w-5 h-5 transition-transform group-hover:scale-110`} />
@@ -86,12 +86,12 @@ const RecruitmentLayout = () => {
                 </nav>
 
                 <div className="mt-auto space-y-6">
-                    <div className="bg-white/5 rounded-[2rem] p-4 flex items-center gap-3 border border-white/5">
-                        <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 border border-white/10">
+                    <div className="bg-slate-50 rounded-[2rem] p-4 flex items-center gap-3 border border-slate-100">
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-400 border border-slate-100">
                             <UserCircle className="w-6 h-6" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate">{profile?.fullName}</p>
+                            <p className="text-sm font-bold truncate text-slate-900">{profile?.fullName}</p>
                             <p className="text-[10px] font-black uppercase text-brand-primary tracking-widest">
                                 {profile?.role?.replace('_', ' ')}
                             </p>
@@ -100,7 +100,7 @@ const RecruitmentLayout = () => {
 
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-all font-bold text-sm group"
+                        className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all font-bold text-sm group"
                     >
                         <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                         Sign Out
@@ -181,18 +181,18 @@ const RecruitmentLayout = () => {
                             initial={{ x: '-100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '-100%' }}
-                            className="absolute inset-y-0 left-0 w-80 bg-slate-900 p-8 shadow-2xl flex flex-col"
+                            className="absolute inset-y-0 left-0 w-80 bg-white p-8 shadow-2xl flex flex-col"
                         >
                             <div className="flex justify-between items-center mb-8">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center shadow-lg shadow-brand-primary/20">
                                         <Shield className="w-6 h-6 text-white" />
                                     </div>
-                                    <h2 className="text-xl font-black tracking-tighter uppercase text-white">HazinaHQ</h2>
+                                    <h2 className="text-xl font-black tracking-tighter uppercase text-slate-900">HazinaHQ</h2>
                                 </div>
                                 <button
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="p-2 text-slate-400 hover:text-white"
+                                    className="p-2 text-slate-400 hover:text-slate-900"
                                 >
                                     <X className="w-6 h-6" />
                                 </button>
@@ -206,7 +206,7 @@ const RecruitmentLayout = () => {
                                         onClick={() => setIsMobileMenuOpen(false)}
                                         className={({ isActive }) => `
                                             flex items-center gap-4 px-4 py-4 rounded-2xl transition-all
-                                            ${isActive ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:text-white'}
+                                            ${isActive ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'text-slate-400 hover:text-slate-900'}
                                         `}
                                     >
                                         <item.icon className="w-5 h-5" />
@@ -217,7 +217,7 @@ const RecruitmentLayout = () => {
 
                             <button
                                 onClick={handleLogout}
-                                className="mt-auto flex items-center gap-4 px-4 py-4 rounded-2xl text-slate-400 font-bold"
+                                className="mt-auto flex items-center gap-4 px-4 py-4 rounded-2xl text-slate-400 hover:text-rose-500 font-bold"
                             >
                                 <LogOut className="w-5 h-5" />
                                 Sign Out
