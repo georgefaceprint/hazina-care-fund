@@ -11,73 +11,85 @@ export const InstallProvider = ({ children }) => {
     const [isInstalled, setIsInstalled] = useState(false);
 
     useEffect(() => {
-        // Check if already installed
-        const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+        // 1. Check if already installed
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
             window.navigator.standalone === true;
 
-        if (standalone) {
+        if (isStandalone) {
             setIsInstalled(true);
             return;
         }
 
-        // 1. Check if window already has a prompt from main.jsx
+        // 2. Check dismissal status
+        const checkDismissal = () => {
+            const lastDismiss = localStorage.getItem('hazina_install_dismissed');
+            if (!lastDismiss) return false;
+            const expiration = 24 * 60 * 60 * 1000; // 24 hours
+            return (Date.now() - parseInt(lastDismiss)) < expiration;
+        };
+
+        // 3. iOS Detection
+        const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        setIsIOS(isIosDevice);
+
+        // 4. Handle stale prompt from main.jsx
         if (window.deferredPrompt) {
-            console.log("📍 PWA: Found stale deferredPrompt on window");
             setDeferredPrompt(window.deferredPrompt);
-            setShowBanner(true);
+            if (!checkDismissal()) {
+                setShowBanner(true);
+            }
         }
 
-        // 2. Catch beforeinstallprompt for Android/Chrome
+        // 5. Catch beforeinstallprompt for Android/Chrome
         const handler = (e) => {
-            console.log("📍 PWA: beforeinstallprompt event fired!");
             e.preventDefault();
             setDeferredPrompt(e);
-            window.deferredPrompt = e; // Sync back to window just in case
-            setShowBanner(true);
+            window.deferredPrompt = e;
+            if (!checkDismissal()) {
+                setShowBanner(true);
+            }
         };
 
         window.addEventListener('beforeinstallprompt', handler);
 
-        // Fallback: Show banner after a delay even if no prompt (for instructions)
+        // 6. Fallback delay (for iOS instructions or manual install help)
         const timer = setTimeout(() => {
-            if (!isInstalled) {
+            if (!isStandalone && !checkDismissal()) {
                 setShowBanner(true);
             }
-        }, 5000);
-
-        // iOS detection for specific instructions
-        const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        if (isIosDevice) {
-            setIsIOS(true);
-        }
+        }, 12000); // Wait 12s before bothering the user
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handler);
             clearTimeout(timer);
         };
-    }, [isInstalled]);
+    }, []);
 
     const triggerInstall = async () => {
         if (!deferredPrompt) {
             if (isIOS) {
-                // iOS doesn't use the prompt, they use the Share menu
+                // For iOS, the banner already provides text instructions
+                alert("To Install: Tap the 'Share' icon at the bottom of Safari, scroll down, and select 'Add to Home Screen'.");
                 return;
             }
-            alert("To install: Tap the three dots (menu) in your browser and select 'Add to Home Screen' or 'Install App'.");
+            alert("To Install: Open your browser menu and select 'Install App' or 'Add to Home Screen'.");
             return;
         }
 
         try {
             await deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
+            console.log(`📍 PWA: User choice: ${outcome}`);
+            
             if (outcome === 'accepted') {
                 setDeferredPrompt(null);
+                window.deferredPrompt = null;
                 setShowBanner(false);
                 setIsInstalled(true);
             }
         } catch (err) {
             console.error("📍 PWA: Install prompt failed:", err);
-            alert("Please use your browser's 'Add to Home Screen' menu option to install.");
+            setShowBanner(false);
         }
     };
 
@@ -87,16 +99,16 @@ export const InstallProvider = ({ children }) => {
     };
 
     return (
-        <InstallContext.Provider value={{ triggerInstall, isIOS, isInstalled, canInstall: true, isAndroid: !isIOS && !isInstalled }}>
+        <InstallContext.Provider value={{ triggerInstall, isIOS, isInstalled, canInstall: !!deferredPrompt || isIOS }}>
             {children}
             {showBanner && !isInstalled && (
-                <InstallBanner isIOS={isIOS} onInstall={triggerInstall} onDismiss={dismiss} canInstall={true} />
+                <InstallBanner isIOS={isIOS} onInstall={triggerInstall} onDismiss={dismiss} />
             )}
         </InstallContext.Provider>
     );
 };
 
-const InstallBanner = ({ isIOS, onInstall, onDismiss, canInstall }) => (
+const InstallBanner = ({ isIOS, onInstall, onDismiss }) => (
     <div className="fixed bottom-20 left-4 right-4 z-[200] animate-slide-up max-w-md mx-auto">
         <div className="bg-slate-900 text-white rounded-[2rem] p-5 shadow-2xl shadow-slate-900/40 border border-white/10 flex items-center gap-4">
             <div className="w-14 h-14 bg-brand-primary rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-primary/30">
@@ -118,7 +130,7 @@ const InstallBanner = ({ isIOS, onInstall, onDismiss, canInstall }) => (
             <div className="flex flex-col gap-2 flex-shrink-0">
                 {!isIOS && (
                     <button onClick={onInstall}
-                        className={`text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors active:scale-95 ${canInstall ? 'bg-brand-primary hover:bg-emerald-500' : 'bg-slate-700 opacity-50 cursor-not-allowed'}`}>
+                        className="bg-brand-primary hover:bg-emerald-500 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors active:scale-95 shadow-lg shadow-brand-primary/20">
                         Install
                     </button>
                 )}
