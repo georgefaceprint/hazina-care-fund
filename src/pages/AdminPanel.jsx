@@ -313,7 +313,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
 
         const dayMatch = last7Days.find(d => startOfDay(d.date).getTime() === tStart);
         if (dayMatch && t.type === 'top-up') {
-            dayMatch.volume += t.amount;
+            dayMatch.volume += (Number(t.amount) || 0);
         }
     });
 

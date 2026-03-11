@@ -38,12 +38,24 @@ const AdminLogin = () => {
             const adminEmail = "faceeprint@icloud.com";
             const adminPass = "Jethro@#1973";
 
-            // 1. Create Auth User
-            const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPass);
+            let uid;
+            try {
+                // 1. Try Create Auth User
+                const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPass);
+                uid = userCredential.user.uid;
+            } catch (authError) {
+                if (authError.code === 'auth/email-already-in-use') {
+                    // 1b. If exists, just sign in to get the UID
+                    const userCredential = await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+                    uid = userCredential.user.uid;
+                } else {
+                    throw authError;
+                }
+            }
 
-            // 2. Create Firestore Profile
-            await setDoc(doc(db, 'users', userCredential.user.uid), {
-                uid: userCredential.user.uid,
+            // 2. Create/Restore Firestore Profile
+            await setDoc(doc(db, 'users', uid), {
+                uid: uid,
                 email: adminEmail,
                 role: 'admin',
                 fullName: 'System Admin',
@@ -51,7 +63,7 @@ const AdminLogin = () => {
                 createdAt: new Date().toISOString()
             });
 
-            toast.success("Admin account created successfully.");
+            toast.success("Admin system account restored.");
             setEmail(adminEmail);
             setPassword(adminPass);
         } catch (error) {
