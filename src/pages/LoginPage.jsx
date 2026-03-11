@@ -12,10 +12,13 @@ import { useLanguage } from '../context/LanguageContext';
 
 const LoginPage = () => {
     const navigate = useNavigate();
+    const [step, setStep] = useState('phone'); // 'phone', 'passcode', 'otp', 'set_passcode'
     const [phoneNumber, setPhoneNumber] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
-    const [confirmationResult, setConfirmationResult] = useState(null);
-    const [isTotpLogin, setIsTotpLogin] = useState(false);
+    const [passcode, setPasscode] = useState('');
+    const [newPasscode, setNewPasscode] = useState('');
+    const [confirmPasscode, setConfirmPasscode] = useState('');
+    const [isNewUser, setIsNewUser] = useState(false);
     const { t } = useLanguage();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -53,35 +56,90 @@ const LoginPage = () => {
 
 
 
+    const handleLoginSuccess = async (token, formatPhone) => {
+        const authResult = await signInWithCustomToken(auth, token);
+        const user = authResult.user;
+        sessionStorage.setItem('hazina_temp_phone', formatPhone);
+        const userRef = doc(db, 'users', formatPhone);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+            const referrerId = sessionStorage.getItem('hazina_referrer');
+            await setDoc(userRef, {
+                uid: user.uid,
+                phoneNumber: formatPhone,
+                role: 'guardian',
+                status: 'in-waiting',
+                active_tier: 'bronze',
+                eligible_tier: 'none',
+                tier_joined_date: serverTimestamp(),
+                balance: 0,
+                createdAt: serverTimestamp(),
+                profile_completed: false,
+                grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
+                referrer_id: referrerId || null,
+                recruited_by: sessionStorage.getItem('hazina_agent_code') || null,
+                registration_fee_paid: false,
+                referral_code: generateReferralCode(6)
+            });
+            navigate('/complete-profile');
+        } else {
+            const userData = userSnap.data();
+            const updates = { uid: user.uid };
+            if (!userData.referral_code) updates.referral_code = generateReferralCode(6);
+            await setDoc(userRef, updates, { merge: true });
+
+            const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(userData.role);
+            if (isRecruiter) {
+                if (userData.role === 'super_master') navigate('/super');
+                else if (userData.role === 'master_agent') navigate('/master');
+                else navigate('/agent');
+            } else if (!userData.profile_completed) {
+                navigate('/complete-profile');
+            } else {
+                navigate('/dashboard');
+            }
+        }
+    };
+
     const onSignInSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
-
         const formatPhone = formatKenyanPhone(phoneNumber);
 
         try {
-            // The 'functions' object imported from '../services/firebase' should already be configured with the region.
-            // The instruction "Update services/firebase.js to specify us-central1 region for functions" implies this configuration happens there.
-            // The provided snippet `functions = getFunctions(app, 'us-central1');` is not valid syntax here.
-            const sendOtp = httpsCallable(functions, 'sendOtp');
-            const result = await sendOtp({ phoneNumber: formatPhone });
-
-            if (result.data?.success === false) {
-                setError(result.data.message);
-                return;
-            }
-
-            // On success, set a local state to reveal OTP UI
-            setConfirmationResult(true);
-            setIsTotpLogin(!!result.data?.totpEnabled);
-            if (result.data?.totpEnabled) {
-                toast.success("Security token required.");
+            const checkUserExists = httpsCallable(functions, 'checkUserExists');
+            const result = await checkUserExists({ phoneNumber: formatPhone });
+            
+            if (result.data.exists && result.data.hasPasscode) {
+                setStep('passcode');
+                setIsNewUser(false);
+            } else {
+                // Either new user, or existing user without a passcode
+                const sendOtp = httpsCallable(functions, 'sendOtp');
+                await sendOtp({ phoneNumber: formatPhone });
+                setIsNewUser(!result.data.exists);
+                setStep('otp');
             }
         } catch (error) {
-            console.error('sendOtp error:', error);
-            // Display the actual error message from the exception for better debugging.
-            setError(error.message || 'Failed to send SMS. Please check your number and try again.');
+            setError(error.message || 'Failed to communicate with server.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const onForgotPasscode = async () => {
+        setError('');
+        setLoading(true);
+        const formatPhone = formatKenyanPhone(phoneNumber);
+        try {
+            const sendOtp = httpsCallable(functions, 'sendOtp');
+            await sendOtp({ phoneNumber: formatPhone });
+            setIsNewUser(false);
+            setStep('otp');
+        } catch (error) {
+            setError(error.message || 'Failed to send OTP.');
         } finally {
             setLoading(false);
         }
@@ -89,82 +147,58 @@ const LoginPage = () => {
 
     const onOtpSubmit = async (e) => {
         e.preventDefault();
-        if (!verificationCode) return;
+        if (verificationCode.length !== 6) return;
+        setStep('set_passcode');
+    };
+
+    const onSetPasscodeSubmit = async (e) => {
+        e.preventDefault();
+        if (newPasscode !== confirmPasscode) {
+            setError("Passcodes do not match.");
+            return;
+        }
+        if (newPasscode.length < 4) {
+            setError("Passcode must be at least 4 digits.");
+            return;
+        }
 
         setError('');
         setLoading(true);
-
+        const formatPhone = formatKenyanPhone(phoneNumber);
         try {
-            const formatPhone = formatKenyanPhone(phoneNumber);
-            const verifyOtpFunc = httpsCallable(functions, 'verifyOtp');
-
-            // Validate code and get custom token
-            const result = await verifyOtpFunc({
+            const verifyAndSet = httpsCallable(functions, 'verifyAndSetPasscode');
+            const result = await verifyAndSet({
                 phoneNumber: formatPhone,
-                validationCode: verificationCode
+                validationCode: verificationCode,
+                newPasscode: newPasscode
             });
-
-            const { token } = result.data;
-
-            // Sign in to Firebase Auth using Custom Token
-            const authResult = await signInWithCustomToken(auth, token);
-            const user = authResult.user;
-
-            // Store phone in session
-            sessionStorage.setItem('hazina_temp_phone', formatPhone);
-
-            // Check if user profile exists using phone number as the ID for persistence
-            const userRef = doc(db, 'users', formatPhone);
-            const userSnap = await getDoc(userRef);
-
-            if (!userSnap.exists()) {
-                const referrerId = sessionStorage.getItem('hazina_referrer');
-
-                await setDoc(userRef, {
-                    uid: user.uid,
-                    phoneNumber: formatPhone,
-                    role: 'guardian',
-                    status: 'in-waiting',
-                    active_tier: 'bronze',
-                    eligible_tier: 'none',
-                    tier_joined_date: serverTimestamp(),
-                    balance: 0,
-                    createdAt: serverTimestamp(),
-                    profile_completed: false,
-                    grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-                    referrer_id: referrerId || null,
-                    recruited_by: sessionStorage.getItem('hazina_agent_code') || null,
-                    registration_fee_paid: false,
-                    referral_code: generateReferralCode(6)
-                });
-                navigate('/complete-profile');
-            } else {
-                const userData = userSnap.data();
-                const updates = { uid: user.uid };
-
-                // Ensure legacy users have a referral code
-                if (!userData.referral_code) {
-                    updates.referral_code = generateReferralCode(6);
-                }
-
-                await setDoc(userRef, updates, { merge: true });
-
-                const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(userData.role);
-
-                if (isRecruiter) {
-                    if (userData.role === 'super_master') navigate('/super');
-                    else if (userData.role === 'master_agent') navigate('/master');
-                    else navigate('/agent');
-                } else if (!userData.profile_completed) {
-                    navigate('/complete-profile');
-                } else {
-                    navigate('/dashboard');
-                }
-            }
+            await handleLoginSuccess(result.data.token, formatPhone);
         } catch (error) {
-            console.error('OTP verification error:', error);
-            // Show the actual error message from Firebase if available
-            setError(error.message || 'Invalid code or code expired. Please try again.');
+            setError(error.message || 'Verification or Passcode setup failed.');
+            if (error.message?.includes('OTP') || error.message?.includes('Code')) {
+                setStep('otp'); // go back to OTP if it was wrong
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const onPasscodeSubmit = async (e) => {
+        e.preventDefault();
+        if (!passcode) return;
+
+        setError('');
+        setLoading(true);
+        const formatPhone = formatKenyanPhone(phoneNumber);
+        try {
+            const login = httpsCallable(functions, 'loginWithPasscode');
+            const result = await login({
+                phoneNumber: formatPhone,
+                passcode: passcode
+            });
+            await handleLoginSuccess(result.data.token, formatPhone);
+        } catch (error) {
+            setError(error.message || 'Invalid passcode.');
         } finally {
             setLoading(false);
         }
@@ -189,7 +223,7 @@ const LoginPage = () => {
 
 
 
-                {!confirmationResult ? (
+                {step === 'phone' && (
                     <form onSubmit={onSignInSubmit} className="space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">{t('phone_number')}</label>
@@ -212,20 +246,65 @@ const LoginPage = () => {
                             disabled={loading || phoneNumber.length < 9}
                             className="btn-primary w-full py-4 text-lg disabled:opacity-50"
                         >
-                            {loading ? 'Sending Code...' : 'Send Verification Code'}
+                            {loading ? 'Please Wait...' : 'Continue'}
                             <ArrowRight className="w-5 h-5 ml-2 inline-block" />
                         </button>
-
                     </form>
-                ) : (
-                    <form onSubmit={onOtpSubmit} className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
+                )}
+
+                {step === 'passcode' && (
+                    <form onSubmit={onPasscodeSubmit} className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
                         <div className="text-center mb-6">
-                            <p className="text-sm text-slate-600">
-                                {isTotpLogin ? "Enter your Authenticator App code" : "Enter the 6-digit code sent to"}
-                            </p>
+                            <p className="text-sm text-slate-600">Enter your secure passcode</p>
                             <p className="font-bold text-slate-900 text-lg mt-1 tracking-wider">{formatKenyanPhone(phoneNumber)}</p>
                         </div>
+                        <div>
+                            <input
+                                type="password"
+                                placeholder="• • • •"
+                                className="w-full text-center bg-slate-100 border-none rounded-2xl py-4 focus:ring-2 focus:ring-brand-primary transition-all text-3xl font-bold tracking-[0.5em]"
+                                value={passcode}
+                                onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
+                                required
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading || passcode.length < 4}
+                            className="btn-primary w-full py-4 text-lg disabled:opacity-50"
+                        >
+                            {loading ? 'Verifying...' : 'Login'}
+                            <CheckCircle2 className="w-5 h-5 ml-2 inline-block" />
+                        </button>
+                        <div className="flex flex-col items-center gap-4 mt-4">
+                            <button
+                                type="button"
+                                onClick={onForgotPasscode}
+                                className="text-sm font-bold text-brand-primary hover:text-brand-dark transition-colors"
+                            >
+                                Forgot Passcode?
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setStep('phone');
+                                    setPasscode('');
+                                    setError('');
+                                }}
+                                className="text-sm text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-2"
+                            >
+                                <RotateCcw className="w-4 h-4" /> Change Phone Number
+                            </button>
+                        </div>
+                    </form>
+                )}
 
+                {step === 'otp' && (
+                    <form onSubmit={onOtpSubmit} className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
+                        <div className="text-center mb-6">
+                            <p className="text-sm text-slate-600">Enter the 6-digit code sent via SMS to</p>
+                            <p className="font-bold text-slate-900 text-lg mt-1 tracking-wider">{formatKenyanPhone(phoneNumber)}</p>
+                        </div>
                         <div>
                             <input
                                 type="text"
@@ -237,26 +316,73 @@ const LoginPage = () => {
                                 required
                             />
                         </div>
-
                         <button
                             type="submit"
                             disabled={loading || verificationCode.length !== 6}
                             className="btn-primary w-full py-4 text-lg disabled:opacity-50"
                         >
-                            {loading ? 'Verifying...' : 'Verify & Enter'}
+                            Verify Code
                             <CheckCircle2 className="w-5 h-5 ml-2 inline-block" />
                         </button>
-
                         <button
                             type="button"
                             onClick={() => {
-                                setConfirmationResult(null);
+                                setStep('phone');
                                 setVerificationCode('');
                                 setError('');
                             }}
-                            className="w-full py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center gap-2 mt-4"
                         >
-                            <RotateCcw className="w-4 h-4" /> Change Phone Number
+                            <RotateCcw className="w-4 h-4" /> Cancel
+                        </button>
+                    </form>
+                )}
+
+                {step === 'set_passcode' && (
+                    <form onSubmit={onSetPasscodeSubmit} className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
+                        <div className="text-center mb-6">
+                            <p className="text-sm text-slate-600">
+                                {isNewUser ? "Secure your new account" : "Set your new passcode"}
+                            </p>
+                            <p className="font-bold text-slate-900 mt-1">Create a numeric passcode</p>
+                        </div>
+                        <div className="space-y-4">
+                            <input
+                                type="password"
+                                placeholder="New Passcode"
+                                className="w-full text-center bg-slate-100 border-none rounded-2xl py-4 focus:ring-2 focus:ring-brand-primary transition-all text-xl font-bold tracking-[0.2em]"
+                                value={newPasscode}
+                                onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, ''))}
+                                required
+                            />
+                            <input
+                                type="password"
+                                placeholder="Confirm Passcode"
+                                className="w-full text-center bg-slate-100 border-none rounded-2xl py-4 focus:ring-2 focus:ring-brand-primary transition-all text-xl font-bold tracking-[0.2em]"
+                                value={confirmPasscode}
+                                onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, ''))}
+                                required
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading || newPasscode.length < 4 || newPasscode !== confirmPasscode}
+                            className="btn-primary w-full py-4 text-lg disabled:opacity-50"
+                        >
+                            {loading ? 'Saving...' : 'Set Passcode & Enter'}
+                            <CheckCircle2 className="w-5 h-5 ml-2 inline-block" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setStep('otp');
+                                setNewPasscode('');
+                                setConfirmPasscode('');
+                                setError('');
+                            }}
+                            className="w-full py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center gap-2 mt-4"
+                        >
+                            <RotateCcw className="w-4 h-4" /> Back to OTP
                         </button>
                     </form>
                 )}

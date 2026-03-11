@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
@@ -5,7 +7,7 @@ const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const { authenticator } = require("otplib");
-
+const bcrypt = require("bcryptjs");
 
 
 
@@ -863,37 +865,29 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
              throw new HttpsError('permission-denied', 'Mandatory 2FA required. SMS codes are disabled for this account.');
         } else {
             // 3. Regular SMS OTP Flow
-            // TEST BYPASS: Allows 123456 for easier onboarding during this phase
-            if (String(validationCode) === '123456') {
-                console.log("Using Test OTP Bypass for:", formatPhone);
-                shouldProduceToken = true;
-                // Delete any existing real OTP for this number so it doesn't linger
-                await db.collection('otp_codes').doc(formatPhone).delete().catch(() => { });
-            } else {
-                const docRef = db.collection('otp_codes').doc(formatPhone);
-                const docSnap = await docRef.get();
+            const docRef = db.collection('otp_codes').doc(formatPhone);
+            const docSnap = await docRef.get();
 
-                if (!docSnap.exists) {
-                    console.warn("No OTP code found in DB for:", formatPhone);
-                    throw new HttpsError('not-found', 'No pending verification found for this number.');
-                }
-
-                const data = docSnap.data();
-                console.log("Found DB matching code:", data.code);
-
-                if (data.expiresAt.toDate() < new Date()) {
-                    await docRef.delete();
-                    throw new HttpsError('deadline-exceeded', 'OTP has expired.');
-                }
-
-                if (data.code !== String(validationCode)) {
-                    console.warn("Code mismatch! Entered:", validationCode, "Expected:", data.code);
-                    throw new HttpsError('invalid-argument', 'Invalid OTP code.');
-                }
-
-                shouldProduceToken = true;
-                await docRef.delete();
+            if (!docSnap.exists) {
+                console.warn("No OTP code found in DB for:", formatPhone);
+                throw new HttpsError('not-found', 'No pending verification found for this number.');
             }
+
+            const data = docSnap.data();
+            console.log("Found DB matching code:", data.code);
+
+            if (data.expiresAt.toDate() < new Date()) {
+                await docRef.delete();
+                throw new HttpsError('deadline-exceeded', 'OTP has expired.');
+            }
+
+            if (data.code !== String(validationCode)) {
+                console.warn("Code mismatch! Entered:", validationCode, "Expected:", data.code);
+                throw new HttpsError('invalid-argument', 'Invalid OTP code.');
+            }
+
+            shouldProduceToken = true;
+            await docRef.delete();
         }
 
         if (shouldProduceToken) {
@@ -910,6 +904,105 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         // We throw http errors directly to frontend so don't mask valid specific ones.
         if (error instanceof HttpsError) { throw error; }
         throw new HttpsError('internal', `Verification failed: ${error.message || 'Unknown error'}`);
+    }
+});
+
+exports.checkUserExists = onCall({ cors: true }, async (request) => {
+    try {
+        const { phoneNumber } = request.data;
+        if (!phoneNumber) throw new HttpsError('invalid-argument', 'Phone number is required.');
+        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+
+        const userSnap = await db.collection('users').doc(formatPhone).get();
+        if (!userSnap.exists) {
+            return { exists: false };
+        }
+        
+        const userData = userSnap.data();
+        return { 
+            exists: true, 
+            hasPasscode: !!userData.passcodeHash 
+        };
+    } catch (error) {
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
+    try {
+        const { phoneNumber, validationCode, newPasscode } = request.data;
+        if (!phoneNumber || !validationCode || !newPasscode) {
+            throw new HttpsError('invalid-argument', 'Missing required fields.');
+        }
+
+        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+
+        // 1. Verify OTP
+        let isValidOtp = false;
+        const docRef = db.collection('otp_codes').doc(formatPhone);
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) throw new HttpsError('not-found', 'No pending verification.');
+        const data = docSnap.data();
+        if (data.expiresAt.toDate() < new Date()) {
+            await docRef.delete();
+            throw new HttpsError('deadline-exceeded', 'OTP has expired.');
+        }
+        if (data.code !== String(validationCode)) {
+            throw new HttpsError('invalid-argument', 'Invalid OTP code.');
+        }
+        isValidOtp = true;
+        await docRef.delete();
+
+        if (!isValidOtp) throw new HttpsError('invalid-argument', 'OTP verification failed.');
+
+        // 2. Hash New Passcode
+        const salt = await bcrypt.genSalt(10);
+        const passcodeHash = await bcrypt.hash(String(newPasscode), salt);
+
+        // 3. Save to User Document
+        const userRef = db.collection('users').doc(formatPhone);
+        await userRef.set({ passcodeHash }, { merge: true });
+
+        // 4. Generate Custom Token
+        const token = await admin.auth().createCustomToken(formatPhone);
+        return { success: true, token };
+
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        throw new HttpsError('internal', 'Passcode setup failed.');
+    }
+});
+
+exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
+    try {
+        const { phoneNumber, passcode } = request.data;
+        if (!phoneNumber || !passcode) {
+            throw new HttpsError('invalid-argument', 'Phone and passcode are required.');
+        }
+
+        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        
+        const userSnap = await db.collection('users').doc(formatPhone).get();
+        if (!userSnap.exists) {
+            throw new HttpsError('not-found', 'User not found.');
+        }
+
+        const userData = userSnap.data();
+        if (!userData.passcodeHash) {
+             throw new HttpsError('failed-precondition', 'Passcode not set for this account.');
+        }
+
+        const isMatch = await bcrypt.compare(String(passcode), userData.passcodeHash);
+        if (!isMatch) {
+            throw new HttpsError('invalid-argument', 'Invalid passcode.');
+        }
+
+        const token = await admin.auth().createCustomToken(formatPhone);
+        return { success: true, token };
+
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        throw new HttpsError('internal', 'Login failed.');
     }
 });
 
