@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Shield, Mail, Lock, ArrowRight, Loader2, Wrench } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithCustomToken } from 'firebase/auth';
 import { setDoc, doc } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { auth, db, functions } from '../services/firebase';
+import { httpsCallable } from 'firebase/functions';
 
 const AdminLogin = () => {
     const navigate = useNavigate();
