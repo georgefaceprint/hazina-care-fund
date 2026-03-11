@@ -9,36 +9,29 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [realProfile, setRealProfile] = useState(null);
+    const [realProfile, setRealProfile] = useState(null); // null = loading, false = missing, object = exists
     const [impersonatedProfile, setImpersonatedProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isDemoMode, setIsDemoMode] = useState(false);
 
-    // Computed profile: returns impersonated one if active, otherwise real one
+    // Computed profile
     const profile = impersonatedProfile || realProfile;
 
     const impersonate = (targetProfile) => {
-        if (realProfile?.role !== 'super_master' && realProfile?.role !== 'master_agent') {
-            console.error("Insufficient permissions to impersonate.");
-            return;
-        }
+        if (realProfile?.role !== 'super_master' && realProfile?.role !== 'master_agent') return;
         setImpersonatedProfile(targetProfile);
     };
 
-    const stopImpersonating = () => {
-        setImpersonatedProfile(null);
-    };
+    const stopImpersonating = () => setImpersonatedProfile(null);
 
     const enableDemoMode = (phone = '+254712345678') => {
         setIsDemoMode(true);
         setUser({ uid: 'demo-user', phoneNumber: phone });
         setRealProfile({
-            id: 'demo-profile-12345',
+            id: 'demo-profile',
             fullName: 'George Demo',
             role: 'admin',
             active_tier: 'gold',
-            national_id: '12345678',
-            balance: 5000,
             status: 'active',
             phoneNumber: phone
         });
@@ -46,13 +39,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     const loginWithEmail = async (email, password) => {
+        setLoading(true);
         try {
-            setLoading(true);
             const result = await signInWithEmailAndPassword(auth, email, password);
             return result.user;
-        } catch (error) {
-            console.error("Login with email failed:", error);
-            throw error;
         } finally {
             setLoading(false);
         }
@@ -63,168 +53,120 @@ export const AuthProvider = ({ children }) => {
             setIsDemoMode(false);
             setUser(null);
             setRealProfile(null);
-            setImpersonatedProfile(null);
             return;
         }
-        if (auth) {
-            await auth.signOut();
-        }
+        await auth?.signOut();
     };
 
-    // 1. Auth & Profile Listener
+    // 1. Core Auth Listener
     useEffect(() => {
         if (isDemoMode) return;
 
-        if (!auth) {
-            console.error("Auth is not initialized. Rendering without auth.");
-            setLoading(false);
-            return;
-        }
-
-        let unsubProfile = null;
-
         const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
-            // Clean up previous profile listener if any
-            if (unsubProfile) {
-                unsubProfile();
-                unsubProfile = null;
-            }
-
-            try {
-                if (authUser) {
-                    setUser(authUser);
-
-                    const sessionPhone = sessionStorage.getItem('hazina_temp_phone');
-                    let profileRef = null;
-
-                    if (authUser.email) {
-                        profileRef = doc(db, 'users', authUser.uid);
-                    } else {
-                        if (authUser.phoneNumber) {
-                            profileRef = doc(db, 'users', authUser.phoneNumber);
-                        } else if (sessionPhone) {
-                            profileRef = doc(db, 'users', sessionPhone);
-                        }
-
-                        if (profileRef) {
-                            const snap = await getDoc(profileRef);
-                            if (!snap.exists()) profileRef = null;
-                        }
-                    }
-
-                    if (!profileRef && !authUser.email) {
-                        const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
-                        const querySnap = await getDocs(q);
-                        if (!querySnap.empty) {
-                            profileRef = doc(db, 'users', querySnap.docs[0].id);
-                        }
-                    }
-
-                    if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
-
-                    unsubProfile = onSnapshot(profileRef, async (snap) => {
-                        if (snap.exists()) {
-                            const userData = snap.data();
-                            let combinedProfile = { id: snap.id, ...userData };
-
-                            if (['agent', 'master_agent', 'super_master'].includes(userData.role)) {
-                                const agentCode = userData.agent_code || snap.id;
-                                const agentRef = doc(db, 'agents', agentCode);
-                                setRealProfile(combinedProfile);
-                                
-                                // Nested listener for agent stats (optional: could be a separate effect)
-                                onSnapshot(agentRef, (aSnap) => {
-                                    if (aSnap.exists()) {
-                                        setRealProfile(prev => ({
-                                            ...prev,
-                                            ...aSnap.data(),
-                                            agentDocId: aSnap.id
-                                        }));
-                                    }
-                                });
-                            } else {
-                                setRealProfile(combinedProfile);
-                            }
-                            setLoading(false);
-                        } else {
-                            // Profile missing - handle auto-provision for admin or stale session for others
-                            if (authUser.email) {
-                                const adminProfile = {
-                                    id: authUser.uid,
-                                    uid: authUser.uid,
-                                    email: authUser.email,
-                                    role: 'admin',
-                                    fullName: 'System Admin',
-                                    status: 'active'
-                                };
-                                setRealProfile(adminProfile);
-                                try {
-                                    await setDoc(profileRef, { ...adminProfile, createdAt: new Date().toISOString() });
-                                } catch (e) { console.error("Auto-provision failed", e); }
-                                setLoading(false);
-                            } else {
-                                // Stale session timeout
-                                setTimeout(async () => {
-                                    const finalSnap = await getDoc(profileRef);
-                                    if (!finalSnap.exists()) {
-                                        setRealProfile(false);
-                                        setLoading(false);
-                                        if (auth.currentUser && !auth.currentUser.email) {
-                                            await auth.signOut();
-                                        }
-                                    }
-                                }, 2000);
-                            }
-                        }
-                    }, (err) => {
-                        console.error("Profile error", err);
-                        setLoading(false);
-                    });
-                } else {
-                    setUser(null);
-                    setRealProfile(null);
-                    setImpersonatedProfile(null);
-                    setLoading(false);
-                }
-            } catch (error) {
-                console.error("Auth state error", error);
+            if (!authUser) {
+                setUser(null);
+                setRealProfile(false);
                 setLoading(false);
+                return;
             }
+
+            setUser(authUser);
+            
+            // Determine the profile reference
+            let profileRef = null;
+            if (authUser.email) {
+                profileRef = doc(db, 'users', authUser.uid);
+            } else {
+                const phone = authUser.phoneNumber || sessionStorage.getItem('hazina_temp_phone');
+                if (phone) profileRef = doc(db, 'users', phone);
+            }
+
+            // Fallback: Query by UID if the doc ID is unknown
+            if (!profileRef) {
+                try {
+                    const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
+                    const qs = await getDocs(q);
+                    if (!qs.empty) profileRef = doc(db, 'users', qs.docs[0].id);
+                } catch (e) { console.error("Search error", e); }
+            }
+
+            if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
+
+            // Listen to profile
+            const unsubProfile = onSnapshot(profileRef, async (snap) => {
+                console.log("👤 Auth: Profile snapshot updated. Exists:", snap.exists(), "DocID:", snap.id);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setRealProfile({ id: snap.id, ...data });
+                    setLoading(false);
+                } else {
+                    // Profile missing logic
+                    if (authUser.email === 'faceprint@icloud.com') {
+                        // Auto-provision admin
+                        const adminData = {
+                            uid: authUser.uid,
+                            email: authUser.email,
+                            role: 'admin',
+                            fullName: 'System Admin',
+                            status: 'active',
+                            createdAt: new Date().toISOString()
+                        };
+                        setRealProfile(adminData);
+                        try { await setDoc(profileRef, adminData); } catch(e) { console.error("Provision failed", e); }
+                        setLoading(false);
+                    } else {
+                        // Regular user might be creating profile right now, wait a bit
+                        setTimeout(async () => {
+                            const check = await getDoc(profileRef);
+                            if (!check.exists()) {
+                                setRealProfile(false);
+                                setLoading(false);
+                                if (!authUser.email) await auth.signOut();
+                            }
+                        }, 3000);
+                    }
+                }
+            }, (err) => {
+                console.error("Profile listen error:", err);
+                setRealProfile(false);
+                setLoading(false);
+            });
+
+            return () => unsubProfile();
         });
 
-        return () => {
-            unsubscribeAuth();
-            if (unsubProfile) unsubProfile();
-        };
+        return () => unsubscribeAuth();
     }, [isDemoMode]);
 
-    // 2. Global System Listener (Cache Busting)
+    // 2. Global System Listener
     useEffect(() => {
-        const unsubscribeSystem = onSnapshot(doc(db, 'config', 'system'), async (snap) => {
-            if (snap.exists()) {
-                const { cache_version } = snap.data();
-                const localVersion = localStorage.getItem('hazina_cache_version');
+        if (!user || isDemoMode) return;
 
-                if (cache_version && localVersion && cache_version.toString() !== localVersion) {
-                    localStorage.setItem('hazina_cache_version', cache_version.toString());
-                    
-                    if ('serviceWorker' in navigator) {
-                        const regs = await navigator.serviceWorker.getRegistrations();
-                        for (let r of regs) await r.unregister();
-                        const ckb = await caches.keys();
-                        for (let c of ckb) await caches.delete(c);
-                    }
-                    
-                    localStorage.removeItem('hazina_install_dismissed');
-                    window.location.reload(true);
-                } else if (cache_version) {
-                    localStorage.setItem('hazina_cache_version', cache_version.toString());
+        const unsubSystem = onSnapshot(doc(db, 'config', 'system'), (snap) => {
+            if (!snap.exists()) return;
+            const { cache_version } = snap.data();
+            const local = localStorage.getItem('hazina_cache_version');
+
+            if (cache_version && local && cache_version.toString() !== local) {
+                localStorage.setItem('hazina_cache_version', cache_version.toString());
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(regs => {
+                        regs.forEach(r => r.unregister());
+                    });
+                    caches.keys().then(keys => {
+                        keys.forEach(k => caches.delete(k));
+                    });
                 }
+                setTimeout(() => window.location.reload(true), 500);
+            } else if (cache_version) {
+                localStorage.setItem('hazina_cache_version', cache_version.toString());
             }
+        }, (err) => {
+            console.warn("System config read-only for admins? Skipping global sync check.");
         });
 
-        return () => unsubscribeSystem();
-    }, []);
+        return () => unsubSystem();
+    }, [user, isDemoMode]);
 
     const value = {
         user,

@@ -12,8 +12,10 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return role == 'admin' || role == 'super_master';
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master');
     }
 
     // Users collection

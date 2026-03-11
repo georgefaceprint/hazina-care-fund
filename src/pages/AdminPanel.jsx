@@ -109,7 +109,11 @@ const AdminPanel = () => {
                 const logs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 setRecruitmentLogs(logs);
 
-                const todayLogs = logs.filter(l => l.timestamp && l.timestamp.toDate() >= startOfToday);
+                const todayLogs = logs.filter(l => {
+                    if (!l.timestamp) return false;
+                    const logDate = getSafeDate(l.timestamp);
+                    return logDate.getTime() >= startOfToday;
+                });
                 setRecruitmentStats({
                     today: todayLogs.length,
                     total_payouts: logs.length * 15
@@ -1100,7 +1104,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                         <div className="text-right">
                                             <p className="text-xs font-black text-slate-900">KSh {log.tariffApplied}</p>
                                             <p className="text-[9px] text-slate-400 italic">
-                                                {log.timestamp ? format(log.timestamp.toDate(), 'HH:mm') : 'Recent'}
+                                                {log.timestamp ? format(getSafeDate(log.timestamp), 'HH:mm') : 'Recent'}
                                             </p>
                                         </div>
                                     </div>

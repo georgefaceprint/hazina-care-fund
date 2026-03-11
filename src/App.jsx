@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -28,10 +28,16 @@ import RecruitmentLayout from './layouts/RecruitmentLayout';
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
 import SplashScreen from './components/SplashScreen';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const RoleBasedRedirect = () => {
   const { profile, loading } = useAuth();
-  if (loading) return null;
+  console.log("🚦 RoleBasedRedirect: profile =", profile?.role, "loading =", loading);
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="w-16 h-16 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
   if (!profile) return <Navigate to="/login" replace />;
 
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
@@ -121,72 +127,74 @@ const App = () => {
 
   return (
     <BrowserRouter>
-      <LanguageProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <InstallProvider>
-              {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-              <Suspense fallback={<SplashScreen />}>
-                <Routes>
-                  <Route path="/" element={<RoleProtectedRoute><RoleBasedRedirect /></RoleProtectedRoute>} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/hq/login" element={<RecruitmentLogin />} />
-                  <Route path="/r/:agentCode" element={<ShortRedirect />} />
-                  <Route path="/admin/login" element={<AdminLogin />} />
-
-                  {/* Independent Admin Portal */}
-                  <Route path="/admin" element={
-                    <RoleProtectedRoute requireAdmin={true}>
-                      <AdminPanel />
-                    </RoleProtectedRoute>
-                  } />
-
-                  {/* Mobile App Layout - Consumer Facing (Guardians Only) */}
-                  <Route element={
-                    <RoleProtectedRoute noRecruiters={true}>
-                      <AppLayout />
-                    </RoleProtectedRoute>
-                  }>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/topup" element={<TopUp />} />
-                    <Route path="/family" element={<FamilyMembers />} />
-                    <Route path="/claim" element={<CrisisClaim />} />
-                    <Route path="/benefits" element={<Benefits />} />
-                    <Route path="/referrals" element={<Referrals />} />
-                    <Route path="/settings" element={<ProfileSettings />} />
-                    <Route path="/complete-profile" element={<CompleteProfile />} />
-                    <Route path="/pay-registration" element={<RegisterFee />} />
-                  </Route>
-
-                  {/* Recruitment Portals - Professional Management Layout */}
-                  <Route element={
-                    <RoleProtectedRoute>
-                      <RecruitmentLayout />
-                    </RoleProtectedRoute>
-                  }>
-                    <Route path="/agent" element={
-                      <RoleProtectedRoute requireAgent={true}>
-                        <AgentApp />
+      <ErrorBoundary>
+        <LanguageProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <InstallProvider>
+                {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+                <Suspense fallback={<SplashScreen />}>
+                  <Routes>
+                    <Route path="/" element={<RoleProtectedRoute><RoleBasedRedirect /></RoleProtectedRoute>} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/hq/login" element={<RecruitmentLogin />} />
+                    <Route path="/r/:agentCode" element={<ShortRedirect />} />
+                    <Route path="/admin/login" element={<AdminLogin />} />
+  
+                    {/* Independent Admin Portal */}
+                    <Route path="/admin" element={
+                      <RoleProtectedRoute requireAdmin={true}>
+                        <AdminPanel />
                       </RoleProtectedRoute>
                     } />
-                    <Route path="/master" element={
-                      <RoleProtectedRoute requireMaster={true}>
-                        <MasterDashboard />
+  
+                    {/* Mobile App Layout - Consumer Facing (Guardians Only) */}
+                    <Route element={
+                      <RoleProtectedRoute noRecruiters={true}>
+                        <AppLayout />
                       </RoleProtectedRoute>
-                    } />
-                    <Route path="/super" element={
-                      <RoleProtectedRoute requireSuper={true}>
-                        <SuperMasterDashboard />
+                    }>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/topup" element={<TopUp />} />
+                      <Route path="/family" element={<FamilyMembers />} />
+                      <Route path="/claim" element={<CrisisClaim />} />
+                      <Route path="/benefits" element={<Benefits />} />
+                      <Route path="/referrals" element={<Referrals />} />
+                      <Route path="/settings" element={<ProfileSettings />} />
+                      <Route path="/complete-profile" element={<CompleteProfile />} />
+                      <Route path="/pay-registration" element={<RegisterFee />} />
+                    </Route>
+  
+                    {/* Recruitment Portals - Professional Management Layout */}
+                    <Route element={
+                      <RoleProtectedRoute>
+                        <RecruitmentLayout />
                       </RoleProtectedRoute>
-                    } />
-                  </Route>
-                </Routes>
-              </Suspense>
-              <UpdatePrompt />
-            </InstallProvider>
-          </AuthProvider>
-        </ToastProvider>
-      </LanguageProvider>
+                    }>
+                      <Route path="/agent" element={
+                        <RoleProtectedRoute requireAgent={true}>
+                          <AgentApp />
+                        </RoleProtectedRoute>
+                      } />
+                      <Route path="/master" element={
+                        <RoleProtectedRoute requireMaster={true}>
+                          <MasterDashboard />
+                        </RoleProtectedRoute>
+                      } />
+                      <Route path="/super" element={
+                        <RoleProtectedRoute requireSuper={true}>
+                          <SuperMasterDashboard />
+                        </RoleProtectedRoute>
+                      } />
+                    </Route>
+                  </Routes>
+                </Suspense>
+                <UpdatePrompt />
+              </InstallProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </LanguageProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 };

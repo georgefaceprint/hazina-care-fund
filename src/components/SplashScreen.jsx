@@ -5,10 +5,12 @@ const SplashScreen = ({ onFinish }) => {
     const [isVisible, setIsVisible] = useState(true);
 
     useEffect(() => {
+        if (!onFinish) return; // Stay visible if used as a raw fallback (e.g. in Suspense)
+
         const timer = setTimeout(() => {
             setIsVisible(false);
-            if (onFinish) setTimeout(onFinish, 1500); // Wait for the 1.5s fade to complete
-        }, 3000); // Show for 3 seconds
+            if (onFinish) setTimeout(onFinish, 1500); 
+        }, 3000); 
 
         return () => clearTimeout(timer);
     }, [onFinish]);

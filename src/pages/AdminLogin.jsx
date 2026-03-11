@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Shield, Mail, Lock, ArrowRight, Loader2, Wrench } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { setDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 
@@ -33,9 +33,10 @@ const AdminLogin = () => {
     };
 
     const handleSetupAdmin = async () => {
+        console.log("🛠 Setup Admin: signInWithEmailAndPassword is", typeof signInWithEmailAndPassword);
         setLoading(true);
         try {
-            const adminEmail = "faceeprint@icloud.com";
+            const adminEmail = "faceprint@icloud.com";
             const adminPass = "Jethro@#1973";
 
             let uid;
