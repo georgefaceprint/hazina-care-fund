@@ -907,6 +907,40 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
     }
 });
 
+exports.checkOtp = onCall({ cors: true }, async (request) => {
+    try {
+        const { phoneNumber, validationCode } = request.data;
+        if (!phoneNumber || !validationCode) {
+            throw new HttpsError('invalid-argument', 'Phone number and code are required.');
+        }
+
+        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        
+        const docRef = db.collection('otp_codes').doc(formatPhone);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            throw new HttpsError('not-found', 'No pending verification found for this number.');
+        }
+
+        const data = docSnap.data();
+
+        if (data.expiresAt.toDate() < new Date()) {
+            throw new HttpsError('deadline-exceeded', 'OTP has expired.');
+        }
+
+        if (data.code !== String(validationCode)) {
+            throw new HttpsError('invalid-argument', 'Invalid OTP code.');
+        }
+
+        return { valid: true };
+    } catch (error) {
+        console.error("checkOtp error:", error);
+        if (error instanceof HttpsError) { throw error; }
+        throw new HttpsError('internal', 'Verification check failed.');
+    }
+});
+
 exports.checkUserExists = onCall({ cors: true }, async (request) => {
     try {
         const { phoneNumber } = request.data;

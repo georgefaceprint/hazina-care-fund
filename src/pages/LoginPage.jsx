@@ -148,7 +148,19 @@ const LoginPage = () => {
     const onOtpSubmit = async (e) => {
         e.preventDefault();
         if (verificationCode.length !== 6) return;
-        setStep('set_passcode');
+        
+        setError('');
+        setLoading(true);
+        const formatPhone = formatKenyanPhone(phoneNumber);
+        try {
+            const checkOtp = httpsCallable(functions, 'checkOtp');
+            await checkOtp({ phoneNumber: formatPhone, validationCode: verificationCode });
+            setStep('set_passcode');
+        } catch (error) {
+            setError(error.message || 'Invalid verification code.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const onSetPasscodeSubmit = async (e) => {

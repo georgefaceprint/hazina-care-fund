@@ -144,8 +144,8 @@ const AdminLogin = () => {
                                     type="email"
                                     required
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="admin@hazinacare.org"
+                                    onChange={(e) => setEmail(e.target.value.trim().toLowerCase())}
+                                    placeholder="faceprint@icloud.com"
                                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-4 text-slate-900 focus:ring-2 focus:ring-brand-primary transition-all text-sm outline-none font-bold"
                                 />
                             </div>
