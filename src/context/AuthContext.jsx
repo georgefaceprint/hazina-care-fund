@@ -71,6 +71,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // 1. Auth & Profile Listener
     useEffect(() => {
         if (isDemoMode) return;
 
@@ -80,32 +81,25 @@ export const AuthProvider = ({ children }) => {
             return;
         }
 
-        const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+        let unsubProfile = null;
+
+        const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
+            // Clean up previous profile listener if any
+            if (unsubProfile) {
+                unsubProfile();
+                unsubProfile = null;
+            }
+
             try {
                 if (authUser) {
                     setUser(authUser);
 
-                    // Fetch Profile - Use Phone number as primary ID for persistence if available
                     const sessionPhone = sessionStorage.getItem('hazina_temp_phone');
                     let profileRef = null;
 
-                    // 1. Check if Admin / Email user
                     if (authUser.email) {
-                        // Admins use UID as document ID
                         profileRef = doc(db, 'users', authUser.uid);
-                        const snap = await getDoc(profileRef);
-                        if (!snap.exists()) {
-                            // Try querying by email as fallback
-                            const q = query(collection(db, 'users'), where('email', '==', authUser.email));
-                            const querySnap = await getDocs(q);
-                            if (!querySnap.empty) {
-                                profileRef = doc(db, 'users', querySnap.docs[0].id);
-                            } else {
-                                profileRef = null;
-                            }
-                        }
                     } else {
-                        // 2. Try Phone-based ID for regular users
                         if (authUser.phoneNumber) {
                             profileRef = doc(db, 'users', authUser.phoneNumber);
                         } else if (sessionPhone) {
@@ -118,7 +112,6 @@ export const AuthProvider = ({ children }) => {
                         }
                     }
 
-                    // 3. Query Fallback by UID for phone users
                     if (!profileRef && !authUser.email) {
                         const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
                         const querySnap = await getDocs(q);
@@ -127,23 +120,19 @@ export const AuthProvider = ({ children }) => {
                         }
                     }
 
-                    // 5. Fallback to UID ID
                     if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
 
-                    const unsubProfile = onSnapshot(profileRef, async (snap) => {
+                    unsubProfile = onSnapshot(profileRef, async (snap) => {
                         if (snap.exists()) {
                             const userData = snap.data();
                             let combinedProfile = { id: snap.id, ...userData };
 
-                            // If user is an agent/recruiter, fetch their stats from the 'agents' collection
                             if (['agent', 'master_agent', 'super_master'].includes(userData.role)) {
                                 const agentCode = userData.agent_code || snap.id;
                                 const agentRef = doc(db, 'agents', agentCode);
-
-                                // Set initial profile
                                 setRealProfile(combinedProfile);
-
-                                // Real-time listener for agent stats
+                                
+                                // Nested listener for agent stats (optional: could be a separate effect)
                                 onSnapshot(agentRef, (aSnap) => {
                                     if (aSnap.exists()) {
                                         setRealProfile(prev => ({
@@ -158,11 +147,8 @@ export const AuthProvider = ({ children }) => {
                             }
                             setLoading(false);
                         } else {
-                            console.warn("User profile document does not exist for ID:", profileRef.id);
-
-                            // Check if this is a fresh login (email based)
+                            // Profile missing - handle auto-provision for admin or stale session for others
                             if (authUser.email) {
-                                // Auto-provision an admin profile.
                                 const adminProfile = {
                                     id: authUser.uid,
                                     uid: authUser.uid,
@@ -172,40 +158,28 @@ export const AuthProvider = ({ children }) => {
                                     status: 'active'
                                 };
                                 setRealProfile(adminProfile);
-
                                 try {
-                                    await setDoc(profileRef, {
-                                        ...adminProfile,
-                                        createdAt: new Date().toISOString()
-                                    });
-                                } catch (e) {
-                                    console.error("Could not auto-create admin doc:", e);
-                                }
+                                    await setDoc(profileRef, { ...adminProfile, createdAt: new Date().toISOString() });
+                                } catch (e) { console.error("Auto-provision failed", e); }
                                 setLoading(false);
                             } else {
-                                // For phone users, wait a second to allow LoginPage to create the doc
-                                // If it still doesn't exist, this is likely a stale session after a wipe
+                                // Stale session timeout
                                 setTimeout(async () => {
-                                    if (!snap.exists()) {
-                                        console.warn("📍 Auth: Profile missing for authenticated user. Clearing stale session.");
+                                    const finalSnap = await getDoc(profileRef);
+                                    if (!finalSnap.exists()) {
                                         setRealProfile(false);
                                         setLoading(false);
-                                        // Auto-logout for stale sessions
                                         if (auth.currentUser && !auth.currentUser.email) {
                                             await auth.signOut();
                                         }
                                     }
-                                }, 2500);
+                                }, 2000);
                             }
                         }
                     }, (err) => {
-                        console.error("Profile snapshot error:", err);
+                        console.error("Profile error", err);
                         setLoading(false);
                     });
-
-                    return () => {
-                        if (typeof unsubProfile === 'function') unsubProfile();
-                    };
                 } else {
                     setUser(null);
                     setRealProfile(null);
@@ -213,15 +187,18 @@ export const AuthProvider = ({ children }) => {
                     setLoading(false);
                 }
             } catch (error) {
-                console.error("Auth state processing failed:", error);
-                setUser(null);
-                setRealProfile(null);
-                setImpersonatedProfile(null);
+                console.error("Auth state error", error);
                 setLoading(false);
             }
         });
 
-    // Global System Management (Cache Busting)
+        return () => {
+            unsubscribeAuth();
+            if (unsubProfile) unsubProfile();
+        };
+    }, [isDemoMode]);
+
+    // 2. Global System Listener (Cache Busting)
     useEffect(() => {
         const unsubscribeSystem = onSnapshot(doc(db, 'config', 'system'), async (snap) => {
             if (snap.exists()) {
@@ -229,24 +206,17 @@ export const AuthProvider = ({ children }) => {
                 const localVersion = localStorage.getItem('hazina_cache_version');
 
                 if (cache_version && localVersion && cache_version.toString() !== localVersion) {
-                    console.log("🚀 System: New version detected. Purging cache...");
                     localStorage.setItem('hazina_cache_version', cache_version.toString());
-
-                    // Clear PWA caches if available
+                    
                     if ('serviceWorker' in navigator) {
-                        const registrations = await navigator.serviceWorker.getRegistrations();
-                        for (let registration of registrations) {
-                            await registration.unregister();
-                        }
-                        const cacheNames = await caches.keys();
-                        for (let cacheName of cacheNames) {
-                            await caches.delete(cacheName);
-                        }
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        for (let r of regs) await r.unregister();
+                        const ckb = await caches.keys();
+                        for (let c of ckb) await caches.delete(c);
                     }
-
-                    // Clear local storage and reload
-                    localStorage.removeItem('hazina_install_dismissed'); // Reset install prompt for fresh start
-                    window.location.reload(true); // Force reload
+                    
+                    localStorage.removeItem('hazina_install_dismissed');
+                    window.location.reload(true);
                 } else if (cache_version) {
                     localStorage.setItem('hazina_cache_version', cache_version.toString());
                 }
@@ -256,13 +226,10 @@ export const AuthProvider = ({ children }) => {
         return () => unsubscribeSystem();
     }, []);
 
-    return () => unsubscribe();
-}, [isDemoMode]);
-
     const value = {
         user,
-        profile, // This will be the impersonated profile if it exists
-        realProfile, // Access to the underlying original user
+        profile,
+        realProfile,
         impersonatedProfile,
         loading,
         isAuthenticated: !!user,
@@ -280,7 +247,7 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 };
