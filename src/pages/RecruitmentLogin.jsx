@@ -18,6 +18,7 @@ const RecruitmentLogin = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null);
+    const [isTotpLogin, setIsTotpLogin] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -40,9 +41,14 @@ const RecruitmentLogin = () => {
 
         try {
             const sendOtp = httpsCallable(functions, 'sendOtp');
-            await sendOtp({ phoneNumber: formatPhone });
+            const result = await sendOtp({ phoneNumber: formatPhone });
             setConfirmationResult(true);
-            toast.success("Verification code sent to " + formatPhone);
+            setIsTotpLogin(!!result.data?.totpEnabled);
+            if (result.data?.totpEnabled) {
+                toast.success("Authenticator Token Required");
+            } else {
+                toast.success("Verification code sent to " + formatPhone);
+            }
         } catch (error) {
             console.error('sendOtp error:', error);
             setError(error.message || 'Failed to send SMS. Please check your number.');
@@ -165,7 +171,9 @@ const RecruitmentLogin = () => {
                                 className="space-y-8"
                             >
                                 <div className="text-center">
-                                    <p className="text-sm font-bold text-slate-600 mb-1">Authorization Code Sent</p>
+                                    <p className="text-sm font-bold text-slate-600 mb-1">
+                                        {isTotpLogin ? "Authenticator Code Required" : "Authorization Code Sent"}
+                                    </p>
                                     <p className="text-xs font-black text-brand-primary font-mono">{formatKenyanPhone(phoneNumber)}</p>
                                 </div>
 

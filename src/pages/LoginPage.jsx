@@ -15,6 +15,7 @@ const LoginPage = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null);
+    const [isTotpLogin, setIsTotpLogin] = useState(false);
     const { t } = useLanguage();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -64,10 +65,11 @@ const LoginPage = () => {
             // The instruction "Update services/firebase.js to specify us-central1 region for functions" implies this configuration happens there.
             // The provided snippet `functions = getFunctions(app, 'us-central1');` is not valid syntax here.
             const sendOtp = httpsCallable(functions, 'sendOtp');
-            await sendOtp({ phoneNumber: formatPhone });
+            const result = await sendOtp({ phoneNumber: formatPhone });
 
             // On success, set a local state to reveal OTP UI
             setConfirmationResult(true);
+            setIsTotpLogin(!!result.data?.totpEnabled);
         } catch (error) {
             console.error('sendOtp error:', error);
             // Display the actual error message from the exception for better debugging.
@@ -226,7 +228,9 @@ const LoginPage = () => {
                 ) : (
                     <form onSubmit={onOtpSubmit} className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
                         <div className="text-center mb-6">
-                            <p className="text-sm text-slate-600">Enter the 6-digit code sent to</p>
+                            <p className="text-sm text-slate-600">
+                                {isTotpLogin ? "Enter your Authenticator App code" : "Enter the 6-digit code sent to"}
+                            </p>
                             <p className="font-bold text-slate-900 text-lg mt-1 tracking-wider">{formatKenyanPhone(phoneNumber)}</p>
                         </div>
 

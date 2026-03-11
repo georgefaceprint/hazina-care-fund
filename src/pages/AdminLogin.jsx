@@ -14,6 +14,8 @@ const AdminLogin = () => {
     const toast = useToast();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [totpCode, setTotpCode] = useState('');
+    const [showTotp, setShowTotp] = useState(false);
     const [loading, setLoading] = useState(false);
     const [setupClicks, setSetupClicks] = useState(0);
 
@@ -21,9 +23,37 @@ const AdminLogin = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            await loginWithEmail(email, password);
-            toast.success("Welcome, Administrator");
-            navigate('/admin');
+            // First, check if TOTP is enabled for this admin
+            const userSnap = await db.collection('users').where('email', '==', email).limit(1).get();
+            // Note: In frontend, we can't directly query 'users' collection with 'where' unless rules allow.
+            // Let's use a cloud function instead to be safe and clean.
+            
+            if (!showTotp) {
+                const validateTotpFunc = httpsCallable(functions, 'validateAdminTotp');
+                try {
+                    // Try calling with just email to see if it requires TOTP (we'll modify the function to support this)
+                    await validateTotpFunc({ email, checkOnly: true });
+                    setShowTotp(true);
+                    setLoading(false);
+                    return; // Wait for TOTP input
+                } catch (err) {
+                    if (err.code === 'not-found' || err.message.includes('not enabled')) {
+                        // TOTP not enabled, proceed with normal email login
+                        await loginWithEmail(email, password);
+                        toast.success("Welcome, Administrator");
+                        navigate('/admin');
+                    } else {
+                        throw err;
+                    }
+                }
+            } else {
+                // Verify TOTP and get token
+                const validateTotpFunc = httpsCallable(functions, 'validateAdminTotp');
+                const result = await validateTotpFunc({ email, token: totpCode, password }); // We'll add password check to the function
+                await signInWithCustomToken(auth, result.data.token);
+                toast.success("Welcome, Administrator");
+                navigate('/admin');
+            }
         } catch (error) {
             console.error("Login failed:", error);
             toast.error(error.message || "Identification failed. Check your admin credentials.");
@@ -129,6 +159,28 @@ const AdminLogin = () => {
                                 />
                             </div>
                         </div>
+
+                        {showTotp && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-2"
+                            >
+                                <label className="text-[10px] font-black uppercase text-brand-primary ml-1 tracking-widest text-center block italic">Authenticator Code</label>
+                                <div className="relative">
+                                    <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-primary/50" />
+                                    <input
+                                        type="text"
+                                        maxLength={6}
+                                        required
+                                        value={totpCode}
+                                        onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                                        placeholder="000000"
+                                        className="w-full bg-brand-primary/5 border border-brand-primary/20 rounded-2xl pl-12 pr-4 py-4 text-slate-900 focus:ring-2 focus:ring-brand-primary transition-all text-lg tracking-[0.3em] font-black outline-none text-center"
+                                    />
+                                </div>
+                            </motion.div>
+                        )}
 
                         <button
                             type="submit"

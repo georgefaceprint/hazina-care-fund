@@ -9,6 +9,8 @@ import { ArrowLeft, ShieldCheck, Clock, XCircle, Search, DollarSign, Filter, Fil
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { format, subDays, startOfDay } from 'date-fns';
 import { formatKenyanPhone } from '../utils/phoneUtils';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../services/firebase';
 
 const getSafeDate = (dateVal) => {
     if (!dateVal) return new Date();
@@ -37,6 +39,12 @@ const AdminPanel = () => {
     const [recruitmentLogs, setRecruitmentLogs] = useState([]);
     const [recruitmentStats, setRecruitmentStats] = useState({ today: 0, total_payouts: 0 });
     const [recruitmentConfig, setRecruitmentConfig] = useState({ agentCommission: 15, masterCommission: 5 });
+
+    // TOTP States
+    const [totpSetup, setTotpSetup] = useState(null); // { secret, otpauth, qrCodeUrl }
+    const [totpStep, setTotpStep] = useState('idle'); // 'idle' | 'generated' | 'verifying'
+    const [totpCode, setTotpCode] = useState('');
+    const [isTotpLoading, setIsTotpLoading] = useState(false);
 
 
     // Hardcode admin role check for MVP purposes (In production this should be a role in Firestore/Custom Claims)
@@ -287,6 +295,63 @@ Return ONLY a valid JSON array, no markdown, no explanation:
             toast.success(`${tierKey} pricing updated.`);
         } catch (error) {
             toast.error("Failed to update pricing.");
+        }
+    };
+
+    const handleSetupTotp = async () => {
+        setIsTotpLoading(true);
+        try {
+            const generateSecret = httpsCallable(functions, 'generateTotpSecret');
+            const result = await generateSecret();
+            setTotpSetup(result.data);
+            setTotpStep('generated');
+            toast.success("Authenticator secret generated.");
+        } catch (error) {
+            console.error("TOTP Setup Error:", error);
+            toast.error(error.message || "Failed to initiate TOTP setup.");
+        } finally {
+            setIsTotpLoading(false);
+        }
+    };
+
+    const handleVerifyTotp = async () => {
+        if (!totpCode || totpCode.length !== 6) {
+            toast.error("Enter a valid 6-digit code.");
+            return;
+        }
+
+        setIsTotpLoading(true);
+        try {
+            const verifyAndEnable = httpsCallable(functions, 'verifyAndEnableTotp');
+            await verifyAndEnable({
+                token: totpCode,
+                secret: totpSetup.secret,
+                isInitialSetup: true
+            });
+            toast.success("Authenticator enabled successfully! 🛡️");
+            setTotpStep('idle');
+            setTotpSetup(null);
+            setTotpCode('');
+        } catch (error) {
+            console.error("TOTP Verification Error:", error);
+            toast.error(error.message || "Verification failed. Check the code.");
+        } finally {
+            setIsTotpLoading(false);
+        }
+    };
+
+    const handleDisableTotp = async () => {
+        if (!window.confirm("Are you sure you want to disable the Authenticator App? Your account will be less secure.")) return;
+
+        try {
+            const userRef = doc(db, 'users', profile.id);
+            await updateDoc(userRef, {
+                totpEnabled: false,
+                totpSecret: null
+            });
+            toast.success("Authenticator app disabled.");
+        } catch (error) {
+            toast.error("Failed to disable TOTP.");
         }
     };
 
@@ -883,6 +948,94 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                         Force Global Refresh
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Two-Factor Authentication (TOTP) */}
+                        <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 italic relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                            
+                            <div className="relative z-10">
+                                <h3 className="text-xl font-black mb-2 flex items-center gap-3">
+                                    <ShieldCheck className="w-6 h-6 text-brand-primary" />
+                                    Security: Authenticator App (TOTP)
+                                </h3>
+                                <p className="text-sm text-slate-500 mb-8 max-w-2xl font-medium">Use apps like Google Authenticator or Authy to log into any portal on Hazina. This replaces SMS OTP for faster and more secure access.</p>
+
+                                {profile?.totpEnabled ? (
+                                    <div className="flex items-center justify-between bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                                                <ShieldCheck className="w-7 h-7" />
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-emerald-900 tracking-tight">Authenticator Active</p>
+                                                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Enhanced Security Enabled</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={handleDisableTotp}
+                                            className="px-6 py-2.5 bg-white text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-100 hover:bg-red-50 transition-all active:scale-95"
+                                        >
+                                            Disable App
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {totpStep === 'idle' && (
+                                            <button
+                                                onClick={handleSetupTotp}
+                                                disabled={isTotpLoading}
+                                                className="px-8 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-900/20 flex items-center gap-3 hover:bg-brand-primary transition-all active:scale-95"
+                                            >
+                                                {isTotpLoading ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
+                                                Setup Authenticator App
+                                            </button>
+                                        )}
+
+                                        {totpStep === 'generated' && totpSetup && (
+                                            <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 animate-in zoom-in-95 duration-300">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+                                                    <div className="flex flex-col items-center justify-center bg-white p-6 rounded-3xl shadow-inner border border-slate-100">
+                                                        <img src={totpSetup.qrCodeUrl} alt="QR Code" className="w-48 h-48 mb-4 border-4 border-white shadow-sm" />
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Scan with your app</p>
+                                                    </div>
+                                                    <div className="space-y-6">
+                                                        <div>
+                                                            <h4 className="font-black text-slate-900 mb-2">Configure and Verify</h4>
+                                                            <p className="text-xs text-slate-500 mb-4 leading-relaxed">1. Open your Authenticator app (Google, Authy, etc).<br/>2. Scan the QR code shown here.<br/>3. Enter the 6-digit code from the app below.</p>
+                                                        </div>
+                                                        <div className="space-y-4">
+                                                            <input
+                                                                type="text"
+                                                                maxLength={6}
+                                                                className="w-full bg-white p-5 rounded-2xl border border-slate-200 text-center text-3xl font-black tracking-[0.5em] focus:ring-2 focus:ring-brand-primary outline-none transition-all placeholder:text-slate-200"
+                                                                placeholder="000000"
+                                                                value={totpCode}
+                                                                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                                                            />
+                                                            <div className="flex gap-3">
+                                                                <button
+                                                                    onClick={() => setTotpStep('idle')}
+                                                                    className="flex-1 py-4 bg-white text-slate-500 font-black uppercase tracking-widest rounded-2xl border border-slate-200 hover:bg-slate-100 transition-all"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                                <button
+                                                                    onClick={handleVerifyTotp}
+                                                                    disabled={isTotpLoading}
+                                                                    className="flex-[2] py-4 bg-brand-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-brand-primary/20 hover:shadow-brand-primary/30 transition-all active:scale-[0.98] disabled:opacity-50"
+                                                                >
+                                                                    {isTotpLoading ? 'Verifying...' : 'Verify & Activate'}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

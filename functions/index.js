@@ -4,6 +4,7 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const { authenticator } = require("otplib");
 
 
 
@@ -393,31 +394,133 @@ exports.sasapayB2C = onRequest({
             headers: { Authorization: `Bearer ${token}` }
         });
 
-        const resData = response.data;
-
-        if (resData.status) {
-            // Update claim with SasaPay conversation ID or equivalent
-            await db.collection("claims").doc(claimId).update({
-                gateway_transaction_id: resData.TransactionReference || "PENDING",
-                status: "disbursing"
-            });
-
-            // Update global analytics (decrement liquefaction)
-            await db.collection("totals").doc("liquidity").set({
-                total_fund: admin.firestore.FieldValue.increment(-Number(amount)),
-                total_claims_paid: admin.firestore.FieldValue.increment(Number(amount)),
-                last_updated: admin.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
-            res.status(200).send({ success: true, data: resData });
-        } else {
-            res.status(400).send({ error: resData.detail || "SasaPay B2C initiation failed" });
-        }
+        return response.data;
     } catch (error) {
-        console.error("SasaPay B2C Disbursement error: ", error.response?.data || error.message);
-        const errorMsg = error.response?.data?.detail || error.message || "Failed to initiate B2C disbursement";
-        res.status(500).send({ error: `SasaPay B2C Error: ${errorMsg}` });
+        console.error("Agent Withdrawal Error:", error.response?.data || error.message);
+        throw new HttpsError('internal', "Disbursement failed.");
     }
+});
+
+
+// --- TOTP (Authenticator App) Integration ---
+
+/**
+ * Generates a TOPT secret for an admin user.
+ * Should only be callable by authenticated admins.
+ */
+exports.generateTotpSecret = onCall({ cors: true }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+        throw new HttpsError('unauthenticated', 'User must be logged in.');
+    }
+
+    // Verify user is an admin
+    const userSnap = await db.collection("users").doc(uid).get();
+    if (!userSnap.exists || userSnap.data().role !== 'admin') {
+        throw new HttpsError('permission-denied', 'Only admins can setup TOTP.');
+    }
+
+    const secret = authenticator.generateSecret();
+    const userEmail = userSnap.data().email || "admin@hazinacare.org";
+    const otpauth = authenticator.keyuri(userEmail, "Hazina Care", secret);
+
+    // We don't save it yet. The user must verify a code first.
+    return { 
+        secret, 
+        otpauth,
+        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauth)}`
+    };
+});
+
+/**
+ * Verifies a TOTP token and enables it for the admin if valid.
+ */
+exports.verifyAndEnableTotp = onCall({ cors: true }, async (request) => {
+    const { token, secret, isInitialSetup } = request.data;
+    const uid = request.auth?.uid;
+
+    if (!uid) {
+        throw new HttpsError('unauthenticated', 'User must be logged in.');
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    
+    if (!userSnap.exists) {
+        throw new HttpsError('not-found', 'User profile not found.');
+    }
+
+    let effectiveSecret = secret;
+
+    // If not initial setup, we use the secret stored in DB
+    if (!isInitialSetup) {
+        effectiveSecret = userSnap.data().totpSecret;
+        if (!effectiveSecret) {
+            throw new HttpsError('failed-precondition', 'TOTP is not set up for this account.');
+        }
+    }
+
+    const isValid = authenticator.check(token, effectiveSecret);
+
+    if (!isValid) {
+        throw new HttpsError('invalid-argument', 'Invalid verification code.');
+    }
+
+    // If initial setup, save the secret to the user's profile
+    if (isInitialSetup) {
+        await userRef.update({
+            totpSecret: secret,
+            totpEnabled: true,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    return { success: true };
+});
+
+/**
+ * Validates a TOTP token during login.
+ * This can be used as a second factor.
+ */
+exports.validateAdminTotp = onCall({ cors: true }, async (request) => {
+    const { email, token, checkOnly } = request.data;
+
+    if (!email) {
+        throw new HttpsError('invalid-argument', 'Email is required.');
+    }
+
+    const userSnap = await db.collection("users").where("email", "==", email).limit(1).get();
+    if (userSnap.empty) {
+        throw new HttpsError('not-found', 'Admin account not found.');
+    }
+
+    const userData = userSnap.docs[0].data();
+    
+    // Check if TOTP is enabled
+    if (!userData.totpEnabled || !userData.totpSecret) {
+        if (checkOnly) {
+            return { totpEnabled: false };
+        }
+        throw new HttpsError('permission-denied', 'TOTP not enabled for this account.');
+    }
+
+    if (checkOnly) {
+        return { totpEnabled: true };
+    }
+
+    if (!token) {
+        throw new HttpsError('invalid-argument', 'Authenticator token is required.');
+    }
+
+    const isValid = authenticator.check(token, userData.totpSecret);
+
+    if (!isValid) {
+        throw new HttpsError('invalid-argument', 'Invalid authenticator code.');
+    }
+
+    // Generate a custom token for the admin
+    const firebaseToken = await admin.auth().createCustomToken(userSnap.docs[0].id);
+    return { token: firebaseToken };
 });
 
 
@@ -609,6 +712,13 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
         console.log("Formatted Phone:", formatPhone);
 
+        // Check if user exists and has TOTP enabled
+        const userSnap = await db.collection('users').doc(formatPhone).get();
+        if (userSnap.exists && userSnap.data().totpEnabled && userSnap.data().totpSecret) {
+            console.log("TOTP enabled for user, skipping SMS OTP.");
+            return { success: true, totpEnabled: true, message: "Use your authenticator app." };
+        }
+
         // Generate a random 6-digit code
         const code = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -634,11 +744,9 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
             console.log("Africa's Talking SMS Result:", result);
         } catch (smsError) {
             console.error("Africa's Talking SMS Send Error:", smsError);
-            // We don't throw an error here to the user yet, because if they know the bypass 123456, 
-            // they can still log in if the SMS fails to deliver in sandbox.
         }
 
-        return { success: true, message: "Code sent successfully" };
+        return { success: true, totpEnabled: false, message: "Code sent successfully" };
 
     } catch (error) {
         console.error("sendOtp error:", error);
@@ -658,36 +766,49 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
         let shouldProduceToken = false;
 
-        // TEST BYPASS: Allows 123456 for easier onboarding during this phase
-        if (String(validationCode) === '123456') {
-            console.log("Using Test OTP Bypass for:", formatPhone);
-            shouldProduceToken = true;
-            // Delete any existing real OTP for this number so it doesn't linger
-            await db.collection('otp_codes').doc(formatPhone).delete().catch(() => { });
+        // 1. Check if user exists and has TOTP enabled
+        const userSnap = await db.collection('users').doc(formatPhone).get();
+        if (userSnap.exists && userSnap.data().totpEnabled && userSnap.data().totpSecret) {
+            console.log("Verifying TOTP for:", formatPhone);
+            const isValid = authenticator.check(validationCode, userSnap.data().totpSecret);
+            if (isValid) {
+                shouldProduceToken = true;
+            } else {
+                throw new HttpsError('invalid-argument', 'Invalid authenticator code.');
+            }
         } else {
-            const docRef = db.collection('otp_codes').doc(formatPhone);
-            const docSnap = await docRef.get();
+            // 2. Regular SMS OTP Flow
+            // TEST BYPASS: Allows 123456 for easier onboarding during this phase
+            if (String(validationCode) === '123456') {
+                console.log("Using Test OTP Bypass for:", formatPhone);
+                shouldProduceToken = true;
+                // Delete any existing real OTP for this number so it doesn't linger
+                await db.collection('otp_codes').doc(formatPhone).delete().catch(() => { });
+            } else {
+                const docRef = db.collection('otp_codes').doc(formatPhone);
+                const docSnap = await docRef.get();
 
-            if (!docSnap.exists) {
-                console.warn("No OTP code found in DB for:", formatPhone);
-                throw new HttpsError('not-found', 'No pending verification found for this number.');
-            }
+                if (!docSnap.exists) {
+                    console.warn("No OTP code found in DB for:", formatPhone);
+                    throw new HttpsError('not-found', 'No pending verification found for this number.');
+                }
 
-            const data = docSnap.data();
-            console.log("Found DB matching code:", data.code);
+                const data = docSnap.data();
+                console.log("Found DB matching code:", data.code);
 
-            if (data.expiresAt.toDate() < new Date()) {
+                if (data.expiresAt.toDate() < new Date()) {
+                    await docRef.delete();
+                    throw new HttpsError('deadline-exceeded', 'OTP has expired.');
+                }
+
+                if (data.code !== String(validationCode)) {
+                    console.warn("Code mismatch! Entered:", validationCode, "Expected:", data.code);
+                    throw new HttpsError('invalid-argument', 'Invalid OTP code.');
+                }
+
+                shouldProduceToken = true;
                 await docRef.delete();
-                throw new HttpsError('deadline-exceeded', 'OTP has expired.');
             }
-
-            if (data.code !== String(validationCode)) {
-                console.warn("Code mismatch! Entered:", validationCode, "Expected:", data.code);
-                throw new HttpsError('invalid-argument', 'Invalid OTP code.');
-            }
-
-            shouldProduceToken = true;
-            await docRef.delete();
         }
 
         if (shouldProduceToken) {
