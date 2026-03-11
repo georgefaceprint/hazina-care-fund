@@ -216,22 +216,6 @@ const LoginPage = () => {
                             <ArrowRight className="w-5 h-5 ml-2 inline-block" />
                         </button>
 
-                        <div className="relative flex items-center py-2">
-                            <div className="flex-grow border-t border-slate-200"></div>
-                            <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase tracking-widest">or</span>
-                            <div className="flex-grow border-t border-slate-200"></div>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const formatPhone = formatKenyanPhone(phoneNumber);
-                                enableDemoMode(phoneNumber ? formatPhone : '+254712345678');
-                            }}
-                            className="w-full py-4 text-sm font-bold text-slate-500 hover:text-brand-primary bg-slate-100/80 rounded-2xl transition-colors shadow-inner min-h-[56px]"
-                        >
-                            {t('view_app_demo')}
-                        </button>
                     </form>
                 ) : (
                     <form onSubmit={onOtpSubmit} className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">

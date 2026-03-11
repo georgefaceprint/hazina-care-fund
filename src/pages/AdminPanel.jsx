@@ -426,17 +426,18 @@ Return ONLY a valid JSON array, no markdown, no explanation:
             </div>
 
             <div className="max-w-7xl mx-auto px-8 py-8 pb-32">
-                {/* Tabs */}
-                <div className="flex gap-2 mb-8 bg-slate-200/50 p-1.5 rounded-2xl w-fit">
+                {/* Tab Navigation */}
+                <div className="flex gap-2 mb-8 bg-slate-200/50 p-1.5 rounded-2xl w-full overflow-x-auto scrollbar-hide">
+                    <div className="flex gap-2 min-w-max">
                     {[
                         { id: 'claims', label: 'Claims' },
                         { id: 'users', label: 'Users' },
+                        { id: 'system', label: 'Security & System' },
                         { id: 'sifuna', label: 'Sifuna Training' },
                         { id: 'pricing', label: 'Pricing' },
                         { id: 'recruitment', label: 'Recruitment' },
                         { id: 'transactions', label: 'Billing' },
-                        { id: 'analytics', label: 'Stats' },
-                        { id: 'system', label: 'System' }
+                        { id: 'analytics', label: 'Stats' }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -446,6 +447,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                             {tab.label}
                         </button>
                     ))}
+                    </div>
                 </div>
 
                 {/* Tab Content */}
