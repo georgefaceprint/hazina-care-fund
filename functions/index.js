@@ -14,6 +14,33 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 admin.initializeApp();
 const db = admin.firestore();
 
+/**
+ * Internal helper for robust user lookup by UID.
+ * Handles cases where doc ID is UID or something else (like phone).
+ */
+const fetchUserDoc = async (uid, auth = null) => {
+    if (!uid) return null;
+    let doc = await db.collection("users").doc(uid).get();
+    if (doc.exists) return doc;
+    
+    let snap = await db.collection("users").where("uid", "==", uid).limit(1).get();
+    if (!snap.empty) return snap.docs[0];
+
+    // Fallback: search by phone number if available in auth context
+    const phone = auth?.token?.phone_number;
+    if (phone) {
+        // Try normalized phone field
+        snap = await db.collection("users").where("phoneNumber", "==", phone).limit(1).get();
+        if (!snap.empty) return snap.docs[0];
+
+        // Try direct doc ID as phone
+        doc = await db.collection("users").doc(phone).get();
+        if (doc.exists) return doc;
+    }
+    
+    return null;
+};
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCaAkDtu93ADVaDE0hy0MCK1n9E8ksUdN0";
 
 if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
@@ -409,73 +436,98 @@ exports.sasapayB2C = onRequest({
  * Should only be callable by authenticated admins.
  */
 exports.generateTotpSecret = onCall({ cors: true }, async (request) => {
-    const uid = request.auth?.uid;
-    if (!uid) {
-        throw new HttpsError('unauthenticated', 'User must be logged in.');
+    try {
+        const uid = request.auth?.uid;
+        console.log(`[TOTP] generateTotpSecret requested by UID: ${uid}`);
+
+        if (!uid) {
+            throw new HttpsError('unauthenticated', 'User must be authenticated.');
+        }
+
+        // Verify user is an admin
+        const userSnap = await fetchUserDoc(uid, request.auth);
+        if (!userSnap || !userSnap.exists) {
+            console.error(`[TOTP] Profile not found for UID: ${uid}`);
+            throw new HttpsError('not-found', 'Hazina Identity Error: Your profile could not be found in the system.');
+        }
+        
+        const userData = userSnap.data();
+        if (userData.role !== 'admin' && userData.role !== 'super_master') {
+            console.warn(`[TOTP] Unauthorized attempt by ${uid} with role ${userData.role}`);
+            throw new HttpsError('permission-denied', 'Access Denied: Admin authorization required.');
+        }
+
+        const secret = authenticator.generateSecret();
+        const userEmail = userData.email || userData.phoneNumber || "admin@hazinacare.org";
+        const otpauth = authenticator.keyuri(userEmail, "Hazina Care", secret);
+
+        return { 
+            secret, 
+            otpauth,
+            qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(otpauth)}`
+        };
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        console.error("[TOTP] generateTotpSecret Internal Error:", error);
+        throw new HttpsError('internal', error.message || 'Failed to generate security token.');
     }
-
-    // Verify user is an admin
-    const userSnap = await db.collection("users").doc(uid).get();
-    if (!userSnap.exists || userSnap.data().role !== 'admin') {
-        throw new HttpsError('permission-denied', 'Only admins can setup TOTP.');
-    }
-
-    const secret = authenticator.generateSecret();
-    const userEmail = userSnap.data().email || "admin@hazinacare.org";
-    const otpauth = authenticator.keyuri(userEmail, "Hazina Care", secret);
-
-    // We don't save it yet. The user must verify a code first.
-    return { 
-        secret, 
-        otpauth,
-        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauth)}`
-    };
 });
 
 /**
  * Verifies a TOTP token and enables it for the admin if valid.
  */
 exports.verifyAndEnableTotp = onCall({ cors: true }, async (request) => {
-    const { token, secret, isInitialSetup } = request.data;
-    const uid = request.auth?.uid;
+    try {
+        const { token, secret, isInitialSetup } = request.data;
+        const uid = request.auth?.uid;
 
-    if (!uid) {
-        throw new HttpsError('unauthenticated', 'User must be logged in.');
-    }
+        console.log(`[TOTP] verifyAndEnableTotp requested by UID: ${uid}, isInitial: ${isInitialSetup}`);
 
-    const userRef = db.collection("users").doc(uid);
-    const userSnap = await userRef.get();
-    
-    if (!userSnap.exists) {
-        throw new HttpsError('not-found', 'User profile not found.');
-    }
-
-    let effectiveSecret = secret;
-
-    // If not initial setup, we use the secret stored in DB
-    if (!isInitialSetup) {
-        effectiveSecret = userSnap.data().totpSecret;
-        if (!effectiveSecret) {
-            throw new HttpsError('failed-precondition', 'TOTP is not set up for this account.');
+        if (!uid) {
+            throw new HttpsError('unauthenticated', 'Identification Required: Please re-login.');
         }
+
+        const userSnap = await fetchUserDoc(uid, request.auth);
+        if (!userSnap || !userSnap.exists) {
+            throw new HttpsError('not-found', 'Profile Mismatch: Account details not found.');
+        }
+
+        const userRef = userSnap.ref;
+        let effectiveSecret = secret;
+
+        // If not initial setup, we use the secret stored in DB
+        if (!isInitialSetup) {
+            effectiveSecret = userSnap.data().totpSecret;
+            if (!effectiveSecret) {
+                throw new HttpsError('failed-precondition', 'Security Setup Missing: TOTP is not active for this account.');
+            }
+        }
+
+        if (!effectiveSecret) {
+            throw new HttpsError('invalid-argument', 'Missing security parameters.');
+        }
+
+        const isValid = authenticator.check(token, effectiveSecret);
+
+        if (!isValid) {
+            throw new HttpsError('invalid-argument', 'Invalid Authorization Code: Check your Authenticator app.');
+        }
+
+        // If initial setup, save the secret to the user's profile
+        if (isInitialSetup) {
+            await userRef.update({
+                totpSecret: secret,
+                totpEnabled: true,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        return { success: true };
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        console.error("[TOTP] verifyAndEnableTotp Internal Error:", error);
+        throw new HttpsError('internal', 'Bridge Connection Error: Security settings could not be updated.');
     }
-
-    const isValid = authenticator.check(token, effectiveSecret);
-
-    if (!isValid) {
-        throw new HttpsError('invalid-argument', 'Invalid verification code.');
-    }
-
-    // If initial setup, save the secret to the user's profile
-    if (isInitialSetup) {
-        await userRef.update({
-            totpSecret: secret,
-            totpEnabled: true,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-    }
-
-    return { success: true };
 });
 
 /**

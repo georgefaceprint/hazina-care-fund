@@ -12,10 +12,13 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master');
+      return (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+              (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master')) || 
+             (request.auth.token.phone_number != null && 
+              exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number)) && 
+              (get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'admin' || 
+               get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'super_master'));
     }
 
     // Users collection
