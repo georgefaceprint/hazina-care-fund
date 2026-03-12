@@ -437,7 +437,6 @@ const LoginPage = () => {
                                          <input
                                              type="file"
                                              accept="image/*"
-                                             capture="user"
                                              onChange={(e) => setFacePhoto(e.target.files[0])}
                                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                              required

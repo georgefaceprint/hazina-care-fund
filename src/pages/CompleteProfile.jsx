@@ -4,7 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../services/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Shield, User, ArrowRight, Upload, Image as ImageIcon } from 'lucide-react';
+import { Shield, User, ArrowRight, Upload, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { uploadProfilePhoto } from '../services/storage';
@@ -167,7 +167,6 @@ const CompleteProfile = () => {
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    capture="environment"
                                     onChange={(e) => setIdPhoto(e.target.files[0])}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                     required
@@ -186,7 +185,6 @@ const CompleteProfile = () => {
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    capture="environment"
                                     onChange={(e) => setIdPhotoBack(e.target.files[0])}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                     required
