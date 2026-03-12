@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc, serverTimestamp, setDoc, deleteDoc, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, ShieldAlert, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard, Trash2, RefreshCcw, Database } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldAlert, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard, Trash2, RefreshCcw, Database, Gift } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { format, subDays, startOfDay } from 'date-fns';
 import { formatKenyanPhone } from '../utils/phoneUtils';
@@ -47,6 +47,7 @@ const AdminPanel = () => {
     const [isTotpLoading, setIsTotpLoading] = useState(false);
     const [forcedTotpList, setForcedTotpList] = useState([]);
     const [newForcedInput, setNewForcedInput] = useState('');
+    const [referralSystemActive, setReferralSystemActive] = useState(true);
 
 
     // Hardcode admin role check for MVP purposes (In production this should be a role in Firestore/Custom Claims)
@@ -143,11 +144,15 @@ const AdminPanel = () => {
             if (snap.exists()) setForcedTotpList(snap.data().forced_totp_list || []);
         });
 
+        const referralConfigUnsubscribe = onSnapshot(doc(db, 'config', 'referrals'), (snap) => {
+            if (snap.exists()) setReferralSystemActive(snap.data().referralSystemActive !== false);
+        });
+
         return () => {
             unsubscribe(); usersUnsubscribe(); transUnsubscribe();
             statsUnsubscribe(); kbUnsubscribe(); tiersUnsubscribe();
             agentsUnsubscribe(); masterAgentsUnsubscribe(); logsUnsubscribe();
-            configUnsubscribe(); securityUnsubscribe();
+            configUnsubscribe(); securityUnsubscribe(); referralConfigUnsubscribe();
         };
     }, [isAdmin, authLoading, navigate, isDemoMode]);
 
@@ -1001,6 +1006,27 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                     </button>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Referral System Toggle */}
+                        <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 flex items-center justify-between group overflow-hidden relative">
+                            <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -ml-16 -mt-16"></div>
+                            <div className="relative z-10">
+                                <h3 className="text-xl font-black mb-1 flex items-center gap-3 italic">
+                                    <Gift className="w-6 h-6 text-emerald-500" />
+                                    Refer & Earn System
+                                </h3>
+                                <p className="text-sm text-slate-500 font-medium">Enable or disable the global referral rewards program.</p>
+                            </div>
+                            <button
+                                onClick={handleToggleReferral}
+                                className={`relative inline-flex h-10 w-20 items-center rounded-full transition-colors focus:outline-none ${referralSystemActive ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                            >
+                                <span className="sr-only">Toggle Global Referrals</span>
+                                <span
+                                    className={`${referralSystemActive ? 'translate-x-11' : 'translate-x-1'} inline-block h-8 w-8 transform rounded-full bg-white transition-transform`}
+                                />
+                            </button>
                         </div>
 
                         {/* Two-Factor Authentication (TOTP) */}
