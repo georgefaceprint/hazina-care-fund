@@ -96,9 +96,9 @@ const AdminPanel = () => {
             } else {
                 // Seed default tiers if they don't exist
                 const defaultTiers = {
-                    bronze: { cost: 10, limit: 15000, name: 'Bronze Shield', maturation: 180 },
-                    silver: { cost: 30, limit: 50000, name: 'Silver Shield', maturation: 180 },
-                    gold: { cost: 50, limit: 150000, name: 'Gold Shield', maturation: 180 }
+                    bronze: { cost: 50, limit: 100000, name: 'Bronze Shield', maturation: 180 },
+                    silver: { cost: 147, limit: 250000, name: 'Silver Shield', maturation: 180 },
+                    gold: { cost: 229, limit: 500000, name: 'Gold Shield', maturation: 180 }
                 };
                 setDoc(doc(db, 'config', 'tiers'), defaultTiers);
                 setTiers(defaultTiers);
@@ -747,9 +747,9 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                                         <button
                                             onClick={() => {
                                                 const defaultTiers = {
-                                                    bronze: { cost: 10, limit: 15000, name: 'Bronze Shield', maturation: 180 },
-                                                    silver: { cost: 30, limit: 50000, name: 'Silver Shield', maturation: 180 },
-                                                    gold: { cost: 50, limit: 150000, name: 'Gold Shield', maturation: 180 }
+                                                    bronze: { cost: 50, limit: 100000, name: 'Bronze Shield', maturation: 180 },
+                                                    silver: { cost: 147, limit: 250000, name: 'Silver Shield', maturation: 180 },
+                                                    gold: { cost: 229, limit: 500000, name: 'Gold Shield', maturation: 180 }
                                                 };
                                                 setDoc(doc(db, 'config', 'tiers'), defaultTiers);
                                                 setTiers(defaultTiers);

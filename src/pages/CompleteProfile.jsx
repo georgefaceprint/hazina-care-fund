@@ -8,6 +8,8 @@ import { Shield, User, ArrowRight, Upload, Image as ImageIcon } from 'lucide-rea
 import { motion } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { uploadProfilePhoto } from '../services/storage';
+import { KENYA_COUNTIES, COUNTY_TOWNS } from '../data/kenyaData';
+import { ChevronDown, MapPin } from 'lucide-react';
 
 const CompleteProfile = () => {
     const { user, profile } = useAuth();
@@ -25,14 +27,22 @@ const CompleteProfile = () => {
     const [fullName, setFullName] = useState('');
     const [nationalId, setNationalId] = useState('');
     const [idPhoto, setIdPhoto] = useState(null);
+    const [idPhotoBack, setIdPhotoBack] = useState(null);
+    const [county, setCounty] = useState('');
+    const [town, setTown] = useState('');
     const [uploadingState, setUploadingState] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!idPhoto) {
-            toast.error("Please upload your ID photo for verification.");
+        if (!idPhoto || !idPhotoBack) {
+            toast.error("Please upload both Front and Back of your ID.");
+            return;
+        }
+
+        if (!county || !town) {
+            toast.error("Please select your County and Town.");
             return;
         }
 
@@ -47,7 +57,8 @@ const CompleteProfile = () => {
 
         try {
             setUploadingState(t('processing_upload'));
-            const photoUrl = await uploadProfilePhoto(user.uid, idPhoto);
+            const photoUrl = await uploadProfilePhoto(user.uid, idPhoto, 'id_front');
+            const photoUrlBack = await uploadProfilePhoto(user.uid, idPhotoBack, 'id_back');
 
             setUploadingState(t('processing_finalize'));
 
@@ -59,6 +70,9 @@ const CompleteProfile = () => {
                 fullName,
                 national_id: nationalId,
                 id_photo_url: photoUrl,
+                id_photo_back_url: photoUrlBack,
+                county: county,
+                town: town,
                 profile_completed: true,
                 updatedAt: serverTimestamp()
             });
@@ -94,9 +108,11 @@ const CompleteProfile = () => {
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Profile Completion</span>
                         <span className="text-sm font-black text-brand-primary">
                             {Math.round(
-                                (fullName.trim().split(/\s+/).length >= 2 ? 33 : 0) +
-                                (nationalId ? 33 : 0) +
-                                (idPhoto ? 34 : 0)
+                                (fullName.trim().split(/\s+/).length >= 2 ? 20 : 0) +
+                                (nationalId ? 20 : 0) +
+                                (idPhoto ? 20 : 0) +
+                                (idPhotoBack ? 20 : 0) +
+                                (county && town ? 20 : 0)
                             )}%
                         </span>
                     </div>
@@ -104,9 +120,11 @@ const CompleteProfile = () => {
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{
-                                width: `${(fullName.trim().split(/\s+/).length >= 2 ? 33 : 0) +
-                                    (nationalId ? 33 : 0) +
-                                    (idPhoto ? 34 : 0)}%`
+                                width: `${(fullName.trim().split(/\s+/).length >= 2 ? 20 : 0) +
+                                    (nationalId ? 20 : 0) +
+                                    (idPhoto ? 20 : 0) +
+                                    (idPhotoBack ? 20 : 0) +
+                                    (county && town ? 20 : 0)}%`
                             }}
                             className="h-full bg-gradient-to-r from-brand-primary to-emerald-500"
                             transition={{ type: "spring", stiffness: 50, damping: 15 }}
@@ -142,30 +160,79 @@ const CompleteProfile = () => {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">{t('identity_verification')}</label>
-                        <div className="relative border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 group overflow-hidden">
-                            <input
-                                type="file"
-                                accept="image/jpeg, image/png"
-                                capture="environment"
-                                onChange={(e) => setIdPhoto(e.target.files[0])}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                required
-                            />
-                            {idPhoto ? (
-                                <div className="flex flex-col items-center justify-center">
-                                    <ImageIcon className="w-10 h-10 text-brand-primary mb-3" />
-                                    <p className="text-sm font-bold text-slate-700 truncate w-full px-4">{idPhoto.name}</p>
-                                    <p className="text-[10px] text-brand-primary uppercase tracking-tighter mt-1 font-bold">{t('image_selected')}</p>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center">
-                                    <Upload className="w-10 h-10 text-slate-300 mx-auto mb-3 group-hover:text-brand-primary transition-colors" />
-                                    <p className="text-sm font-bold text-slate-700">{t('upload_id_front')}</p>
-                                    <p className="text-[10px] text-slate-400 uppercase tracking-tighter mt-1">{t('jpg_png_max')}</p>
-                                </div>
-                            )}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">ID FRONT</label>
+                            <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 overflow-hidden">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={(e) => setIdPhoto(e.target.files[0])}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                    required
+                                />
+                                {idPhoto ? (
+                                    <CheckCircle2 className="w-8 h-8 text-brand-primary mx-auto" />
+                                ) : (
+                                    <Upload className="w-8 h-8 text-slate-300 mx-auto" />
+                                )}
+                                <p className="text-[9px] font-bold text-slate-500 mt-1 uppercase">Front Side</p>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">ID BACK</label>
+                            <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 overflow-hidden">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={(e) => setIdPhotoBack(e.target.files[0])}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                    required
+                                />
+                                {idPhotoBack ? (
+                                    <CheckCircle2 className="w-8 h-8 text-brand-primary mx-auto" />
+                                ) : (
+                                    <Upload className="w-8 h-8 text-slate-300 mx-auto" />
+                                )}
+                                <p className="text-[9px] font-bold text-slate-500 mt-1 uppercase">Back Side</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1 ml-1">Current Residence</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <select
+                                    value={county}
+                                    onChange={(e) => {
+                                        setCounty(e.target.value);
+                                        setTown('');
+                                    }}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-10 pr-8 py-3.5 text-slate-900 font-bold text-sm appearance-none outline-none focus:ring-2 focus:ring-brand-primary"
+                                    required
+                                >
+                                    <option value="">County</option>
+                                    {KENYA_COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            </div>
+                            <div className="relative">
+                                <select
+                                    value={town}
+                                    onChange={(e) => setTown(e.target.value)}
+                                    disabled={!county}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3.5 text-slate-900 font-bold text-sm appearance-none outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-50"
+                                    required
+                                >
+                                    <option value="">Closest Town</option>
+                                    {(COUNTY_TOWNS[county] || []).map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            </div>
                         </div>
                     </div>
 

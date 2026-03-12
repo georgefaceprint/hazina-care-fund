@@ -28,9 +28,9 @@ Hazina Care Fund is a community-driven mutual protection platform in Kenya. Memb
 ### TIERS & COSTS
 | Tier   | Daily Cost | Max Payout |
 |--------|-----------|------------|
-| Bronze | KSh 10/day | KSh 15,000 |
-| Silver | KSh 30/day | KSh 50,000 |
-| Gold   | KSh 50/day | KSh 150,000 |
+| Bronze | KSh 50/day | KSh 100,000 |
+| Silver | KSh 147/day | KSh 250,000 |
+| Gold   | KSh 229/day | KSh 500,000 |
 
 ### DAILY BURN
 - Each day, the member's tier cost is deducted from their wallet balance
@@ -147,9 +147,9 @@ const SifunaChatbot = () => {
 
     const [kbItems, setKbItems] = useState([]);
     const [tiers, setTiers] = useState({
-        bronze: { cost: 10, limit: 15000 },
-        silver: { cost: 30, limit: 50000 },
-        gold: { cost: 50, limit: 150000 }
+        bronze: { cost: 50, limit: 100000 },
+        silver: { cost: 147, limit: 250000 },
+        gold: { cost: 229, limit: 500000 }
     });
     const [isGlobalActive, setIsGlobalActive] = useState(true);
 

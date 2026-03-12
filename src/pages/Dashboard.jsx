@@ -21,6 +21,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const [burnPeriod, setBurnPeriod] = useState('daily');
+    const [referralSystemActive, setReferralSystemActive] = useState(true);
     const { isAgent, isMasterAgent, isSuperMaster } = useAuth();
 
     useEffect(() => {
@@ -133,7 +134,10 @@ const Dashboard = () => {
         const unsub = onSnapshot(doc(db, 'config', 'tiers'), (docSnap) => {
             if (docSnap.exists()) setTierConfig(docSnap.data());
         });
-        return () => unsub();
+        const unsubRefs = onSnapshot(doc(db, 'config', 'referrals'), (docSnap) => {
+            if (docSnap.exists()) setReferralSystemActive(docSnap.data().referralSystemActive !== false);
+        });
+        return () => { unsub(); unsubRefs(); };
     }, []);
 
     const getTierCost = (tierName) => {
@@ -272,7 +276,30 @@ const Dashboard = () => {
 
             {/* Stats and Info Area */}
             <div className="mobile-px -mt-10 space-y-6 relative">
-                {profile?.status === 'pending_payment' && (
+                {profile?.balance < 0 && (
+                    <div className="p-5 bg-red-50 rounded-[2rem] border border-red-200 shadow-xl shadow-red-900/10 animate-in fade-in slide-in-from-top-4 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-red-100/50 rounded-full -mr-8 -mt-8"></div>
+                        <div className="flex items-center gap-4 relative">
+                            <div className="p-3 bg-red-500 text-white rounded-2xl shadow-lg shadow-red-500/30">
+                                <AlertCircle className="w-6 h-6" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-black text-red-900 text-sm">{t('overdraft_alert') || "🚨 Overdraft Alert!"}</h4>
+                                <p className="text-[11px] text-red-800 font-medium opacity-80 mt-0.5">
+                                    {t('overdraft_desc') || "Your wallet is negative. You have 48 hours to top up before your shield protection lapses."}
+                                </p>
+                                <button 
+                                    onClick={() => navigate('/topup?amount=' + Math.abs(profile.balance))}
+                                    className="mt-3 px-6 py-2.5 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl flex items-center gap-2 hover:bg-red-600 active:scale-95 transition-all shadow-md shadow-red-500/20"
+                                >
+                                    {t('clear_my_dues') || "Clear My Dues"} (KSh {Math.abs(profile.balance)})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {profile?.status === 'pending_payment' && !profile?.balance < 0 && (
                     <div className="p-4 bg-amber-50 rounded-[2rem] border border-amber-200 shadow-lg animate-in fade-in slide-in-from-top-4">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-amber-400 text-amber-950 rounded-2xl">
@@ -391,34 +418,27 @@ const Dashboard = () => {
                         </p>
                     </div>
 
-                    {!isMatured && (
-                        <div className="mt-6 p-4 bg-yellow-50/50 rounded-2xl border border-yellow-100/50 text-xs text-slate-600 flex gap-4 items-center">
-                            <Clock className="w-10 h-10 text-yellow-600" />
-                            <p className="leading-relaxed">
-                                {t('shield_matured_on')} <strong className="text-yellow-700">{graceExpiry instanceof Date && !isNaN(graceExpiry) ? format(graceExpiry, 'PP') : '...'}</strong>.
-                                {t('daily_contributions')}
-                            </p>
-                        </div>
-                    )}
                 </div>
 
                 {/* Referrals Banner */}
-                <div onClick={() => navigate('/referrals')} className="bg-gradient-to-r from-brand-primary to-brand-secondary rounded-[2rem] p-6 shadow-lg shadow-brand-primary/20 relative overflow-hidden cursor-pointer group transform hover:-translate-y-1 transition-all">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-duration-700"></div>
-                    <div className="relative z-10 flex items-center justify-between">
-                        <div className="flex-1">
-                            <h4 className="text-white font-black text-lg mb-1 flex items-center gap-2">
-                                <Gift className="w-5 h-5 text-brand-accent" /> {t('refer_and_earn') || 'Refer & Earn'}
-                            </h4>
-                            <p className="text-white/80 text-xs font-medium opacity-90 max-w-[200px]">
-                                {t('invite_friends_desc') || 'Invite friends and get up to 14 days of free protection!'}
-                            </p>
-                        </div>
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 group-hover:bg-white group-hover:text-brand-primary transition-colors">
-                            <ChevronRight className="w-6 h-6 text-white group-hover:text-brand-primary" />
+                {referralSystemActive && (
+                    <div onClick={() => navigate('/referrals')} className="bg-gradient-to-r from-brand-primary to-brand-secondary rounded-[2rem] p-6 shadow-lg shadow-brand-primary/20 relative overflow-hidden cursor-pointer group transform hover:-translate-y-1 transition-all">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-duration-700"></div>
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div className="flex-1">
+                                <h4 className="text-white font-black text-lg mb-1 flex items-center gap-2">
+                                    <Gift className="w-5 h-5 text-brand-accent" /> {t('refer_and_earn') || 'Refer & Earn'}
+                                </h4>
+                                <p className="text-white/80 text-xs font-medium opacity-90 max-w-[200px]">
+                                    {t('invite_friends_desc') || 'Invite friends and get up to 14 days of free protection!'}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 group-hover:bg-white group-hover:text-brand-primary transition-colors">
+                                <ChevronRight className="w-6 h-6 text-white group-hover:text-brand-primary" />
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Sifuna Hub / Concierge */}
                 <div className="space-y-4">
@@ -431,8 +451,8 @@ const Dashboard = () => {
                             { id: 'shield', icon: '🛡️', label: language === 'sw' ? 'Ngao' : 'Shield' },
                             { id: 'claims', icon: '🚑', label: language === 'sw' ? 'Madai' : 'Claims' },
                             { id: 'family', icon: '👨‍👩‍👧', label: language === 'sw' ? 'Familia' : 'Family' },
-                            { id: 'referrals', icon: '🎁', label: language === 'sw' ? 'Zawadi' : 'Rewards' },
-                        ].map(cat => (
+                            referralSystemActive ? { id: 'referrals', icon: '🎁', label: language === 'sw' ? 'Zawadi' : 'Rewards' } : null,
+                        ].filter(Boolean).map(cat => (
                             <button
                                 key={cat.id}
                                 onClick={() => {
@@ -480,15 +500,17 @@ const Dashboard = () => {
                             </div>
                             <span className="text-sm font-bold text-slate-700">{t('package_info')}</span>
                         </button>
-                        <button
-                            onClick={() => navigate('/referrals')}
-                            className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
-                        >
-                            <div className="p-4 bg-emerald-50 text-emerald-500 rounded-2xl group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-500">
-                                <Gift className="w-6 h-6" />
-                            </div>
-                            <span className="text-sm font-bold text-slate-700">{t('referrals')}</span>
-                        </button>
+                        {referralSystemActive && (
+                            <button
+                                onClick={() => navigate('/referrals')}
+                                className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
+                            >
+                                <div className="p-4 bg-emerald-50 text-emerald-500 rounded-2xl group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-500">
+                                    <Gift className="w-6 h-6" />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700">{t('referrals')}</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 

@@ -4,7 +4,7 @@ import { auth, db, functions } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Phone, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Shield, Phone, ArrowRight, CheckCircle2, RotateCcw, Camera, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatKenyanPhone } from '../utils/phoneUtils';
 import { generateReferralCode } from '../utils/referralUtils';
@@ -22,6 +22,9 @@ const LoginPage = () => {
     const { t } = useLanguage();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [facePhoto, setFacePhoto] = useState(null);
+    const [fullName, setFullName] = useState('');
+    const [nationalId, setNationalId] = useState('');
     const { enableDemoMode, isDemoMode, user, profile, loading: authLoading } = useAuth();
 
     useEffect(() => {
@@ -174,15 +177,39 @@ const LoginPage = () => {
             return;
         }
 
+        if (isNewUser) {
+            if (!facePhoto) {
+                setError("Please capture your face photo to secure your account.");
+                return;
+            }
+            if (!fullName.trim() || fullName.trim().split(/\s+/).length < 2) {
+                setError("Please enter at least two names.");
+                return;
+            }
+            if (!nationalId) {
+                setError("Please enter your National ID number.");
+                return;
+            }
+        }
+
         setError('');
         setLoading(true);
         const formatPhone = formatKenyanPhone(phoneNumber);
         try {
+            let faceUrl = null;
+            if (isNewUser && facePhoto) {
+                const { uploadProfilePhoto } = await import('../services/storage');
+                faceUrl = await uploadProfilePhoto(formatPhone, facePhoto, 'face');
+            }
+
             const verifyAndSet = httpsCallable(functions, 'verifyAndSetPasscode');
             const result = await verifyAndSet({
                 phoneNumber: formatPhone,
                 validationCode: verificationCode,
-                newPasscode: newPasscode
+                newPasscode: newPasscode,
+                faceUrl: faceUrl,
+                fullName: fullName,
+                nationalId: nationalId
             });
             await handleLoginSuccess(result.data.token, formatPhone);
         } catch (error) {
@@ -376,11 +403,68 @@ const LoginPage = () => {
                                 required
                             />
                         </div>
-                        <button
-                            type="submit"
-                            disabled={loading || newPasscode.length < 4 || newPasscode !== confirmPasscode}
-                            className="btn-primary w-full py-4 text-lg disabled:opacity-50"
-                        >
+
+                         {isNewUser && (
+                             <div className="space-y-4 pt-4 border-t border-slate-50">
+                                 <div className="space-y-4">
+                                     <div className="space-y-2">
+                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Full Name (Min 2 Names)</label>
+                                         <input
+                                             type="text"
+                                             placeholder="JOHN DOE"
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                             value={fullName}
+                                             onChange={(e) => setFullName(e.target.value)}
+                                             required
+                                         />
+                                     </div>
+                                     <div className="space-y-2">
+                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">National ID Number</label>
+                                         <input
+                                             type="text"
+                                             placeholder="12345678"
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                             value={nationalId}
+                                             onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
+                                             required
+                                         />
+                                     </div>
+                                 </div>
+
+                                 <div className="space-y-2">
+                                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Identity Face Capture</label>
+                                     <div className="relative border-2 border-dashed border-slate-200 rounded-[2.5rem] p-6 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 group overflow-hidden">
+                                         <input
+                                             type="file"
+                                             accept="image/*"
+                                             capture="user"
+                                             onChange={(e) => setFacePhoto(e.target.files[0])}
+                                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                             required
+                                         />
+                                         {facePhoto ? (
+                                             <div className="flex flex-col items-center justify-center">
+                                                 <CheckCircle2 className="w-10 h-10 text-brand-primary mb-2" />
+                                                 <p className="text-xs font-bold text-slate-700 truncate w-full px-4">{facePhoto.name}</p>
+                                                 <p className="text-[10px] text-brand-primary uppercase font-bold mt-1 tracking-widest">Digital Face ID Set</p>
+                                             </div>
+                                         ) : (
+                                             <div className="flex flex-col items-center justify-center">
+                                                 <Camera className="w-12 h-12 text-slate-300 mb-2 group-hover:text-brand-primary transition-colors" />
+                                                 <p className="text-sm font-bold text-slate-700">Tap to Take Selfie</p>
+                                                 <p className="text-[9px] text-slate-400 uppercase mt-1 tracking-tighter">Required for community verification</p>
+                                             </div>
+                                         )}
+                                     </div>
+                                 </div>
+                             </div>
+                         )}
+
+                         <button
+                             type="submit"
+                             disabled={loading || newPasscode.length < 4 || newPasscode !== confirmPasscode || (isNewUser && (!facePhoto || !fullName || !nationalId))}
+                             className="btn-primary w-full py-4 text-lg disabled:opacity-50 mt-6"
+                         >
                             {loading ? 'Saving...' : 'Set Passcode & Enter'}
                             <CheckCircle2 className="w-5 h-5 ml-2 inline-block" />
                         </button>

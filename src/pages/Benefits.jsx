@@ -6,33 +6,33 @@ import { useLanguage } from '../context/LanguageContext';
 const TIER_BENEFITS = {
     bronze: {
         name: 'Bronze Shield',
-        cost: 10,
-        limit: '15,000',
+        cost: 50,
+        limit: '100,000',
         color: 'text-orange-700',
         bg: 'bg-orange-50',
         border: 'border-orange-100',
         icon: Shield,
-        period: '30 Days'
+        period: '180 Days'
     },
     silver: {
         name: 'Silver Shield',
-        cost: 30,
-        limit: '50,000',
+        cost: 147,
+        limit: '250,000',
         color: 'text-slate-700',
         bg: 'bg-slate-50',
         border: 'border-slate-200',
         icon: Shield,
-        period: '60 Days'
+        period: '180 Days'
     },
     gold: {
         name: 'Gold Shield',
-        cost: 50,
-        limit: '150,000',
+        cost: 229,
+        limit: '500,000',
         color: 'text-amber-700',
         bg: 'bg-amber-50',
         border: 'border-amber-200',
         icon: Zap,
-        period: '90 Days'
+        period: '180 Days'
     }
 };
 

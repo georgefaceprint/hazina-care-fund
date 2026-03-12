@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { Shield, Mail, Lock, ArrowRight, Loader2, Wrench } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithCustomToken } from 'firebase/auth';
-import { setDoc, doc } from 'firebase/firestore';
+import { setDoc, doc, getDoc } from 'firebase/firestore';
 import { auth, db, functions } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
 
@@ -62,7 +62,8 @@ const AdminLogin = () => {
             }
         } catch (error) {
             console.error("Login failed:", error);
-            toast.error(error.message || "Identification failed. Check your admin credentials.");
+            const msg = error.message || (typeof error === 'string' ? error : "Authentication failed");
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -97,10 +98,26 @@ const AdminLogin = () => {
                 role: 'admin',
                 fullName: 'System Admin',
                 status: 'active',
-                createdAt: new Date().toISOString()
-            });
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
 
-            toast.success("Admin system account restored.");
+            // 3. Emergency Bypass: Remove from forced 2FA list if present
+            try {
+                const securityRef = doc(db, 'config', 'security');
+                const securitySnap = await getDoc(securityRef);
+                if (securitySnap.exists()) {
+                    const forcedList = securitySnap.data().forced_totp_list || [];
+                    if (forcedList.includes(adminEmail)) {
+                        const updated = forcedList.filter(e => e !== adminEmail);
+                        await setDoc(securityRef, { forced_totp_list: updated }, { merge: true });
+                        console.log("🔓 Emergency: Forced 2FA removed for admin.");
+                    }
+                }
+            } catch (secErr) {
+                console.warn("Security list update skipped:", secErr);
+            }
+
+            toast.success("Admin system account restored & lockout cleared.");
             setEmail(adminEmail);
             setPassword(adminPass);
         } catch (error) {

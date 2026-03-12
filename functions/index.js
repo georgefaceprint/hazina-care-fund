@@ -59,7 +59,7 @@ exports.calculateDailyDeduction = onSchedule({
     timeZone: "Africa/Nairobi"
 }, async (event) => {
     const usersSnap = await db.collection("users").get();
-    const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
+    const TIER_COSTS = { bronze: 50, silver: 147, gold: 229 };
 
     const batch = db.batch();
 
@@ -87,11 +87,45 @@ exports.calculateDailyDeduction = onSchedule({
 
         // Deduct from Balance
         const newBalance = (profile.balance || 0) - totalDeduction;
-        batch.update(userDoc.ref, {
-            balance: newBalance,
-            last_deduction: admin.firestore.FieldValue.serverTimestamp(),
-            last_deduction_amount: totalDeduction
-        });
+        if (newBalance < 0) {
+            // Check if they were already negative
+            const lastNegativeAt = profile.negative_since ? new Date(profile.negative_since._seconds * 1000) : null;
+            const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+            if (lastNegativeAt && lastNegativeAt < fortyEightHoursAgo) {
+                batch.update(userDoc.ref, { 
+                    balance: newBalance,
+                    status: 'lapsed',
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    last_deduction: admin.firestore.FieldValue.serverTimestamp(),
+                    last_deduction_amount: totalDeduction
+                });
+            } else if (!profile.negative_since) {
+                batch.update(userDoc.ref, { 
+                    balance: newBalance,
+                    negative_since: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    last_deduction: admin.firestore.FieldValue.serverTimestamp(),
+                    last_deduction_amount: totalDeduction
+                });
+            } else {
+                batch.update(userDoc.ref, { 
+                    balance: newBalance,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    last_deduction: admin.firestore.FieldValue.serverTimestamp(),
+                    last_deduction_amount: totalDeduction
+                });
+            }
+        } else {
+            batch.update(userDoc.ref, { 
+                balance: newBalance,
+                negative_since: null,
+                status: profile.status === 'lapsed' ? 'fully-active' : profile.status,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                last_deduction: admin.firestore.FieldValue.serverTimestamp(),
+                last_deduction_amount: totalDeduction
+            });
+        }
 
         // Log Transaction
         const transRef = db.collection("transactions").doc();
@@ -249,7 +283,7 @@ exports.manualDeduction = onCall(async (request) => {
 
     const userDoc = usersSnap.docs[0];
     const profile = userDoc.data();
-    const TIER_COSTS = { bronze: 10, silver: 30, gold: 50 };
+    const TIER_COSTS = { bronze: 50, silver: 147, gold: 229 };
 
     const getCost = (tier) => TIER_COSTS[tier?.toLowerCase()] || 0;
     let totalDeduction = getCost(profile.active_tier);
@@ -615,7 +649,7 @@ exports.ussd = onRequest(async (req, res) => {
             } else {
                 response = `CON Welcome to Hazina Care.\n` +
                     `Register to protect your family.\n` +
-                    `1. Register (KSh 300/mo Bronze)\n` +
+                    `1. Register (KSh 1,500/mo Bronze)\n` +
                     `2. Learn More`;
             }
         } else if (text === "1") {
@@ -643,11 +677,11 @@ exports.ussd = onRequest(async (req, res) => {
             }
         } else if (text === "4" && userExists) {
             // Top up via USSD using SasaPay C2B
-            response = `END We are sending an M-Pesa prompt to your phone for KSh 300 to fund your wallet. Please enter your PIN.`;
+            response = `END We are sending an M-Pesa prompt to your phone for KSh 500 to fund your wallet. Please enter your PIN.`;
 
             // Trigger SasaPay C2B
             try {
-                await initiateSasapayC2B(phoneNumber, 300, userId);
+                await initiateSasapayC2B(phoneNumber, 500, userId);
             } catch (ussdPayError) {
                 console.error("USSD Pay Error:", ussdPayError);
             }
@@ -696,9 +730,9 @@ exports.chatWithSifuna = onCall({ cors: true }, async (request) => {
                 
                 KNOWLEDGE BASE:
                 - Tiers: 
-                    * Bronze: KSh 10/day, KSh 15,000 cover.
-                    * Silver: KSh 30/day, KSh 50,000 cover.
-                    * Gold: KSh 50/day, KSh 150,000 cover.
+                    * Bronze: KSh 50/day, KSh 100,000 cover.
+                    * Silver: KSh 147/day, KSh 250,000 cover.
+                    * Gold: KSh 229/day, KSh 500,000 cover.
                 - Maturation: There is a 180-day grace period (waiting period) before a shield is fully active.
                 - Crisis Types covered: Medical emergency, Bereavement, School Fees.
                 - Payments: Handled via M-Pesa STK Push. Daily 'burn' is automatically deducted from the wallet.
