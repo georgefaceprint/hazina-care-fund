@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const axios = require("axios");
@@ -1212,15 +1212,25 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
  * Super Master / Master Agent Recruitment Processor
  * Triggered when a new user profile is created.
  */
-exports.onUserCreated = onDocumentCreated("users/{userId}", async (event) => {
-    const snapshot = event.data;
-    if (!snapshot) return;
+exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
+    const snapshot = event.data?.after;
+    const beforeSnapshot = event.data?.before;
+    if (!snapshot || !snapshot.exists) return;
 
     const newUser = snapshot.data();
     const userId = event.params.userId;
     const agentCode = newUser.recruited_by;
 
     if (!agentCode) return;
+    
+    // If it's an update, only proceed if recruited_by just appeared or if it's a test number re-run
+    const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+    const isTestNumber = testNumbers.some(tn => userId.includes(tn.replace('+', '')));
+    
+    if (beforeSnapshot && beforeSnapshot.exists && !isTestNumber) {
+        const oldUser = beforeSnapshot.data();
+        if (oldUser.recruited_by === agentCode) return; // Already logged
+    }
 
     try {
         // We use the 'users' collection for agents as well for consistent auth profiles
