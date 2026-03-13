@@ -330,9 +330,9 @@ const AgentApp = () => {
                                             <User className="w-5 h-5 text-brand-primary" />
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-900 text-sm">{log.userName}</p>
+                                            <p className="font-bold text-slate-900 text-sm">{log.userName || 'New Member'}</p>
                                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">
-                                                {log.tier.replace('_', ' ')}
+                                                {log.tier ? log.tier.replace('_', ' ') : 'Processing...'}
                                             </p>
                                         </div>
                                     </div>

@@ -1330,3 +1330,41 @@ exports.createTestUser = onCall({ cors: true }, async (request) => {
         throw new HttpsError('internal', error.message);
     }
 });
+
+// TEMPORARY: Backfill missing data in recruitment logs
+exports.backfillRecruitmentLogs = onCall({ cors: true }, async (request) => {
+    try {
+        const logsSnap = await db.collection("recruitment_logs").get();
+        let updatedCount = 0;
+        let skipCount = 0;
+
+        const updates = logsSnap.docs.map(async (logDoc) => {
+            const data = logDoc.data();
+            if (!data.userName && data.userId) {
+                const userDoc = await db.collection("users").doc(data.userId).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    await logDoc.ref.update({
+                        userName: userData.fullName || 'Member',
+                        tier: userData.active_tier || 'bronze',
+                        commissionEarned: data.tariffApplied || 15
+                    });
+                    updatedCount++;
+                } else {
+                    skipCount++;
+                }
+            } else {
+                skipCount++;
+            }
+        });
+
+        await Promise.all(updates);
+
+        return { 
+            success: true, 
+            message: `Backfill complete. Updated: ${updatedCount}, Skipped/Already OK: ${skipCount}` 
+        };
+    } catch (error) {
+        throw new HttpsError('internal', error.message);
+    }
+});
