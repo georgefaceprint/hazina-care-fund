@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { auth, db, functions } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { signInWithCustomToken } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { formatKenyanPhone } from '../utils/phoneUtils';
 
 const RecruitmentLogin = () => {
@@ -129,30 +129,49 @@ const RecruitmentLogin = () => {
 
             if (userSnap.exists()) {
                 const userData = userSnap.data();
-                console.log("📍 Redirection check - Profile Role:", userData.role, "Selected:", selectedRole);
-                
-                // Give the AuthContext a moment to sync the profile via snapshot
+                // MONITOR the profile until the role is correctly propagated
+                const unsub = onSnapshot(userRef, (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        console.log("👀 Sync Monitor - Current Role in DB:", data.role);
+                        
+                        if (isTestUser && data.role === selectedRole) {
+                            unsub();
+                            console.log("🚀 Sync Complete! Redirecting to selection...");
+                            toast.success(`${selectedRole.replace('_', ' ').toUpperCase()} Portal Authorized`);
+                            if (selectedRole === 'super_master') navigate('/smagent/dashboard');
+                            else if (selectedRole === 'master_agent') navigate('/magent/dashboard');
+                            else navigate('/agent/dashboard');
+                        } else if (!isTestUser && data.role) {
+                            unsub();
+                            console.log("🚀 Sync Complete! Redirecting to assigned role...");
+                            if (data.role === 'super_master') {
+                                toast.success("SMA HQ Authorized");
+                                navigate('/smagent/dashboard');
+                            } else if (data.role === 'master_agent') {
+                                toast.success("Master Portal Authorized");
+                                navigate('/magent/dashboard');
+                            } else if (data.role === 'agent') {
+                                toast.success("Agent Hub Authorized");
+                                navigate('/agent/dashboard');
+                            } else {
+                                toast.info("Redirecting to Guardian Hub.");
+                                navigate('/dashboard');
+                            }
+                        }
+                    }
+                });
+
+                // Safety timeout: Navigate anyway if sync is slow
                 setTimeout(() => {
-                    // Redirection logic
+                    unsub();
+                    console.log("⚠️ Sync Timeout - Forcing navigation");
                     if (isTestUser) {
-                        toast.success(`${selectedRole.replace('_', ' ').toUpperCase()} Portal Authorized`);
                         if (selectedRole === 'super_master') navigate('/smagent/dashboard');
                         else if (selectedRole === 'master_agent') navigate('/magent/dashboard');
                         else navigate('/agent/dashboard');
-                    } else if (userData.role === 'super_master') {
-                        toast.success("SMA HQ Authorized");
-                        navigate('/smagent/dashboard');
-                    } else if (userData.role === 'master_agent') {
-                        toast.success("Master Portal Authorized");
-                        navigate('/magent/dashboard');
-                    } else if (userData.role === 'agent') {
-                        toast.success("Agent Hub Authorized");
-                        navigate('/agent/dashboard');
-                    } else {
-                        toast.info("Redirecting to Guardian Hub.");
-                        navigate('/dashboard');
                     }
-                }, 1000); // 1s delay to sync context
+                }, 4000);
             } else {
                 toast.error("Professional profile not found. Access denied.");
                 await auth.signOut();

@@ -120,6 +120,7 @@ const SifunaChatbot = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [chatLanguage, setChatLanguage] = useState(null);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [showSuggestions, setShowSuggestions] = useState(true);
 
     // Listen for external "Open Chatbot" events from Dashboard
     useEffect(() => {
@@ -199,6 +200,7 @@ const SifunaChatbot = () => {
         setChatHistory([]);
         setChatLanguage(null);
         setSelectedCategory(null);
+        setShowSuggestions(true);
     };
 
     const sendMessageToAI = async (text) => {
@@ -208,6 +210,7 @@ const SifunaChatbot = () => {
         setChatHistory(prev => [...prev, { role: 'user', parts: [{ text: userMsg }] }]);
         setInputValue('');
         setIsTyping(true);
+        setShowSuggestions(false);
 
         try {
             if (isDemoMode) {
@@ -369,78 +372,98 @@ RULES:
                         </div>
 
                         {/* Simplified Subject & FAQ Flow */}
-                        <div className="p-4 bg-white border-t border-slate-100 flex-shrink-0">
+                        <div className="bg-white border-t border-slate-100 flex-shrink-0 transition-all duration-300">
                             {!chatLanguage ? (
-                                <>
+                                <div className="p-4">
                                     <p className="text-[10px] font-black uppercase text-slate-400 mb-3 px-1 tracking-widest text-center">Select Language / Lugha</p>
                                     <div className="flex gap-2">
                                         <button onClick={() => selectLanguage('en')} className="flex-1 py-4 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-3xl text-sm font-black transition-all border border-slate-100 shadow-sm active:scale-95">English</button>
                                         <button onClick={() => selectLanguage('sw')} className="flex-1 py-4 bg-slate-50 hover:bg-orange-500 hover:text-white rounded-3xl text-sm font-black transition-all border border-slate-100 shadow-sm active:scale-95">Kiswahili</button>
                                     </div>
-                                </>
+                                </div>
                             ) : (
                                 <>
-                                    <div className="flex justify-between items-center mb-3 px-1">
+                                    <div className="flex justify-between items-center py-2 px-4 border-b border-slate-50">
                                         <div className="flex items-center gap-2">
                                             {selectedCategory && (
                                                 <button
                                                     onClick={() => setSelectedCategory(null)}
-                                                    className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                                                    className="w-5 h-5 flex items-center justify-center bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
                                                 >
                                                     <ChevronRight className="w-4 h-4 rotate-180" />
                                                 </button>
                                             )}
-                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                                {selectedCategory ? CHATBOT_CATEGORIES.find(c => c.id === selectedCategory)?.label[chatLanguage] : (chatLanguage === 'sw' ? 'MADA KUU' : 'SUBJECT TOPICS')}
+                                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                                                {selectedCategory ? CHATBOT_CATEGORIES.find(c => c.id === selectedCategory)?.label[chatLanguage] : (chatLanguage === 'sw' ? 'MADA KUU' : 'TOPICS')}
                                             </p>
                                         </div>
-                                        <button onClick={resetChat} className="text-[9px] font-black text-slate-400 uppercase tracking-tighter hover:text-orange-500">Reset</button>
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={() => setShowSuggestions(!showSuggestions)}
+                                                className="text-[9px] font-black text-orange-500 uppercase tracking-widest hover:bg-orange-50 px-2 py-1 rounded-lg transition-colors"
+                                            >
+                                                {showSuggestions ? (chatLanguage === 'sw' ? 'Ficha' : 'Hide') : (chatLanguage === 'sw' ? 'Mada' : 'Explore')}
+                                            </button>
+                                            <button onClick={resetChat} className="text-[9px] font-black text-slate-300 uppercase tracking-widest hover:text-red-400 transition-colors">Reset</button>
+                                        </div>
                                     </div>
 
-                                    <div className="max-h-60 overflow-y-auto no-scrollbar pb-2">
-                                        {!selectedCategory ? (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {CHATBOT_CATEGORIES.map(cat => (
-                                                    <button
-                                                        key={cat.id}
-                                                        onClick={() => setSelectedCategory(cat.id)}
-                                                        className="flex flex-col items-center gap-2 p-4 bg-slate-50 hover:bg-white hover:border-orange-200 border border-transparent rounded-[2rem] transition-all shadow-sm active:scale-95 group text-center"
-                                                    >
-                                                        <span className="text-2xl group-hover:scale-110 transition-transform">{cat.icon}</span>
-                                                        <span className="text-[10px] font-black uppercase tracking-tight text-slate-600 group-hover:text-orange-600 leading-tight">
-                                                            {cat.label[chatLanguage]}
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2 animate-in slide-in-from-right-2 duration-300">
-                                                {CHATBOT_CATEGORIES.find(c => c.id === selectedCategory)?.faqs.map(faq => (
-                                                    <button
-                                                        key={faq.id}
-                                                        onClick={() => {
-                                                            const qText = faq.q[chatLanguage];
-                                                            setChatHistory(prev => [...prev,
-                                                            { role: 'user', parts: [{ text: qText }] },
-                                                            { role: 'model', parts: [{ text: faq.a }] }
-                                                            ]);
-                                                        }}
-                                                        className="w-full flex items-center justify-between p-4 bg-white hover:bg-orange-50/50 border border-slate-100 rounded-2xl transition-all shadow-sm active:scale-[0.98] text-left group"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
-                                                                <HelpCircle className="w-4 h-4" />
-                                                            </div>
-                                                            <span className="text-[11px] font-bold text-slate-700 leading-tight pr-4">
-                                                                {faq.q[chatLanguage]}
-                                                            </span>
+                                    <AnimatePresence>
+                                        {showSuggestions && (
+                                            <motion.div 
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden bg-slate-50/50"
+                                            >
+                                                <div className="p-4 max-h-[220px] overflow-y-auto no-scrollbar">
+                                                    {!selectedCategory ? (
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            {CHATBOT_CATEGORIES.map(cat => (
+                                                                <button
+                                                                    key={cat.id}
+                                                                    onClick={() => setSelectedCategory(cat.id)}
+                                                                    className="flex flex-col items-center gap-2 p-3 bg-white hover:border-orange-200 border border-slate-100 rounded-[1.5rem] transition-all shadow-sm active:scale-95 group text-center"
+                                                                >
+                                                                    <span className="text-xl group-hover:scale-110 transition-transform">{cat.icon}</span>
+                                                                    <span className="text-[9px] font-black uppercase tracking-tight text-slate-600 group-hover:text-orange-600 leading-tight">
+                                                                        {cat.label[chatLanguage]}
+                                                                    </span>
+                                                                </button>
+                                                            ))}
                                                         </div>
-                                                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-orange-500 transition-colors flex-shrink-0" />
-                                                    </button>
-                                                ))}
-                                            </div>
+                                                    ) : (
+                                                        <div className="space-y-1.5 animate-in slide-in-from-right-2 duration-300">
+                                                            {CHATBOT_CATEGORIES.find(c => c.id === selectedCategory)?.faqs.map(faq => (
+                                                                <button
+                                                                    key={faq.id}
+                                                                    onClick={() => {
+                                                                        const qText = faq.q[chatLanguage];
+                                                                        setChatHistory(prev => [...prev,
+                                                                        { role: 'user', parts: [{ text: qText }] },
+                                                                        { role: 'model', parts: [{ text: faq.a }] }
+                                                                        ]);
+                                                                        setShowSuggestions(false);
+                                                                    }}
+                                                                    className="w-full flex items-center justify-between p-3 bg-white hover:bg-orange-50/50 border border-slate-100 rounded-xl transition-all shadow-sm active:scale-[0.98] text-left group"
+                                                                >
+                                                                    <div className="flex items-center gap-2.5">
+                                                                        <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                                                                            <HelpCircle className="w-3.5 h-3.5" />
+                                                                        </div>
+                                                                        <span className="text-[10px] font-bold text-slate-700 leading-tight pr-4">
+                                                                            {faq.q[chatLanguage]}
+                                                                        </span>
+                                                                    </div>
+                                                                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-orange-500 transition-colors flex-shrink-0" />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </motion.div>
                                         )}
-                                    </div>
+                                    </AnimatePresence>
                                 </>
                             )}
                         </div>

@@ -25,6 +25,7 @@ const RegisterFee = lazy(() => import('./pages/RegisterFee'));
 const ShortRedirect = lazy(() => import('./pages/ShortRedirect'));
 const RecruitmentLogin = lazy(() => import('./pages/RecruitmentLogin'));
 const StandingOrderSetup = lazy(() => import('./pages/StandingOrderSetup'));
+import SifunaChatbot from './components/SifunaChatbot';
 import RecruitmentLayout from './layouts/RecruitmentLayout';
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -193,6 +194,7 @@ const App = () => {
                     </Route>
                   </Routes>
                 </Suspense>
+                <SifunaChatbot />
                 <UpdatePrompt />
               </InstallProvider>
             </AuthProvider>

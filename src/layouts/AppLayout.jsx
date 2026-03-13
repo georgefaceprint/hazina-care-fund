@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { onMessageListener } from '../services/pushNotifications';
-import SifunaChatbot from '../components/SifunaChatbot';
 import { Zap } from 'lucide-react';
 
 const AppLayout = () => {
@@ -44,7 +43,6 @@ const AppLayout = () => {
                 <Outlet />
             </main>
 
-            <SifunaChatbot />
 
             {/* Bottom Navigation */}
             <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
