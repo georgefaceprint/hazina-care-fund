@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { auth, db, functions } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { signInWithCustomToken } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { formatKenyanPhone } from '../utils/phoneUtils';
 
 const RecruitmentLogin = () => {
@@ -104,17 +104,40 @@ const RecruitmentLogin = () => {
             
             // Check role immediately for redirection
             const userRef = doc(db, 'users', formatPhone);
+
+            // --- TESTING BYPASS: Force Role from Selection ---
+            const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+            const isTestUser = testNumbers.some(tn => formatPhone.includes(tn));
+
+            if (isTestUser) {
+                console.log("🛠️ Forcing test role to:", selectedRole);
+                await setDoc(userRef, {
+                    role: selectedRole,
+                    fullName: `Test ${selectedRole.replace('_', ' ').toUpperCase()}`,
+                    phoneNumber: formatPhone,
+                    status: 'active',
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+            }
+            // -----------------------------------------------
+
             const userSnap = await getDoc(userRef);
 
             if (userSnap.exists()) {
                 const userData = userSnap.data();
-                if (['super_master', 'master_agent', 'agent'].includes(userData.role)) {
-                    toast.success(`Access Authorized: ${userData.fullName}`);
-                    if (userData.role === 'super_master') navigate('/smagent/dashboard');
-                    else if (userData.role === 'master_agent') navigate('/magent/dashboard');
-                    else navigate('/agent/dashboard');
+                
+                // Redirection logic
+                if (userData.role === 'super_master') {
+                    toast.success("SMA HQ Authorized");
+                    navigate('/smagent/dashboard');
+                } else if (userData.role === 'master_agent') {
+                    toast.success("Master Portal Authorized");
+                    navigate('/magent/dashboard');
+                } else if (userData.role === 'agent') {
+                    toast.success("Agent Hub Authorized");
+                    navigate('/agent/dashboard');
                 } else {
-                    toast.info("Identification success. Redirecting to Guardian Hub.");
+                    toast.info("Redirecting to Guardian Hub.");
                     navigate('/dashboard');
                 }
             } else {
