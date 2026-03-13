@@ -281,11 +281,16 @@ const AgentApp = () => {
                             </div>
 
                             <button
-                                onClick={() => setShowWithdrawModal(true)}
-                                className="px-6 py-3 bg-brand-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-brand-primary/20 hover:scale-105 transition-all active:scale-95 flex items-center gap-2"
+                                onClick={() => stats.walletBalance >= 2500 && setShowWithdrawModal(true)}
+                                disabled={stats.walletBalance < 2500}
+                                className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center gap-2 ${
+                                    stats.walletBalance >= 2500 
+                                    ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:scale-105' 
+                                    : 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
+                                }`}
                             >
                                 <ArrowUpRight className="w-4 h-4" />
-                                Withdraw
+                                {stats.walletBalance >= 2500 ? 'Withdraw' : 'Locked'}
                             </button>
                         </div>
                     </div>

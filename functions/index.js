@@ -1330,6 +1330,10 @@ exports.initiateAgentWithdrawal = onCall({ cors: true }, async (request) => {
         const userDataAgain = userDocAgain.data();
         const currentBalance = userDataAgain.walletBalance || 0;
 
+        if (currentBalance < 2500) {
+            throw new HttpsError('failed-precondition', 'Withdrawals are disabled until your wallet reaches KSh 2,500.');
+        }
+
         if (currentBalance < amount) {
             throw new HttpsError('failed-precondition', `Insufficient wallet balance. Available: KSh ${currentBalance}`);
         }
