@@ -85,12 +85,21 @@ service cloud.firestore {
 
     match /recruitment_logs/{logId} {
       allow read: if isAuthenticated() && (
-        resource.data.agentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agent_code ||
+        // Check if agentId matches the user's agent_code
+        resource.data.agentId == (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agent_code :
+          (request.auth.token.phone_number != null && exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number))) ?
+          get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.agent_code : null
+        ) ||
+        // Check if masterAgentId matches the user's ID or phone
         resource.data.masterAgentId == request.auth.uid ||
+        resource.data.masterAgentId == request.auth.token.phone_number ||
         isAdmin() || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master'
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master' ||
+        (request.auth.token.phone_number != null && exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number)) && get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'super_master')
       );
-      allow create: if true; // Allow creation for recruitment tracking (can be restricted further if needed)
+      allow create: if true;
     }
 
     // Config Collection

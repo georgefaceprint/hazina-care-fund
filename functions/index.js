@@ -1398,13 +1398,22 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
 
     try {
         // 1. Verify Agent
-        const agentDoc = await db.collection("users").doc(uid).get();
-        if (!agentDoc.exists || !['agent', 'master_agent', 'super_master'].includes(agentDoc.data().role)) {
+        let agentDoc = await db.collection("users").doc(uid).get();
+        if (!agentDoc.exists) {
+            // Try query by 'uid' field if doc ID lookup failed (common if doc ID is phone number)
+            const agentSnap = await db.collection("users").where("uid", "==", uid).limit(1).get();
+            if (agentSnap.empty) {
+                throw new HttpsError('permission-denied', 'Unauthorized. Agent profile not found.');
+            }
+            agentDoc = agentSnap.docs[0];
+        }
+        
+        if (!['agent', 'master_agent', 'super_master'].includes(agentDoc.data().role)) {
             throw new HttpsError('permission-denied', 'Unauthorized. Only agents can register users.');
         }
         
         const agentData = agentDoc.data();
-        const agentCode = agentData.agent_code || agentData.phoneNumber || uid;
+        const agentCode = agentData.agent_code || agentData.phoneNumber || agentDoc.id;
 
         // 2. Check if user already exists
         const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
