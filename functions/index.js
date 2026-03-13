@@ -933,7 +933,8 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
         }
 
         // Generate a random 6-digit code
-        const isTestNumber = formatPhone === '+254105845108' || formatPhone === '+0105845108' || formatPhone === '0105845108';
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108', '+254105845108', '+254755881991'];
+        const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
         const code = isTestNumber ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
 
         // Save to Firestore with 1 hour expiration
@@ -1027,7 +1028,8 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
                 throw new HttpsError('deadline-exceeded', 'OTP has expired.');
             }
 
-            const isTestNumber = formatPhone === '+254105845108' || formatPhone === '+0105845108' || formatPhone === '0105845108';
+            const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+            const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
             if (isTestNumber && String(validationCode) === '123456') {
                 console.log("Test bypass successful for:", formatPhone);
             } else if (data.code !== String(validationCode)) {
@@ -1078,7 +1080,8 @@ exports.checkOtp = onCall({ cors: true }, async (request) => {
             throw new HttpsError('deadline-exceeded', 'OTP has expired.');
         }
 
-        const isTestNumber = formatPhone === '+254105845108' || formatPhone === '+0105845108' || formatPhone === '0105845108';
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+        const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
         if (isTestNumber && String(validationCode) === '123456') {
             return { valid: true };
         }
@@ -1179,7 +1182,7 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
         
         // --- TESTING BYPASS ---
         const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-        const isTestUser = testNumbers.some(tn => formatPhone.includes(tn));
+        const isTestUser = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
         if (isTestUser && String(passcode) === '123456') {
             console.log("PASSCODE_BYPASS triggered for:", formatPhone);
             const token = await admin.auth().createCustomToken(formatPhone);
@@ -1369,8 +1372,11 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
         const agentCode = agentData.agent_code || agentData.phoneNumber || uid;
 
         // 2. Check if user already exists
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+        const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
+        
         const userExists = await db.collection("users").doc(formatPhone).get();
-        if (userExists.exists) {
+        if (userExists.exists && !isTestNumber) {
             throw new HttpsError('already-exists', 'A user with this phone number is already registered.');
         }
 

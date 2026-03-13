@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp, doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { Users, TrendingUp, DollarSign, QrCode, Share2, Clipboard, ChevronRight, Award, Zap, Activity, ArrowUpRight, Wallet, User, Smartphone, XCircle, Camera, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, QrCode, Share2, Clipboard, ChevronRight, Award, Zap, Activity, ArrowUpRight, Wallet, User, Smartphone, XCircle, Camera, CheckCircle2, ShieldCheck, Loader2, RotateCcw } from 'lucide-react';
 import { functions, db } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,6 +36,7 @@ const AgentApp = () => {
         photo: null
     });
     const [regLoading, setRegLoading] = useState(false);
+    const [regStep, setRegStep] = useState(1); // 1: Personal, 2: Phone, 3: Photo, 4: Review
     const [otpStep, setOtpStep] = useState('phone'); // 'phone' | 'otp' | 'verified'
     const [verificationCode, setVerificationCode] = useState('');
     const [showRegModal, setShowRegModal] = useState(false);
@@ -191,10 +192,8 @@ const AgentApp = () => {
 
             if (result.data.success) {
                 toast.success("Registration Successful! STK Push Sent to member.");
+                handleResetReg();
                 setShowRegModal(false);
-                setRegForm({ firstName: '', surname: '', idNumber: '', phoneNumber: '', tier: 'bronze', photo: null });
-                setOtpStep('phone');
-                setVerificationCode('');
                 // Stats will auto-refresh via useEffect dependency on profile.totalSignups
                 if (fetchStats) fetchStats();
             }
@@ -205,6 +204,37 @@ const AgentApp = () => {
             setRegLoading(false);
         }
     };
+    const handleResetReg = () => {
+        setRegForm({ firstName: '', surname: '', idNumber: '', phoneNumber: '', tier: 'bronze', photo: null });
+        setOtpStep('phone');
+        setVerificationCode('');
+        setRegStep(1);
+        toast.info("Registration form reset.");
+    };
+
+    const nextStep = () => {
+        if (regStep === 1) {
+            if (!regForm.firstName || !regForm.surname || !regForm.idNumber) {
+                toast.error("Please fill all personal details.");
+                return;
+            }
+        }
+        if (regStep === 2) {
+            if (otpStep !== 'verified') {
+                toast.error("Please verify phone number first.");
+                return;
+            }
+        }
+        if (regStep === 3) {
+            if (!regForm.photo) {
+                toast.error("Please capture member identity photo.");
+                return;
+            }
+        }
+        setRegStep(prev => prev + 1);
+    };
+
+    const prevStep = () => setRegStep(prev => prev - 1);
 
     return (
         <div className="space-y-10 max-w-5xl mx-auto">
@@ -457,184 +487,301 @@ const AgentApp = () => {
                         className="bg-white rounded-[2.5rem] w-full max-w-2xl p-8 shadow-2xl relative z-10 max-h-[90vh] overflow-y-auto"
                     >
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                <ShieldCheck className="w-8 h-8 text-brand-primary" />
-                                New Member Enrollment
-                            </h3>
-                            <button
-                                onClick={() => setShowRegModal(false)}
-                                className="text-slate-300 hover:text-slate-900 transition-colors"
-                            >
-                                <XCircle className="w-7 h-7" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">First Name</label>
-                                    <input
-                                        type="text"
-                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold uppercase"
-                                        placeholder="EX: JOHN"
-                                        value={regForm.firstName}
-                                        onChange={(e) => setRegForm({ ...regForm, firstName: e.target.value.toUpperCase() })}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Surname / Family Name</label>
-                                    <input
-                                        type="text"
-                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold uppercase"
-                                        placeholder="EX: DOE"
-                                        value={regForm.surname}
-                                        onChange={(e) => setRegForm({ ...regForm, surname: e.target.value.toUpperCase() })}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">National ID Number</label>
-                                    <input
-                                        type="text"
-                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold"
-                                        placeholder="12345678"
-                                        value={regForm.idNumber}
-                                        onChange={(e) => setRegForm({ ...regForm, idNumber: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Shield Protection Tier</label>
-                                    <select
-                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold"
-                                        value={regForm.tier}
-                                        onChange={(e) => setRegForm({ ...regForm, tier: e.target.value })}
-                                    >
-                                        <option value="bronze">Bronze (KSh 50/day)</option>
-                                        <option value="silver">Silver (KSh 147/day)</option>
-                                        <option value="gold">Gold (KSh 229/day)</option>
-                                    </select>
+                            <div className="flex items-center gap-3">
+                                <h3 className="text-2xl font-black text-slate-900">
+                                    Member Enrollment
+                                </h3>
+                                <div className="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">
+                                    <div className={`w-2 h-2 rounded-full ${regStep >= 1 ? 'bg-brand-primary' : 'bg-slate-300'}`} />
+                                    <div className={`w-2 h-2 rounded-full ${regStep >= 2 ? 'bg-brand-primary' : 'bg-slate-300'}`} />
+                                    <div className={`w-2 h-2 rounded-full ${regStep >= 3 ? 'bg-brand-primary' : 'bg-slate-300'}`} />
+                                    <div className={`w-2 h-2 rounded-full ${regStep >= 4 ? 'bg-brand-primary' : 'bg-slate-300'}`} />
+                                    <span className="text-[10px] font-black uppercase text-slate-500 ml-1">Step {regStep}/4</span>
                                 </div>
                             </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleResetReg}
+                                    className="text-slate-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-xl"
+                                    title="Start Afresh"
+                                >
+                                    <RotateCcw className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => !regLoading && setShowRegModal(false)}
+                                    className="text-slate-300 hover:text-slate-900 transition-colors"
+                                >
+                                    <XCircle className="w-7 h-7" />
+                                </button>
+                            </div>
+                        </div>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Member Identity Capture</label>
-                                    <div className="relative h-48 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden hover:border-brand-primary transition-colors group">
-                                        {regForm.photo ? (
-                                            <>
-                                                <img 
-                                                    src={URL.createObjectURL(regForm.photo)} 
-                                                    alt="Captured" 
-                                                    className="w-full h-full object-cover"
+                        {/* Progress Bar */}
+                        <div className="w-full bg-slate-100 h-2 rounded-full mb-8 overflow-hidden">
+                            <motion.div 
+                                className="h-full bg-brand-primary"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(regStep / 4) * 100}%` }}
+                            />
+                        </div>
+
+                        <form onSubmit={handleRegister} className="space-y-8">
+                            <AnimatePresence mode="wait">
+                                {regStep === 1 && (
+                                    <motion.div 
+                                        key="step1"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                                    >
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">First Name</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold uppercase"
+                                                    placeholder="EX: JOHN"
+                                                    value={regForm.firstName}
+                                                    onChange={(e) => setRegForm({ ...regForm, firstName: e.target.value.toUpperCase() })}
+                                                    required
                                                 />
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setRegForm({...regForm, photo: null})}
-                                                    className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur rounded-full text-red-500 hover:bg-white transition-all shadow-sm"
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Surname / Family Name</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold uppercase"
+                                                    placeholder="EX: DOE"
+                                                    value={regForm.surname}
+                                                    onChange={(e) => setRegForm({ ...regForm, surname: e.target.value.toUpperCase() })}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">National ID Number</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                                    placeholder="12345678"
+                                                    value={regForm.idNumber}
+                                                    onChange={(e) => setRegForm({ ...regForm, idNumber: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Shield Protection Tier</label>
+                                                <select
+                                                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                                    value={regForm.tier}
+                                                    onChange={(e) => setRegForm({ ...regForm, tier: e.target.value })}
                                                 >
-                                                    <XCircle className="w-5 h-5" />
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Camera className="w-10 h-10 text-slate-300 group-hover:text-brand-primary transition-colors" />
-                                                <p className="text-[10px] font-black text-slate-400 uppercase mt-2">Tap to capture photo</p>
-                                            </>
-                                        )}
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            capture="user"
-                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                            onChange={(e) => e.target.files[0] && setRegForm({ ...regForm, photo: e.target.files[0] })}
-                                            required
-                                        />
-                                    </div>
-                                </div>
+                                                    <option value="bronze">Bronze (KSh 50/day)</option>
+                                                    <option value="silver">Silver (KSh 147/day)</option>
+                                                    <option value="gold">Gold (KSh 229/day)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
 
-                                <div className="space-y-4">
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Security Verification</label>
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                {regStep === 2 && (
+                                    <motion.div 
+                                        key="step2"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="max-w-md mx-auto w-full space-y-6"
+                                    >
+                                        <div className="space-y-4">
+                                            <label className="block text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Security Verification</label>
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                    <input
+                                                        type="tel"
+                                                        className="w-full bg-slate-50 border-none rounded-2xl pl-10 pr-4 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold disabled:opacity-50"
+                                                        placeholder="07XX XXX XXX"
+                                                        value={regForm.phoneNumber}
+                                                        onChange={(e) => setRegForm({ ...regForm, phoneNumber: e.target.value })}
+                                                        disabled={otpStep !== 'phone'}
+                                                        required
+                                                    />
+                                                </div>
+                                                {otpStep === 'phone' && (
+                                                    <button 
+                                                        type="button"
+                                                        onClick={handleSendOtp}
+                                                        disabled={regLoading || regForm.phoneNumber.length < 10}
+                                                        className="bg-slate-900 text-white px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-primary transition-all disabled:opacity-50"
+                                                    >
+                                                        Send Code
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <AnimatePresence>
+                                                {otpStep === 'otp' && (
+                                                    <motion.div 
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        className="space-y-3"
+                                                    >
+                                                        <input
+                                                            type="text"
+                                                            maxLength="6"
+                                                            className="w-full bg-emerald-50 border-emerald-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-black text-2xl tracking-[0.5em] text-center"
+                                                            placeholder="••••••"
+                                                            value={verificationCode}
+                                                            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                                                        />
+                                                        <button 
+                                                            type="button"
+                                                            onClick={handleVerifyOtp}
+                                                            disabled={regLoading || verificationCode.length !== 6}
+                                                            className="w-full bg-brand-primary text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            {regLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify Identity"}
+                                                        </button>
+                                                    </motion.div>
+                                                )}
+                                                {otpStep === 'verified' && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, scale: 0.9 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        className="bg-emerald-500 text-white p-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm"
+                                                    >
+                                                        <CheckCircle2 className="w-5 h-5" />
+                                                        Identity Confirmed
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {regStep === 3 && (
+                                    <motion.div 
+                                        key="step3"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="max-w-md mx-auto w-full"
+                                    >
+                                        <label className="block text-center text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Member Identity Capture</label>
+                                        <div className="relative h-64 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden hover:border-brand-primary transition-colors group">
+                                            {regForm.photo ? (
+                                                <>
+                                                    <img 
+                                                        src={URL.createObjectURL(regForm.photo)} 
+                                                        alt="Captured" 
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <p className="text-white text-[10px] font-black uppercase tracking-widest">Tap to Retake</p>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Camera className="w-12 h-12 text-slate-300 group-hover:text-brand-primary transition-colors" />
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase mt-4">Capture National ID or Face Photo</p>
+                                                </>
+                                            )}
                                             <input
-                                                type="tel"
-                                                className="w-full bg-slate-50 border-none rounded-2xl pl-10 pr-4 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold disabled:opacity-50"
-                                                placeholder="07XX XXX XXX"
-                                                value={regForm.phoneNumber}
-                                                onChange={(e) => setRegForm({ ...regForm, phoneNumber: e.target.value })}
-                                                disabled={otpStep !== 'phone'}
+                                                type="file"
+                                                accept="image/*"
+                                                capture="user"
+                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                onChange={(e) => e.target.files[0] && setRegForm({ ...regForm, photo: e.target.files[0] })}
                                                 required
                                             />
                                         </div>
-                                        {otpStep === 'phone' && (
-                                            <button 
-                                                type="button"
-                                                onClick={handleSendOtp}
-                                                disabled={regLoading || regForm.phoneNumber.length < 10}
-                                                className="bg-slate-900 text-white px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-primary transition-all disabled:opacity-50"
-                                            >
-                                                Verifying
-                                            </button>
-                                        )}
-                                    </div>
+                                    </motion.div>
+                                )}
 
-                                    <AnimatePresence>
-                                        {otpStep === 'otp' && (
-                                            <motion.div 
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                className="space-y-3"
-                                            >
-                                                <input
-                                                    type="text"
-                                                    maxLength="6"
-                                                    className="w-full bg-emerald-50 border-emerald-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-black text-2xl tracking-[0.5em] text-center"
-                                                    placeholder="••••••"
-                                                    value={verificationCode}
-                                                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                                                />
-                                                <button 
-                                                    type="button"
-                                                    onClick={handleVerifyOtp}
-                                                    disabled={regLoading || verificationCode.length !== 6}
-                                                    className="w-full bg-brand-primary text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    {regLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Verification Code"}
-                                                </button>
-                                            </motion.div>
-                                        )}
-                                        {otpStep === 'verified' && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, scale: 0.9 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                className="bg-emerald-500 text-white p-4 rounded-2xl flex items-center gap-3 font-bold text-sm"
-                                            >
-                                                <CheckCircle2 className="w-5 h-5" />
-                                                Phone Identity Confirmed
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            </div>
+                                {regStep === 4 && (
+                                    <motion.div 
+                                        key="step4"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="space-y-6"
+                                    >
+                                        <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100">
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 border-b border-slate-200 pb-2">Enrollment Summary</h4>
+                                            
+                                            <div className="grid grid-cols-2 gap-8">
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase">Full Name</p>
+                                                        <p className="font-bold text-slate-900">{regForm.firstName} {regForm.surname}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase">Phone Number</p>
+                                                        <p className="font-bold text-slate-900">{regForm.phoneNumber}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase">Selected Tier</p>
+                                                        <p className="font-black text-brand-primary uppercase">{regForm.tier}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase">ID Number</p>
+                                                        <p className="font-bold text-slate-900">{regForm.idNumber}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                            <div className="md:col-span-2 pt-6 border-t border-slate-50">
-                                <button
-                                    type="submit"
-                                    disabled={regLoading || otpStep !== 'verified'}
-                                    className="w-full bg-slate-900 text-white rounded-3xl py-6 font-black text-lg uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-brand-primary transition-all active:scale-95 shadow-2xl shadow-slate-900/20 disabled:opacity-50"
-                                >
-                                    {regLoading ? (
-                                        <Loader2 className="w-6 h-6 animate-spin" />
-                                    ) : (
-                                        <>Finalize Registration & Trigger Payment <ArrowUpRight className="w-6 h-6" /></>
-                                    )}
-                                </button>
-                                <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest mt-4">
-                                    Total Collection: KSh {regForm.tier === 'bronze' ? 150 : regForm.tier === 'silver' ? 247 : 329} (Reg + 1st Daily)
-                                </p>
+                                            <div className="mt-8 pt-6 border-t border-slate-200 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase text-slate-400">Initial Payment</p>
+                                                    <p className="text-2xl font-black text-slate-900">KSh {regForm.tier === 'bronze' ? 150 : regForm.tier === 'silver' ? 247 : 329}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+                                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                                    <span className="text-[10px] font-black text-emerald-700 uppercase">Validated</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            <div className="pt-6 border-t border-slate-50 flex gap-4">
+                                {regStep > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={prevStep}
+                                        className="px-8 py-5 bg-slate-100 text-slate-600 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                                    >
+                                        Back
+                                    </button>
+                                )}
+                                
+                                {regStep < 4 ? (
+                                    <button
+                                        type="button"
+                                        onClick={nextStep}
+                                        className="flex-1 py-5 bg-slate-900 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-brand-primary transition-all active:scale-95 shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2"
+                                    >
+                                        Next Phase <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="submit"
+                                        disabled={regLoading}
+                                        className="flex-1 bg-brand-primary text-white rounded-3xl py-5 font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all active:scale-95 shadow-2xl shadow-brand-primary/20 disabled:opacity-50"
+                                    >
+                                        {regLoading ? (
+                                            <Loader2 className="w-6 h-6 animate-spin" />
+                                        ) : (
+                                            <>Confirm & Trigger Payment <ArrowUpRight className="w-6 h-6" /></>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         </form>
                     </motion.div>
