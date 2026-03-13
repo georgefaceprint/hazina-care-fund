@@ -670,8 +670,8 @@ const AgentApp = () => {
                                         exit={{ opacity: 0, x: -20 }}
                                         className="max-w-md mx-auto w-full"
                                     >
-                                        <label className="block text-center text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Member Identity Capture</label>
-                                        <div className="relative h-64 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden hover:border-brand-primary transition-colors group">
+                                        <label className="block text-center text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Member Identity (Portrait)</label>
+                                        <div className="relative aspect-[3/4] max-w-[280px] mx-auto bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden hover:border-brand-primary transition-colors group shadow-inner">
                                             {regForm.photo ? (
                                                 <>
                                                     <img 
@@ -680,14 +680,18 @@ const AgentApp = () => {
                                                         className="w-full h-full object-cover"
                                                     />
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <p className="text-white text-[10px] font-black uppercase tracking-widest">Tap to Retake</p>
+                                                        <p className="text-white text-[10px] font-black uppercase tracking-widest bg-slate-900/50 px-4 py-2 rounded-full backdrop-blur-sm">Tap to Retake</p>
                                                     </div>
                                                 </>
                                             ) : (
-                                                <>
-                                                    <Camera className="w-12 h-12 text-slate-300 group-hover:text-brand-primary transition-colors" />
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase mt-4">Capture National ID or Face Photo</p>
-                                                </>
+                                                <div className="flex flex-col items-center p-6 text-center">
+                                                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                        <Camera className="w-8 h-8 text-slate-300 group-hover:text-brand-primary transition-colors" />
+                                                    </div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tight leading-relaxed">
+                                                        Position ID or Face <br/> within Vertical Frame
+                                                    </p>
+                                                </div>
                                             )}
                                             <input
                                                 type="file"

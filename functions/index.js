@@ -1269,6 +1269,8 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         if (agentPhone) {
             await db.collection("users").doc(agentPhone).update({
                 totalSignups: admin.firestore.FieldValue.increment(1),
+                totalEarnings: admin.firestore.FieldValue.increment(tariff),
+                walletBalance: admin.firestore.FieldValue.increment(tariff),
                 lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
             }).catch(() => {}); // Ignore if user doc doesn't exist
         }
@@ -1279,6 +1281,8 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         if (agentExists.exists) {
             await agentRef.update({
                 totalSignups: admin.firestore.FieldValue.increment(1),
+                totalEarnings: admin.firestore.FieldValue.increment(tariff),
+                walletBalance: admin.firestore.FieldValue.increment(tariff),
                 lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
             });
         }
@@ -1436,10 +1440,10 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
             phoneNumber: formatPhone,
             role: 'guardian',
             active_tier: tier.toLowerCase(),
-            status: 'pending_payment',
+            status: isTestNumber ? 'active' : 'pending_payment',
             recruited_by: agentCode,
             id_photo_url: photoUrl || null,
-            registration_fee_paid: false,
+            registration_fee_paid: isTestNumber ? true : false,
             balance: 0,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -1457,14 +1461,20 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
             console.error("SMS Error during registration:", smsError);
         }
 
-        // 5. Trigger SasaPay STK Push
-        const stkResult = await initiateSasapayC2B(formatPhone, totalAmount, formatPhone);
+        // 5. Trigger SasaPay STK Push (Skip for test numbers to satisfy "assume payment went thru")
+        let stkResult = { status: 'skipped_for_test' };
+        if (!isTestNumber) {
+            stkResult = await initiateSasapayC2B(formatPhone, totalAmount, formatPhone);
+        }
 
         return { 
             success: true, 
             userId: formatPhone,
             stkStatus: stkResult.status,
-            message: `User ${fullName} registered. STK Push of KSh ${totalAmount} initiated.`
+            isTest: isTestNumber,
+            message: isTestNumber ? 
+                `Test Mode: Enrollment for ${fullName} finalized immediately.` : 
+                `User ${fullName} registered. STK Push of KSh ${totalAmount} initiated.`
         };
 
     } catch (error) {
