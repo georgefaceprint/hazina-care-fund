@@ -24,8 +24,12 @@ const RecruitmentLogin = () => {
     const [selectedRole, setSelectedRole] = useState('agent'); // 'super_master', 'master_agent', 'agent'
 
     useEffect(() => {
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+        const isTestUser = user && (testNumbers.includes(user.phoneNumber) || testNumbers.includes(user.uid));
+
         // If user is already authenticated and has a professional role, redirect appropriately
-        if (user && profile && !authLoading) {
+        // BUT: Let test users stay on the login page so they can switch between portals (SMA/Master/Agent)
+        if (user && profile && !authLoading && !isTestUser) {
             if (profile.role === 'super_master') navigate('/smagent/dashboard');
             else if (profile.role === 'master_agent') navigate('/magent/dashboard');
             else if (profile.role === 'agent') navigate('/agent/dashboard');
@@ -127,7 +131,12 @@ const RecruitmentLogin = () => {
                 const userData = userSnap.data();
                 
                 // Redirection logic
-                if (userData.role === 'super_master') {
+                if (isTestUser) {
+                    toast.success(`${selectedRole.replace('_', ' ').toUpperCase()} Portal Authorized`);
+                    if (selectedRole === 'super_master') navigate('/smagent/dashboard');
+                    else if (selectedRole === 'master_agent') navigate('/magent/dashboard');
+                    else navigate('/agent/dashboard');
+                } else if (userData.role === 'super_master') {
                     toast.success("SMA HQ Authorized");
                     navigate('/smagent/dashboard');
                 } else if (userData.role === 'master_agent') {
