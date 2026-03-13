@@ -43,6 +43,25 @@ const fetchUserDoc = async (uid, auth = null) => {
     return null;
 };
 
+/**
+ * Standardizes phone numbers to 254... format for SasaPay
+ */
+const formatTo254 = (phoneNumber) => {
+    if (!phoneNumber) return "";
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+        return `254${cleaned.substring(1)}`;
+    }
+    if (cleaned.startsWith('254')) {
+        return cleaned;
+    }
+    // Assume it might be a 7XXXXXXXX format if length is 9
+    if (cleaned.length === 9) {
+        return `254${cleaned}`;
+    }
+    return cleaned;
+};
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCaAkDtu93ADVaDE0hy0MCK1n9E8ksUdN0";
 
 if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
@@ -200,9 +219,7 @@ const getSasapayToken = async () => {
 
 // Internal Helper to initiate SasaPay C2B
 const initiateSasapayC2B = async (phoneNumber, amount, userId, networkCode = "63902") => {
-    const formattedPhone = phoneNumber.replace(/\D/g, '').startsWith('0')
-        ? `254${phoneNumber.replace(/\D/g, '').substring(1)}`
-        : phoneNumber.replace(/\D/g, '');
+    const formattedPhone = formatTo254(phoneNumber);
 
     const token = await getSasapayToken();
     const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
@@ -416,6 +433,30 @@ exports.sasapayCallback = onRequest(async (req, res) => {
                 }, { merge: true });
 
                 await batch.commit();
+                
+                // --- REGISTRATION ACTIVATION LOGIC ---
+                // If user was pending payment, activate them
+                if (requestInfo.userId && requestInfo.userId.startsWith('+')) {
+                    const userRef = db.collection("users").doc(requestInfo.userId);
+                    const userSnap = await userRef.get();
+                    if (userSnap.exists && userSnap.data().status === 'pending_payment') {
+                        const userData = userSnap.data();
+                        const regFee = 100;
+                        const gracePeriodDays = 180;
+                        const expiry = new Date();
+                        expiry.setDate(expiry.getDate() + gracePeriodDays);
+                        
+                        await userRef.update({
+                            status: 'in-waiting',
+                            registration_fee_paid: true,
+                            balance: admin.firestore.FieldValue.increment(-regFee), // Deduct registration fee
+                            grace_period_expiry: admin.firestore.Timestamp.fromDate(expiry),
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                        });
+                        console.log(`User ${requestInfo.userId} activated from pending_payment status.`);
+                    }
+                }
+                
                 console.log(`Payment successful via SasaPay for user: ${requestInfo.userId}, Amount: ${amount}`);
             }
         } else {
@@ -446,7 +487,7 @@ exports.setupStandingOrder = onCall({ cors: true }, async (request) => {
             NetworkCode: networkCode || "63902", // Default M-Pesa
             Amount: amount.toString(),
             Currency: "KES",
-            PhoneNumber: phoneNumber.replace('+', ''),
+            PhoneNumber: formatTo254(phoneNumber),
             CallBackURL: callbackUrl,
             TransactionDesc: `Hazina Auto-Pay Setup`,
             AccountReference: `HAZINA-SO-${userId.substring(0, 8)}`,
@@ -507,7 +548,7 @@ exports.sasapayB2C = onRequest({
             MerchantTransactionReference: claimId.substring(0, 12),
             Amount: Number(amount),
             Currency: "KES",
-            ReceiverNumber: phoneNumber.replace(/\D/g, ''),
+            ReceiverNumber: formatTo254(phoneNumber),
             Channel: "63902", // M-Pesa in Kenya
             Reason: `Hazina Claim Approval: ${claimId.substring(0, 8)}`,
             CallBackURL: callbackUrl
@@ -1206,9 +1247,7 @@ exports.initiateAgentWithdrawal = onCall({ cors: true }, async (request) => {
         throw new HttpsError('invalid-argument', 'Minimum withdrawal is KSh 50.');
     }
 
-    const formatPhone = phoneNumber.replace(/\D/g, '').startsWith('0')
-        ? `254${phoneNumber.replace(/\D/g, '').substring(1)}`
-        : phoneNumber.replace(/\D/g, '');
+    const formatPhone = formatTo254(phoneNumber);
 
     try {
         // 1. Find user to get their agent_code
@@ -1221,16 +1260,16 @@ exports.initiateAgentWithdrawal = onCall({ cors: true }, async (request) => {
         const userData = userDoc.data();
         const agentCode = userData.agent_code || userData.phoneNumber || uid;
 
-        // 2. Check Agent Balance
-        const agentRef = db.collection("agents").doc(agentCode);
-        const agentDoc = await agentRef.get();
+        // 2. Check Agent Balance (READ FROM USERS COLLECTION)
+        const userRef = db.collection("users").doc(uid);
+        const userDocAgain = await userRef.get(); // Refresh data
 
-        if (!agentDoc.exists) {
-            throw new HttpsError('not-found', 'Agent record not found.');
+        if (!userDocAgain.exists) {
+            throw new HttpsError('not-found', 'User record not found.');
         }
 
-        const agentData = agentDoc.data();
-        const currentBalance = agentData.walletBalance || 0;
+        const userDataAgain = userDocAgain.data();
+        const currentBalance = userDataAgain.walletBalance || 0;
 
         if (currentBalance < amount) {
             throw new HttpsError('failed-precondition', `Insufficient wallet balance. Available: KSh ${currentBalance}`);
@@ -1257,7 +1296,7 @@ exports.initiateAgentWithdrawal = onCall({ cors: true }, async (request) => {
 
         if (response.data.status) {
             // 4. Update Balance and Log
-            await agentRef.update({
+            await userRef.update({
                 walletBalance: admin.firestore.FieldValue.increment(-amount)
             });
 

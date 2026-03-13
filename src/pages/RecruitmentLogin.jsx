@@ -21,6 +21,7 @@ const RecruitmentLogin = () => {
     const [isTotpLogin, setIsTotpLogin] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [selectedRole, setSelectedRole] = useState('agent'); // 'super_master', 'master_agent', 'agent'
 
     useEffect(() => {
         // If user is already authenticated and has a professional role, redirect appropriately
@@ -31,6 +32,24 @@ const RecruitmentLogin = () => {
             else navigate('/dashboard'); // Fallback for guardians
         }
     }, [user, profile, authLoading, navigate]);
+
+    const roleConfig = {
+        super_master: {
+            title: "SMA HQ",
+            subtitle: "Super Master Admin",
+            color: "brand-primary"
+        },
+        master_agent: {
+            title: "Master Portal",
+            subtitle: "Territory Management",
+            color: "emerald-500"
+        },
+        agent: {
+            title: "Agent Hub",
+            subtitle: "Field Recruitment",
+            color: "slate-900"
+        }
+    };
 
     const onSignInSubmit = async (e) => {
         e.preventDefault();
@@ -121,14 +140,33 @@ const RecruitmentLogin = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="max-w-md w-full relative z-10"
             >
+                {/* Role Switcher */}
+                <div className="flex bg-white/50 backdrop-blur-md p-1 rounded-2xl border border-slate-200 mb-8 shadow-sm">
+                    {Object.keys(roleConfig).map((role) => (
+                        <button
+                            key={role}
+                            onClick={() => setSelectedRole(role)}
+                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${
+                                selectedRole === role 
+                                ? 'bg-slate-900 text-white shadow-lg' 
+                                : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                        >
+                            {role === 'super_master' ? 'SMA' : role === 'master_agent' ? 'Master' : 'Agent'}
+                        </button>
+                    ))}
+                </div>
+
                 <div className="bg-white border border-slate-200 p-10 rounded-[3rem] shadow-2xl">
                     <div className="text-center mb-10">
-                        <div className="w-20 h-20 bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-slate-900/20">
-                            <Shield className="w-10 h-10 text-brand-primary" />
+                        <div className={`w-20 h-20 bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-slate-900/20 transition-colors`}>
+                            <Shield className={`w-10 h-10 text-brand-primary`} />
                         </div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">Hazina HQ</h1>
-                        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2 bg-slate-50 inline-block px-4 py-1.5 rounded-full border border-slate-100">
-                            Management Portal
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">
+                            {roleConfig[selectedRole].title}
+                        </h1>
+                        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2 bg-slate-50 inline-block px-4 py-1.5 rounded-full border border-slate-100 italic">
+                            {roleConfig[selectedRole].subtitle}
                         </p>
                     </div>
 
@@ -221,7 +259,7 @@ const RecruitmentLogin = () => {
                     <div className="mt-12 pt-8 border-t border-slate-50 text-center">
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
                             Infrastructure Monitor: Active<br/>
-                            <span className="text-brand-primaryOpacity-50">Authorized Recruitment Personnel Only</span>
+                            <span className="text-brand-primary/50">Authorized Recruitment Personnel Only</span>
                         </p>
                     </div>
                 </div>

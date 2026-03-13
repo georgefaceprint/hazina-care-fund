@@ -165,30 +165,41 @@ const AgentApp = () => {
             return;
         }
 
+        if (!regForm.photo) {
+            toast.error("Please capture the member's photo.");
+            return;
+        }
+
         setRegLoading(true);
         try {
             let photoUrl = null;
-            if (regForm.photo) {
-                // Temporary ID since we don't have the user's UID yet (phone will be used)
-                const tempId = regForm.phoneNumber.replace(/\D/g, '');
-                photoUrl = await uploadProfilePhoto(tempId, regForm.photo, 'agent_captured');
-            }
+            
+            // 1. Upload Photo
+            toast.info("Uploading identity capture...");
+            const tempId = regForm.phoneNumber.replace(/\D/g, '');
+            photoUrl = await uploadProfilePhoto(tempId, regForm.photo, 'agent_captured');
 
+            // 2. Register Member
+            toast.info("Registering member and triggering STK Push...");
             const registerFunc = httpsCallable(functions, 'registerUserByAgent');
             const result = await registerFunc({
                 ...regForm,
-                photoUrl
+                photoUrl,
+                // Pass formatted phone to match backend storage
+                phoneNumber: formatKenyanPhone(regForm.phoneNumber)
             });
 
             if (result.data.success) {
-                toast.success("Registration Successful! STK Push Sent.");
+                toast.success("Registration Successful! STK Push Sent to member.");
                 setShowRegModal(false);
                 setRegForm({ firstName: '', surname: '', idNumber: '', phoneNumber: '', tier: 'bronze', photo: null });
                 setOtpStep('phone');
                 setVerificationCode('');
-                fetchStats();
+                // Stats will auto-refresh via useEffect dependency on profile.totalSignups
+                if (fetchStats) fetchStats();
             }
         } catch (error) {
+            console.error("Registration error details:", error);
             toast.error(error.message || "Registration failed.");
         } finally {
             setRegLoading(false);
