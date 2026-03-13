@@ -56,13 +56,13 @@ const AgentApp = () => {
             const logsRef = collection(db, 'recruitment_logs');
 
             // 1. Fetch recruitment counts from logs
-            const todayQuery = query(logsRef, where('agentCode', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
-            const yesterdayQuery = query(logsRef, where('agentCode', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
+            const todayQuery = query(logsRef, where('agentId', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
+            const yesterdayQuery = query(logsRef, where('agentId', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
 
             const [todaySnap, yesterdaySnap] = await Promise.all([getDocs(todayQuery), getDocs(yesterdayQuery)]);
 
             // 2. Fetch Recent Logs
-            const recentQuery = query(logsRef, where('agentCode', '==', agentCode), orderBy('timestamp', 'desc'), limit(15));
+            const recentQuery = query(logsRef, where('agentId', '==', agentCode), orderBy('timestamp', 'desc'), limit(15));
             const recentSnap = await getDocs(recentQuery);
             setRecentLogs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
