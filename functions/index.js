@@ -333,85 +333,145 @@ exports.manualDeduction = onCall(async (request) => {
 exports.sasapayCallback = onRequest(async (req, res) => {
     try {
         console.log("SasaPay Callback Received:", JSON.stringify(req.body));
+        const {
+            ResultCode,
+            ResultDesc,
+            MerchantRequestID,
+            CheckoutRequestID,
+            Amount,
+            TransactionID,
+            SubscriptionID, // For Standing Orders
+        } = req.body;
 
-        const callbackData = req.body;
-        const checkoutRequestId = callbackData.CheckoutRequestID;
-        const resultCode = callbackData.ResultCode;
+        if (ResultCode === 0 || ResultCode === "0") {
+            // Find request info from transactions or standing_orders collection
+            let requestInfo = null;
+            let isStandingOrder = !!SubscriptionID;
 
-        if (!checkoutRequestId) {
-            console.log("No CheckoutRequestID in callback body");
-            res.status(200).send("Acknowledged");
-            return;
-        }
+            if (isStandingOrder) {
+                const soSnap = await db.collection("standing_orders").doc(MerchantRequestID || SubscriptionID).get();
+                if (soSnap.exists) requestInfo = soSnap.data();
+            } else {
+                const requestDocRef = db.collection("stk_requests").doc(MerchantRequestID || CheckoutRequestID);
+                const requestDoc = await requestDocRef.get();
+                if (requestDoc.exists) requestInfo = requestDoc.data();
+            }
 
-        const requestDocRef = db.collection("stk_requests").doc(checkoutRequestId);
-        const requestDoc = await requestDocRef.get();
+            if (!requestInfo) {
+                console.warn("No request info found for callback:", MerchantRequestID);
+                return res.status(200).send("Acknowledged But Orphaned");
+            }
 
-        if (!requestDoc.exists) {
-            console.log(`CheckoutRequestID not found in DB: ${checkoutRequestId}`);
-            res.status(200).send("Acknowledged");
-            return;
-        }
+            const amount = parseFloat(Amount || requestInfo.amount);
 
-        const requestInfo = requestDoc.data();
+            if (isStandingOrder) {
+                await db.collection("standing_orders").doc(MerchantRequestID || SubscriptionID).update({
+                    status: 'active',
+                    subscriptionId: SubscriptionID,
+                    activatedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
 
-        if (resultCode === "0" || resultCode === 0) {
-            // Payment successful
-            const amount = Number(callbackData.TransAmount || requestInfo.amount);
-            const receipt = callbackData.TransactionCode || callbackData.ThirdPartyTransID || "UNKNOWN";
+                await db.collection("users").doc(requestInfo.userId).update({
+                    auto_pay_enabled: true,
+                    standing_order_id: SubscriptionID
+                });
 
-            const batch = db.batch();
+                console.log(`Standing Order ${SubscriptionID} activated for user ${requestInfo.userId}`);
+            } else {
+                const batch = db.batch();
+                const requestDocRef = db.collection("stk_requests").doc(MerchantRequestID || CheckoutRequestID);
+                
+                // 1. Update STK request
+                batch.update(requestDocRef, {
+                    status: "completed",
+                    receipt: TransactionID,
+                    completedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    rawCallback: req.body
+                });
 
-            // 1. Update STK request
-            batch.update(requestDocRef, {
-                status: "completed",
-                receipt,
-                completedAt: admin.firestore.FieldValue.serverTimestamp(),
-                rawCallback: callbackData
-            });
+                // 2. Add to User Balance
+                const userRef = db.collection("users").doc(requestInfo.userId);
+                batch.update(userRef, {
+                    balance: admin.firestore.FieldValue.increment(amount),
+                    last_topup: admin.firestore.FieldValue.serverTimestamp()
+                });
 
-            // 2. Add to User Balance
-            const userRef = db.collection("users").doc(requestInfo.userId);
-            batch.update(userRef, {
-                balance: admin.firestore.FieldValue.increment(amount)
-            });
+                // 3. Log transaction
+                const transRef = db.collection("transactions").doc();
+                batch.set(transRef, {
+                    user_id: requestInfo.userId,
+                    amount,
+                    type: "topup",
+                    method: "sasapay",
+                    receipt: TransactionID,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp()
+                });
 
-            // 3. Log transaction
-            const transRef = db.collection("transactions").doc();
-            batch.set(transRef, {
-                user_id: requestInfo.userId,
-                amount,
-                type: "topup",
-                method: "sasapay",
-                provider: callbackData.SourceChannel || "UNKNOWN",
-                receipt,
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
+                // 4. Update global statistics
+                const statsRef = db.collection("totals").doc("liquidity");
+                batch.set(statsRef, {
+                    total_fund: admin.firestore.FieldValue.increment(amount),
+                    total_topups: admin.firestore.FieldValue.increment(amount),
+                    last_updated: admin.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
 
-            await batch.commit();
-
-            // 4. Update global analytics
-            await db.collection("totals").doc("liquidity").set({
-                total_fund: admin.firestore.FieldValue.increment(amount),
-                total_topups: admin.firestore.FieldValue.increment(amount),
-                last_updated: admin.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
-            console.log(`Payment successful via SasaPay for user: ${requestInfo.userId}, Amount: ${amount}`);
+                await batch.commit();
+                console.log(`Payment successful via SasaPay for user: ${requestInfo.userId}, Amount: ${amount}`);
+            }
         } else {
-            // Payment failed or cancelled
-            await requestDocRef.update({
-                status: "failed",
-                errorMsg: callbackData.ResultDesc,
-                rawCallback: callbackData
-            });
-            console.log(`Payment failed: ${callbackData.ResultDesc}`);
+            console.warn("SasaPay Payment Failed:", ResultDesc);
         }
 
-        res.status(200).send("Success");
+        res.status(200).send("Callback Processed");
     } catch (error) {
         console.error("SasaPay Callback processing error: ", error);
         res.status(200).send("Acknowledged with error");
+    }
+});
+
+// 6. SasaPay Standing Order Setup
+exports.setupStandingOrder = onCall({ cors: true }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'User must be logged in');
+
+    const { amount, frequency, phoneNumber, networkCode } = request.data;
+    const userId = request.auth.uid;
+
+    try {
+        const token = await getSasapayToken();
+        const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
+        const merchantRequestID = `SO-${Date.now()}-${userId.substring(0, 5)}`;
+
+        const payload = {
+            MerchantCode: SASAPAY_MERCHANT_CODE,
+            NetworkCode: networkCode || "63902", // Default M-Pesa
+            Amount: amount.toString(),
+            Currency: "KES",
+            PhoneNumber: phoneNumber.replace('+', ''),
+            CallBackURL: callbackUrl,
+            TransactionDesc: `Hazina Auto-Pay Setup`,
+            AccountReference: `HAZINA-SO-${userId.substring(0, 8)}`,
+            Frequency: frequency || "DAILY", // DAILY, WEEKLY, MONTHLY
+            MerchantRequestID: merchantRequestID
+        };
+
+        const response = await axios.post(`${SASAPAY_BASE_URL}/payments/standing-order/`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        // Save record for callback tracking
+        await db.collection("standing_orders").doc(merchantRequestID).set({
+            userId,
+            amount,
+            frequency,
+            phoneNumber,
+            status: 'pending',
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        return { success: true, detail: response.data.detail || "Standing order request initiated", merchantRequestID };
+    } catch (error) {
+        console.error("Setup Standing Order Error:", error.response?.data || error.message);
+        throw new HttpsError('internal', error.response?.data?.detail || error.message);
     }
 });
 

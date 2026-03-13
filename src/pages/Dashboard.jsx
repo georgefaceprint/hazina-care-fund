@@ -364,18 +364,35 @@ const Dashboard = () => {
                         </div>
 
                     </div>
-                    <div className="card bg-white border-none shadow-md overflow-hidden relative group cursor-pointer" onClick={() => navigate('/topup')}>
+                    <div className="card bg-white border-none shadow-md overflow-hidden relative group">
                         <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="p-2 bg-blue-500/10 rounded-xl">
-                                <CreditCard className="w-5 h-5 text-blue-500" />
+                        <div className="flex items-center justify-between mb-3 relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-500/10 rounded-xl">
+                                    <CreditCard className="w-5 h-5 text-blue-500" />
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('your_fund')}</span>
                             </div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('your_fund')}</span>
+                            {profile.auto_pay_enabled ? (
+                                <div className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
+                                    <Zap className="w-3 h-3 text-emerald-500 fill-emerald-500" />
+                                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Auto: ON</span>
+                                </div>
+                            ) : (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); navigate('/auto-pay/setup'); }}
+                                    className="text-[8px] font-black text-brand-primary uppercase tracking-widest bg-brand-primary/5 px-2 py-1 rounded-lg border border-brand-primary/10 hover:bg-brand-primary/10 transition-colors"
+                                >
+                                    Enable Auto-Pay
+                                </button>
+                            )}
                         </div>
-                        <p className="text-3xl font-black text-slate-900">KSh {profile.balance || 0}</p>
-                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
-                            {t('top_up_via_mpesa')} <ChevronRight className="w-3 h-3" />
-                        </p>
+                        <div className="cursor-pointer" onClick={() => navigate('/topup')}>
+                            <p className="text-3xl font-black text-slate-900">KSh {profile.balance || 0}</p>
+                            <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
+                                {t('top_up_via_mpesa')} <ChevronRight className="w-3 h-3" />
+                            </p>
+                        </div>
                     </div>
                 </div>
 

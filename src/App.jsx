@@ -24,6 +24,7 @@ const SuperMasterDashboard = lazy(() => import('./pages/SuperMasterDashboard'));
 const RegisterFee = lazy(() => import('./pages/RegisterFee'));
 const ShortRedirect = lazy(() => import('./pages/ShortRedirect'));
 const RecruitmentLogin = lazy(() => import('./pages/RecruitmentLogin'));
+const StandingOrderSetup = lazy(() => import('./pages/StandingOrderSetup'));
 import RecruitmentLayout from './layouts/RecruitmentLayout';
 import InstallProvider from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -165,6 +166,7 @@ const App = () => {
                       <Route path="/settings" element={<ProfileSettings />} />
                       <Route path="/complete-profile" element={<CompleteProfile />} />
                       <Route path="/pay-registration" element={<RegisterFee />} />
+                      <Route path="/auto-pay/setup" element={<StandingOrderSetup />} />
                     </Route>
   
                     {/* Recruitment Portals - Professional Management Layout */}
