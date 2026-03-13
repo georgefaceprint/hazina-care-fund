@@ -1102,32 +1102,32 @@ exports.onUserCreated = onDocumentCreated("users/{userId}", async (event) => {
     if (!agentCode) return;
 
     try {
-        const agentDoc = await db.collection("agents").doc(agentCode).get();
-        if (!agentDoc.exists) {
-            console.log(`Agent ${agentCode} not found in DB.`);
-            return;
-        }
-
-        const agentData = agentDoc.data();
+        // We use the 'users' collection for agents as well for consistent auth profiles
+        const agentDoc = await db.collection("users").doc(agentCode).get();
+        const agentData = agentDoc.exists ? agentDoc.data() : {};
+        
         const masterAgentId = agentData.masterAgentId || null;
         const tariff = agentData.tariffRate || 15;
 
-        // Log the recruitment record
+        // Log the recruitment record with data needed by the dashboard
         await db.collection("recruitment_logs").add({
             userId,
+            userName: newUser.fullName,
+            tier: newUser.active_tier || 'bronze',
             agentId: agentCode,
             masterAgentId,
             tariffApplied: tariff,
+            commissionEarned: tariff, // Initial commission, could be updated on payment
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // Update Agent's total count
-        await db.collection("agents").doc(agentCode).update({
+        // Update Agent's total count in the 'users' collection
+        await db.collection("users").doc(agentCode).update({
             totalSignups: admin.firestore.FieldValue.increment(1),
             lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        console.log(`User ${userId} recruited by ${agentCode} processed.`);
+        console.log(`User ${userId} recruited by ${agentCode} processed. Log created and Agent stats updated.`);
     } catch (error) {
         console.error("Recruitment trigger error:", error);
     }
@@ -1322,7 +1322,7 @@ exports.createTestUser = onCall({ cors: true }, async (request) => {
             active_tier: 'gold',
             agent_code: 'TEST001',
             walletBalance: 1000,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            createdAt: new Date()
         }, { merge: true });
 
         return { success: true, message: "Test user created/updated as SUPER MASTER" };
