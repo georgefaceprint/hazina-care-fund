@@ -85,17 +85,18 @@ service cloud.firestore {
 
     match /recruitment_logs/{logId} {
       allow read: if isAuthenticated() && (
-        // Check if agentId matches the user's agent_code
+        isAdmin() || 
+        // 1. Direct Agent Check (Checking if current user is the agent)
         resource.data.agentId == (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agent_code :
           (request.auth.token.phone_number != null && exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number))) ?
           get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.agent_code : null
         ) ||
-        // Check if masterAgentId matches the user's ID or phone
+        // 2. Master Agent Check
         resource.data.masterAgentId == request.auth.uid ||
         resource.data.masterAgentId == request.auth.token.phone_number ||
-        isAdmin() || 
+        // 3. Super Master Check
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master' ||
         (request.auth.token.phone_number != null && exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number)) && get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'super_master')
       );

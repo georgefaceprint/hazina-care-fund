@@ -75,6 +75,10 @@ const AgentApp = () => {
             });
         } catch (error) {
             console.error("Error fetching agent stats:", error);
+            // Only show toast if it's a real error (not just loading or empty results)
+            if (error.code !== 'permission-denied') {
+                toast.error("Failed to load some dashboard data. Please try again later.");
+            }
         } finally {
             setLoading(false);
         }
