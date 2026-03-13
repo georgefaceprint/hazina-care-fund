@@ -1233,9 +1233,20 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
     }
 
     try {
-        // We use the 'users' collection for agents as well for consistent auth profiles
-        const agentDoc = await db.collection("users").doc(agentCode).get();
-        const agentData = agentDoc.exists ? agentDoc.data() : {};
+        let agentData = {};
+        
+        // 1. Try to find agent in 'users' collection (doc ID is phone number)
+        const userDoc = await db.collection("users").doc(agentCode).get();
+        if (userDoc.exists) {
+            agentData = userDoc.data();
+        }
+
+        // 2. Try to find agent in 'agents' collection (doc ID is agent code, e.g. CT107)
+        // If it's a code, it won't be in users by ID, so this is essential.
+        const agentEntryDoc = await db.collection("agents").doc(agentCode).get();
+        if (agentEntryDoc.exists) {
+            agentData = { ...agentData, ...agentEntryDoc.data() };
+        }
         
         const masterAgentId = agentData.masterAgentId || null;
         const tariff = agentData.tariffRate || 15;
@@ -1248,17 +1259,31 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             agentId: agentCode,
             masterAgentId,
             tariffApplied: tariff,
-            commissionEarned: tariff, // Initial commission, could be updated on payment
+            commissionEarned: tariff,
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // Update Agent's total count in the 'users' collection
-        await db.collection("users").doc(agentCode).update({
-            totalSignups: admin.firestore.FieldValue.increment(1),
-            lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        // Update counts in ALL relevant places
+        // A. Update Agent's total count in the 'users' collection (if found there)
+        const agentPhone = agentData.phoneNumber || (agentCode.startsWith('+') ? agentCode : null);
+        if (agentPhone) {
+            await db.collection("users").doc(agentPhone).update({
+                totalSignups: admin.firestore.FieldValue.increment(1),
+                lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
+            }).catch(() => {}); // Ignore if user doc doesn't exist
+        }
 
-        console.log(`User ${userId} recruited by ${agentCode} processed. Log created and Agent stats updated.`);
+        // B. Update 'agents' collection (doc ID is usually the agent code)
+        const agentRef = db.collection("agents").doc(agentCode);
+        const agentExists = await agentRef.get();
+        if (agentExists.exists) {
+            await agentRef.update({
+                totalSignups: admin.firestore.FieldValue.increment(1),
+                lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        console.log(`User ${userId} recruited by ${agentCode} processed. MasterAgent: ${masterAgentId}`);
     } catch (error) {
         console.error("Recruitment trigger error:", error);
     }
