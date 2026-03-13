@@ -224,7 +224,7 @@ const SuperMasterDashboard = () => {
                                         <button
                                             onClick={() => {
                                                 impersonate(master);
-                                                navigate('/master');
+                                                navigate('/magent/dashboard');
                                             }}
                                             className="px-3 py-1.5 bg-slate-50 text-[10px] font-black text-slate-600 rounded-xl hover:bg-brand-primary hover:text-white transition-all uppercase tracking-widest border border-slate-100"
                                         >

@@ -19,9 +19,9 @@ const CompleteProfile = () => {
     useEffect(() => {
         const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(profile?.role);
         if (isRecruiter) {
-            if (profile.role === 'super_master') navigate('/super');
-            else if (profile.role === 'master_agent') navigate('/master');
-            else navigate('/agent');
+            if (profile.role === 'super_master') navigate('/smagent/dashboard');
+            else if (profile.role === 'master_agent') navigate('/magent/dashboard');
+            else if (profile.role === 'agent') navigate('/agent/dashboard');
         }
     }, [profile, navigate]);
     const [fullName, setFullName] = useState('');

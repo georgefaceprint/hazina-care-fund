@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp, doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { Users, TrendingUp, DollarSign, QrCode, Share2, Clipboard, ChevronRight, Award, Zap, Activity, ArrowUpRight, Wallet, User, Smartphone, XCircle } from 'lucide-react';
-import { functions } from '../services/firebase';
+import { Users, TrendingUp, DollarSign, QrCode, Share2, Clipboard, ChevronRight, Award, Zap, Activity, ArrowUpRight, Wallet, User, Smartphone, XCircle, Camera, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
+import { functions, db } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { uploadProfilePhoto } from '../services/storage';
+import { formatKenyanPhone } from '../utils/phoneUtils';
 
 const AgentApp = () => {
     const { profile } = useAuth();
@@ -23,6 +25,20 @@ const AgentApp = () => {
     const [withdrawAmount, setWithdrawAmount] = useState('');
     const [withdrawing, setWithdrawing] = useState(false);
     const [withdrawPhone, setWithdrawPhone] = useState(profile?.phoneNumber || '');
+    
+    // Registration Form State
+    const [regForm, setRegForm] = useState({
+        firstName: '',
+        surname: '',
+        idNumber: '',
+        phoneNumber: '',
+        tier: 'bronze',
+        photo: null
+    });
+    const [regLoading, setRegLoading] = useState(false);
+    const [otpStep, setOtpStep] = useState('phone'); // 'phone' | 'otp' | 'verified'
+    const [verificationCode, setVerificationCode] = useState('');
+    const [showRegModal, setShowRegModal] = useState(false);
 
     const agentCode = profile?.agent_code || profile?.id; // Fallback to profile ID if no specific agent_code
     const registrationLink = `${window.location.origin}/r/${agentCode}`;
@@ -106,6 +122,77 @@ const AgentApp = () => {
     const copyLink = () => {
         navigator.clipboard.writeText(registrationLink);
         toast.success("Link copied to clipboard!");
+    };
+
+    const handleSendOtp = async () => {
+        if (!regForm.phoneNumber) return;
+        setRegLoading(true);
+        try {
+            const formattedPhone = formatKenyanPhone(regForm.phoneNumber);
+            const sendOtp = httpsCallable(functions, 'sendOtp');
+            await sendOtp({ phoneNumber: formattedPhone });
+            setOtpStep('otp');
+            toast.success("OTP sent to user.");
+        } catch (error) {
+            toast.error(error.message || "Failed to send OTP");
+        } finally {
+            setRegLoading(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!verificationCode) return;
+        setRegLoading(true);
+        try {
+            const formattedPhone = formatKenyanPhone(regForm.phoneNumber);
+            const checkOtp = httpsCallable(functions, 'checkOtp');
+            const result = await checkOtp({ phoneNumber: formattedPhone, validationCode: verificationCode });
+            if (result.data.valid) {
+                setOtpStep('verified');
+                toast.success("Phone verified successfully!");
+            }
+        } catch (error) {
+            toast.error(error.message || "Invalid OTP");
+        } finally {
+            setRegLoading(false);
+        }
+    };
+
+    const handleRegister = async (e) => {
+        e.preventDefault();
+        if (otpStep !== 'verified') {
+            toast.error("Please verify the phone number first.");
+            return;
+        }
+
+        setRegLoading(true);
+        try {
+            let photoUrl = null;
+            if (regForm.photo) {
+                // Temporary ID since we don't have the user's UID yet (phone will be used)
+                const tempId = regForm.phoneNumber.replace(/\D/g, '');
+                photoUrl = await uploadProfilePhoto(tempId, regForm.photo, 'agent_captured');
+            }
+
+            const registerFunc = httpsCallable(functions, 'registerUserByAgent');
+            const result = await registerFunc({
+                ...regForm,
+                photoUrl
+            });
+
+            if (result.data.success) {
+                toast.success("Registration Successful! STK Push Sent.");
+                setShowRegModal(false);
+                setRegForm({ firstName: '', surname: '', idNumber: '', phoneNumber: '', tier: 'bronze', photo: null });
+                setOtpStep('phone');
+                setVerificationCode('');
+                fetchStats();
+            }
+        } catch (error) {
+            toast.error(error.message || "Registration failed.");
+        } finally {
+            setRegLoading(false);
+        }
     };
 
     return (
@@ -204,11 +291,19 @@ const AgentApp = () => {
                     </div>
 
                     <button
+                        onClick={() => setShowRegModal(true)}
+                        className="w-full bg-brand-primary text-white rounded-2xl py-5 font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all active:scale-95 shadow-xl shadow-brand-primary/20 mb-4"
+                    >
+                        <User className="w-5 h-5" />
+                        Register New Member
+                    </button>
+
+                    <button
                         onClick={copyLink}
                         className="w-full bg-slate-900 text-white rounded-2xl py-5 font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/10"
                     >
                         <Share2 className="w-5 h-5" />
-                        Generate Link & Share
+                        Share Invitation Link
                     </button>
                 </div>
 
@@ -253,6 +348,7 @@ const AgentApp = () => {
                     </div>
                 </div>
             </div>
+            {/* Withdrawal Modal */}
             {/* Withdrawal Modal */}
             {showWithdrawModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -330,6 +426,205 @@ const AgentApp = () => {
                             <p className="text-[10px] text-center text-slate-400 font-medium italic">
                                 * This will be sent as a B2C transfer to your M-Pesa number.
                             </p>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Registration Modal */}
+            {showRegModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
+                        onClick={() => !regLoading && setShowRegModal(false)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="bg-white rounded-[2.5rem] w-full max-w-2xl p-8 shadow-2xl relative z-10 max-h-[90vh] overflow-y-auto"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                                <ShieldCheck className="w-8 h-8 text-brand-primary" />
+                                New Member Enrollment
+                            </h3>
+                            <button
+                                onClick={() => setShowRegModal(false)}
+                                className="text-slate-300 hover:text-slate-900 transition-colors"
+                            >
+                                <XCircle className="w-7 h-7" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">First Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold uppercase"
+                                        placeholder="EX: JOHN"
+                                        value={regForm.firstName}
+                                        onChange={(e) => setRegForm({ ...regForm, firstName: e.target.value.toUpperCase() })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Surname / Family Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold uppercase"
+                                        placeholder="EX: DOE"
+                                        value={regForm.surname}
+                                        onChange={(e) => setRegForm({ ...regForm, surname: e.target.value.toUpperCase() })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">National ID Number</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                        placeholder="12345678"
+                                        value={regForm.idNumber}
+                                        onChange={(e) => setRegForm({ ...regForm, idNumber: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Shield Protection Tier</label>
+                                    <select
+                                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                        value={regForm.tier}
+                                        onChange={(e) => setRegForm({ ...regForm, tier: e.target.value })}
+                                    >
+                                        <option value="bronze">Bronze (KSh 50/day)</option>
+                                        <option value="silver">Silver (KSh 147/day)</option>
+                                        <option value="gold">Gold (KSh 229/day)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Member Identity Capture</label>
+                                    <div className="relative h-48 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden hover:border-brand-primary transition-colors group">
+                                        {regForm.photo ? (
+                                            <>
+                                                <img 
+                                                    src={URL.createObjectURL(regForm.photo)} 
+                                                    alt="Captured" 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setRegForm({...regForm, photo: null})}
+                                                    className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur rounded-full text-red-500 hover:bg-white transition-all shadow-sm"
+                                                >
+                                                    <XCircle className="w-5 h-5" />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Camera className="w-10 h-10 text-slate-300 group-hover:text-brand-primary transition-colors" />
+                                                <p className="text-[10px] font-black text-slate-400 uppercase mt-2">Tap to capture photo</p>
+                                            </>
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="user"
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                            onChange={(e) => e.target.files[0] && setRegForm({ ...regForm, photo: e.target.files[0] })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Security Verification</label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <input
+                                                type="tel"
+                                                className="w-full bg-slate-50 border-none rounded-2xl pl-10 pr-4 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold disabled:opacity-50"
+                                                placeholder="07XX XXX XXX"
+                                                value={regForm.phoneNumber}
+                                                onChange={(e) => setRegForm({ ...regForm, phoneNumber: e.target.value })}
+                                                disabled={otpStep !== 'phone'}
+                                                required
+                                            />
+                                        </div>
+                                        {otpStep === 'phone' && (
+                                            <button 
+                                                type="button"
+                                                onClick={handleSendOtp}
+                                                disabled={regLoading || regForm.phoneNumber.length < 10}
+                                                className="bg-slate-900 text-white px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-primary transition-all disabled:opacity-50"
+                                            >
+                                                Verifying
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <AnimatePresence>
+                                        {otpStep === 'otp' && (
+                                            <motion.div 
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                className="space-y-3"
+                                            >
+                                                <input
+                                                    type="text"
+                                                    maxLength="6"
+                                                    className="w-full bg-emerald-50 border-emerald-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-black text-2xl tracking-[0.5em] text-center"
+                                                    placeholder="••••••"
+                                                    value={verificationCode}
+                                                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                                                />
+                                                <button 
+                                                    type="button"
+                                                    onClick={handleVerifyOtp}
+                                                    disabled={regLoading || verificationCode.length !== 6}
+                                                    className="w-full bg-brand-primary text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    {regLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Verification Code"}
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                        {otpStep === 'verified' && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className="bg-emerald-500 text-white p-4 rounded-2xl flex items-center gap-3 font-bold text-sm"
+                                            >
+                                                <CheckCircle2 className="w-5 h-5" />
+                                                Phone Identity Confirmed
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2 pt-6 border-t border-slate-50">
+                                <button
+                                    type="submit"
+                                    disabled={regLoading || otpStep !== 'verified'}
+                                    className="w-full bg-slate-900 text-white rounded-3xl py-6 font-black text-lg uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-brand-primary transition-all active:scale-95 shadow-2xl shadow-slate-900/20 disabled:opacity-50"
+                                >
+                                    {regLoading ? (
+                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                    ) : (
+                                        <>Finalize Registration & Trigger Payment <ArrowUpRight className="w-6 h-6" /></>
+                                    )}
+                                </button>
+                                <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest mt-4">
+                                    Total Collection: KSh {regForm.tier === 'bronze' ? 150 : regForm.tier === 'silver' ? 247 : 329} (Reg + 1st Daily)
+                                </p>
+                            </div>
                         </form>
                     </motion.div>
                 </div>

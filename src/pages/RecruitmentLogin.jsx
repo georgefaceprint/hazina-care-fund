@@ -25,9 +25,9 @@ const RecruitmentLogin = () => {
     useEffect(() => {
         // If user is already authenticated and has a professional role, redirect appropriately
         if (user && profile && !authLoading) {
-            if (profile.role === 'super_master') navigate('/super');
-            else if (profile.role === 'master_agent') navigate('/master');
-            else if (profile.role === 'agent') navigate('/agent');
+            if (profile.role === 'super_master') navigate('/smagent/dashboard');
+            else if (profile.role === 'master_agent') navigate('/magent/dashboard');
+            else if (profile.role === 'agent') navigate('/agent/dashboard');
             else navigate('/dashboard'); // Fallback for guardians
         }
     }, [user, profile, authLoading, navigate]);
@@ -91,9 +91,9 @@ const RecruitmentLogin = () => {
                 const userData = userSnap.data();
                 if (['super_master', 'master_agent', 'agent'].includes(userData.role)) {
                     toast.success(`Access Authorized: ${userData.fullName}`);
-                    if (userData.role === 'super_master') navigate('/super');
-                    else if (userData.role === 'master_agent') navigate('/master');
-                    else navigate('/agent');
+                    if (userData.role === 'super_master') navigate('/smagent/dashboard');
+                    else if (userData.role === 'master_agent') navigate('/magent/dashboard');
+                    else navigate('/agent/dashboard');
                 } else {
                     toast.info("Identification success. Redirecting to Guardian Hub.");
                     navigate('/dashboard');

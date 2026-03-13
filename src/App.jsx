@@ -41,9 +41,9 @@ const RoleBasedRedirect = () => {
   if (!profile) return <Navigate to="/login" replace />;
 
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
-  if (profile.role === 'super_master') return <Navigate to="/super" replace />;
-  if (profile.role === 'master_agent') return <Navigate to="/master" replace />;
-  if (profile.role === 'agent') return <Navigate to="/agent" replace />;
+  if (profile.role === 'super_master') return <Navigate to="/smagent/dashboard" replace />;
+  if (profile.role === 'master_agent') return <Navigate to="/magent/dashboard" replace />;
+  if (profile.role === 'agent') return <Navigate to="/agent/dashboard" replace />;
 
   return <Navigate to="/dashboard" replace />;
 };
@@ -64,7 +64,7 @@ const RoleProtectedRoute = ({ children, requireAdmin = false, requireAgent = fal
 
   if (!user) {
     if (requireAdmin) return <Navigate to="/admin/login" replace />;
-    if (isProfessionalPath) return <Navigate to="/hq/login" replace />;
+    if (isProfessionalPath) return <Navigate to="/agent" replace />;
     return <Navigate to="/login" replace />;
   }
 
@@ -137,7 +137,9 @@ const App = () => {
                   <Routes>
                     <Route path="/" element={<RoleProtectedRoute><RoleBasedRedirect /></RoleProtectedRoute>} />
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/hq/login" element={<RecruitmentLogin />} />
+                    <Route path="/agent" element={<RecruitmentLogin />} />
+                    <Route path="/smagent" element={<RecruitmentLogin />} />
+                    <Route path="/magent" element={<RecruitmentLogin />} />
                     <Route path="/r/:agentCode" element={<ShortRedirect />} />
                     <Route path="/admin/login" element={<AdminLogin />} />
   
@@ -171,17 +173,17 @@ const App = () => {
                         <RecruitmentLayout />
                       </RoleProtectedRoute>
                     }>
-                      <Route path="/agent" element={
+                      <Route path="/agent/dashboard" element={
                         <RoleProtectedRoute requireAgent={true}>
                           <AgentApp />
                         </RoleProtectedRoute>
                       } />
-                      <Route path="/master" element={
+                      <Route path="/magent/dashboard" element={
                         <RoleProtectedRoute requireMaster={true}>
                           <MasterDashboard />
                         </RoleProtectedRoute>
                       } />
-                      <Route path="/super" element={
+                      <Route path="/smagent/dashboard" element={
                         <RoleProtectedRoute requireSuper={true}>
                           <SuperMasterDashboard />
                         </RoleProtectedRoute>

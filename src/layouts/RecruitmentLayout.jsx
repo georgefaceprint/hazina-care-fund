@@ -28,7 +28,7 @@ const RecruitmentLayout = () => {
     const menuItems = [
         {
             name: 'Dashboard',
-            path: isSuperMaster ? '/super' : isMasterAgent ? '/master' : '/agent',
+            path: isSuperMaster ? '/smagent/dashboard' : isMasterAgent ? '/magent/dashboard' : '/agent/dashboard',
             icon: LayoutDashboard
         },
         ...(isSuperMaster || isMasterAgent ? [
@@ -52,7 +52,7 @@ const RecruitmentLayout = () => {
 
     const handleLogout = async () => {
         await logout();
-        navigate('/hq/login');
+        navigate('/agent');
     };
 
     return (
@@ -150,7 +150,7 @@ const RecruitmentLayout = () => {
                                 <button
                                     onClick={() => {
                                         stopImpersonating();
-                                        navigate(realProfile?.role === 'super_master' ? '/super' : '/master');
+                                        navigate(realProfile?.role === 'super_master' ? '/smagent/dashboard' : '/magent/dashboard');
                                     }}
                                     className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 border border-white/10"
                                 >

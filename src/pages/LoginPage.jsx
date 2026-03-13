@@ -37,9 +37,9 @@ const LoginPage = () => {
         if (user && profile && !authLoading) {
             const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(profile.role);
             if (isRecruiter) {
-                if (profile.role === 'super_master') navigate('/super');
-                else if (profile.role === 'master_agent') navigate('/master');
-                else navigate('/agent');
+                if (profile.role === 'super_master') navigate('/smagent/dashboard');
+                else if (profile.role === 'master_agent') navigate('/magent/dashboard');
+                else if (profile.role === 'agent') navigate('/agent/dashboard');
             } else if (!profile.profile_completed) {
                 navigate('/complete-profile');
             } else {
@@ -94,9 +94,9 @@ const LoginPage = () => {
 
             const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(userData.role);
             if (isRecruiter) {
-                if (userData.role === 'super_master') navigate('/super');
-                else if (userData.role === 'master_agent') navigate('/master');
-                else navigate('/agent');
+                if (userData.role === 'super_master') navigate('/smagent/dashboard');
+                else if (userData.role === 'master_agent') navigate('/magent/dashboard');
+                else navigate('/agent/dashboard');
             } else if (!userData.profile_completed) {
                 navigate('/complete-profile');
             } else {
@@ -484,7 +484,7 @@ const LoginPage = () => {
 
                 <div className="pt-8 border-t border-slate-100 text-center space-y-4">
                     <button
-                        onClick={() => navigate('/hq/login')}
+                        onClick={() => navigate('/agent')}
                         className="text-[10px] font-black uppercase text-slate-400 hover:text-brand-primary tracking-widest transition-colors block w-full"
                     >
                         Management & Recruitment Portal

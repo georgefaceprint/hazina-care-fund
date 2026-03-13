@@ -26,9 +26,9 @@ const Dashboard = () => {
 
     useEffect(() => {
         if (profile) {
-            if (isSuperMaster) navigate('/super');
-            else if (isMasterAgent) navigate('/master');
-            else if (isAgent) navigate('/agent');
+            if (isSuperMaster) navigate('/smagent/dashboard');
+            else if (isMasterAgent) navigate('/magent/dashboard');
+            else if (isAgent) navigate('/agent/dashboard');
             else if (profile.role === 'guardian' && !profile.registration_fee_paid && !isDemoMode) {
                 navigate('/pay-registration');
             }

@@ -1331,7 +1331,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
                             <div className="flex justify-between items-center px-2">
                                 <h3 className="text-xl font-black text-slate-900">Master Networks</h3>
                                 <button
-                                    onClick={() => navigate('/super')}
+                                    onClick={() => navigate('/smagent/dashboard')}
                                     className="text-xs font-black text-brand-primary uppercase tracking-widest flex items-center gap-1 hover:underline"
                                 >
                                     Go to Super Portal <ArrowLeft className="w-3 h-3 rotate-180" />
