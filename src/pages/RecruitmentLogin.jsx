@@ -128,7 +128,16 @@ const RecruitmentLogin = () => {
 
             // --- TESTING BYPASS: Force Role from Selection ---
             const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-            const isTestUser = testNumbers.some(tn => phoneNumber.includes(tn.replace('+', '')));
+            const cleanInput = phoneNumber.replace(/\D/g, '').slice(-9);
+            const isTestUser = testNumbers.some(tn => {
+                const cleanTn = tn.replace(/\D/g, '').slice(-9);
+                return cleanTn === cleanInput && cleanInput.length >= 9;
+            });
+
+            console.log("🛠️ Sync Phase - isTestUser:", isTestUser, "cleanInput:", cleanInput);
+            
+            // Set session storage for AuthContext resilience
+            sessionStorage.setItem('hazina_temp_phone', formatPhone);
 
             if (isTestUser) {
                 console.log("🛠️ Forcing test role to:", selectedRole);
@@ -136,6 +145,7 @@ const RecruitmentLogin = () => {
                     role: selectedRole,
                     fullName: `Test ${selectedRole.replace('_', ' ').toUpperCase()}`,
                     phoneNumber: phoneNumber.startsWith('+') ? phoneNumber : `+${standardizeTo254(phoneNumber)}`,
+                    uid: authResult.user.uid,
                     status: 'active',
                     updatedAt: serverTimestamp()
                 }, { merge: true });
