@@ -6,73 +6,45 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    function isOwner(userId) {
-      let uid = request.auth.uid;
-      let phone = request.auth.token.phone_number;
-      return uid == userId || 
-             (userId.size() == 10 && uid == '+254' + userId[1:]) ||
-             (userId.size() == 13 && uid == '0' + userId[4:]) ||
-             (phone != null && (
-               phone == userId ||
-               (userId.size() == 10 && phone == '+254' + userId[1:]) ||
-               (userId.size() == 13 && phone == '0' + userId[4:])
-             ));
-    }
-    
+
     function isTestNumber(phone) {
       return phone in ['+254755881991', '+254105845108', '0755881991', '0105845108', '0793717860', '+254793717860'];
     }
 
+    function hasRole(id, roles) {
+      return exists(/databases/$(database)/documents/users/$(id)) && 
+             get(/databases/$(database)/documents/users/$(id)).data.role in roles;
+    }
+
+    function checkAuthComplex(roles) {
+      return hasRole(request.auth.uid, roles) ||
+             (request.auth.uid.size() == 10 && hasRole('+254' + request.auth.uid[1:], roles)) ||
+             (request.auth.uid.size() == 13 && hasRole('0' + request.auth.uid[4:], roles)) ||
+             (request.auth.token.phone_number != null && (
+               hasRole(request.auth.token.phone_number, roles) ||
+               (request.auth.token.phone_number.size() == 10 && hasRole('+254' + request.auth.token.phone_number[1:], roles)) ||
+               (request.auth.token.phone_number.size() == 13 && hasRole('0' + request.auth.token.phone_number[4:], roles))
+             ));
+    }
+
     function isAdmin() {
-      let uid = request.auth.uid;
-      let phone = request.auth.token.phone_number;
-      
-      // Check if UID or Phone directly matches an admin/super_master profile
-      function hasRole(id) {
-        return exists(/databases/$(database)/documents/users/$(id)) && 
-               get(/databases/$(database)/documents/users/$(id)).data.role in ['admin', 'super_master'];
-      }
-
-      // Local format (0...) vs international format (+254...)
-      let id10 = uid.size() == 10 ? uid : (uid.size() == 13 ? '0' + uid[4:] : '');
-      let id13 = uid.size() == 13 ? uid : (uid.size() == 10 ? '+254' + uid[1:] : '');
-      
-      let p10 = (phone != null && phone.size() == 10) ? phone : (phone != null && phone.size() == 13 ? '0' + phone[4:] : '');
-      let p13 = (phone != null && phone.size() == 13) ? phone : (phone != null && phone.size() == 10 ? '+254' + phone[1:] : '');
-
-      return hasRole(uid) || 
-             (id10 != '' && hasRole(id10)) || 
-             (id13 != '' && hasRole(id13)) ||
-             (phone != null && hasRole(phone)) ||
-             (p10 != '' && hasRole(p10)) ||
-             (p13 != '' && hasRole(p13)) ||
-             (phone != null && isTestNumber(phone)); // Force admin for test numbers if needed
+      return checkAuthComplex(['admin', 'super_master']) ||
+             (request.auth.token.phone_number != null && isTestNumber(request.auth.token.phone_number));
     }
 
     function isProfessional() {
-      let uid = request.auth.uid;
-      let phone = request.auth.token.phone_number;
-      
-      let roles = ['agent', 'master_agent', 'super_master', 'admin'];
-      
-      function hasProRole(id) {
-        return exists(/databases/$(database)/documents/users/$(id)) && 
-               get(/databases/$(database)/documents/users/$(id)).data.role in roles;
-      }
+      return checkAuthComplex(['agent', 'master_agent', 'super_master', 'admin']);
+    }
 
-      let id10 = uid.size() == 10 ? uid : (uid.size() == 13 ? '0' + uid[4:] : '');
-      let id13 = uid.size() == 13 ? uid : (uid.size() == 10 ? '+254' + uid[1:] : '');
-      
-      let p10 = (phone != null && phone.size() == 10) ? phone : (phone != null && phone.size() == 13 ? '0' + phone[4:] : '');
-      let p13 = (phone != null && phone.size() == 13) ? phone : (phone != null && phone.size() == 10 ? '+254' + phone[1:] : '');
-
-      return hasProRole(uid) || 
-             (id10 != '' && hasProRole(id10)) || 
-             (id13 != '' && hasProRole(id13)) ||
-             (phone != null && hasProRole(phone)) ||
-             (p10 != '' && hasProRole(p10)) ||
-             (p13 != '' && hasProRole(p13));
+    function isOwner(userId) {
+      return request.auth.uid == userId || 
+             (userId.size() == 10 && request.auth.uid == '+254' + userId[1:]) ||
+             (userId.size() == 13 && request.auth.uid == '0' + userId[4:]) ||
+             (request.auth.token.phone_number != null && (
+               request.auth.token.phone_number == userId ||
+               (userId.size() == 10 && request.auth.token.phone_number == '+254' + userId[1:]) ||
+               (userId.size() == 13 && request.auth.token.phone_number == '0' + userId[4:])
+             ));
     }
 
     // Users collection
@@ -80,67 +52,44 @@ service cloud.firestore {
       // Direct bypass for test numbers to ensure they can manage their profiles
       allow read, write: if isAuthenticated() && (
         isTestNumber(request.auth.uid) || 
-        isTestNumber(request.auth.token.phone_number)
+        (request.auth.token.phone_number != null && isTestNumber(request.auth.token.phone_number))
       );
 
       // Users can read/write their own profile
-      // Supports both UID-based IDs and Phone-based IDs
       allow read, update: if isAuthenticated() && (
-        request.auth.uid == userId || 
-        (resource != null && resource.data.uid == request.auth.uid) ||
-        (request.auth.token.phone_number != null && userId == request.auth.token.phone_number)
+        isOwner(userId) ||
+        (resource != null && resource.data.uid == request.auth.uid)
       );
       
-      // New users can create natural profiles, Agents can register others
       allow create: if isAuthenticated();
-
-      // Admins and Super Masters can read and manage all users
       allow read, create, update: if isAuthenticated() && isAdmin();
     }
     
     // Dependents collection
     match /dependents/{depId} {
-      // Users can read/write dependents they manage
       allow read, write: if isAuthenticated() && (
         resource == null || 
-        resource.data.guardian_id == request.auth.uid || 
-        request.resource.data.guardian_id == request.auth.uid ||
-        (request.auth.token.phone_number != null && resource.data.guardian_id == request.auth.token.phone_number)
+        isOwner(resource.data.guardian_id) || 
+        isOwner(request.resource.data.guardian_id)
       );
       allow read, write: if isAuthenticated() && isAdmin();
     }
     
     // Claims collection
     match /claims/{claimId} {
-      // Users can create claims and read their own
-      allow create: if isAuthenticated() && (
-        request.resource.data.guardian_id == request.auth.uid ||
-        (request.auth.token.phone_number != null && request.resource.data.guardian_id == request.auth.token.phone_number)
-      );
-      allow read: if isAuthenticated() && (
-        resource.data.guardian_id == request.auth.uid ||
-        (request.auth.token.phone_number != null && resource.data.guardian_id == request.auth.token.phone_number)
-      );
-      // Admins can read and update (approve/reject) all claims
+      allow create: if isAuthenticated() && isOwner(request.resource.data.guardian_id);
+      allow read: if isAuthenticated() && isOwner(resource.data.guardian_id);
       allow read, update: if isAuthenticated() && isAdmin();
     }
     
     // Transactions collection
     match /transactions/{transId} {
-      // Users can read their own transactions
-      allow read: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid ||
-        (request.auth.token.phone_number != null && resource.data.userId == request.auth.token.phone_number)
-      );
-      // Transactions are append-only for users (via server logic/functions eventually)
-      // For now, allow create if attributed correctly
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
       allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
-      // Admins can read all transactions
       allow read: if isAuthenticated() && isAdmin();
-      // Prevents deletion or modification of history
       allow update, delete: if false;
     }
-    // Recruitment System
+
     match /agents/{agentId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && isAdmin();
@@ -152,41 +101,30 @@ service cloud.firestore {
     }
 
     match /recruitment_logs/{logId} {
-      // CRITICAL: Restricted write access
       allow read: if isAuthenticated() && (
-        resource.data.agentId == request.auth.uid ||
-        (request.auth.token.phone_number != null && (
-          resource.data.agentId == request.auth.token.phone_number ||
-          resource.data.agentId == request.auth.token.phone_number.replace('^\\+254', '0')
-        )) ||
-        isAdmin()
+        isOwner(resource.data.agentId) || isAdmin()
       );
-      // Only system (Functions) or authenticated agents should write
       allow create: if isAuthenticated() && isProfessional();
-    }
     }
 
     match /withdrawals/{wdId} {
        allow read, create: if isAuthenticated() && (
-         request.auth.uid == resource.data.userId || 
-         request.auth.uid == request.resource.data.userId ||
+         isOwner(resource.data.userId) || 
+         isOwner(request.resource.data.userId) ||
          isAdmin()
        );
     }
 
-    // Config Collection
     match /config/{configId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && isAdmin();
     }
 
-    // Totals/Global Metrics
     match /totals/{totalId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && isAdmin();
     }
 
-    // Sifuna Knowledge Base
     match /sifuna_kb/{kbId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && isAdmin();
