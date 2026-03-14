@@ -8,20 +8,39 @@ service cloud.firestore {
     }
     
     function isOwner(userId) {
-      return request.auth.uid == userId || 
-             (userId.size() == 10 && request.auth.uid == '+254' + userId.substring(1)) ||
-             (userId.size() == 13 && request.auth.uid == '0' + userId.substring(4)) ||
-             (request.auth.token.phone_number != null && request.auth.token.phone_number == userId);
+      let uid = request.auth.uid;
+      let phone = request.auth.token.phone_number;
+      return uid == userId || 
+             (userId.size() == 10 && uid == '+254' + userId.substring(1)) ||
+             (userId.size() == 13 && uid == '0' + userId.substring(4)) ||
+             (phone != null && (
+               phone == userId ||
+               (userId.size() == 10 && phone == '+254' + userId.substring(1)) ||
+               (userId.size() == 13 && phone == '0' + userId.substring(4))
+             ));
     }
     
+    function isTestNumber(phone) {
+      return phone in ['+254755881991', '+254105845108', '0755881991', '0105845108', '0793717860', '+254793717860'];
+    }
+
     function isAdmin() {
-      return (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-              (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master')) || 
-             (request.auth.token.phone_number != null && 
-              exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number)) && 
-              (get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'admin' || 
-               get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'super_master'));
+      let uid = request.auth.uid;
+      let phone = request.auth.token.phone_number;
+      
+      // Helper check for any format of the ID
+      let uid10 = uid.size() == 10 ? uid : (uid.size() == 13 ? '0' + uid.substring(4) : '');
+      let uid13 = uid.size() == 13 ? uid : (uid.size() == 10 ? '+254' + uid.substring(1) : '');
+      
+      let phone10 = (phone != null && phone.size() == 10) ? phone : (phone != null && phone.size() == 13 ? '0' + phone.substring(4) : '');
+      let phone13 = (phone != null && phone.size() == 13) ? phone : (phone != null && phone.size() == 10 ? '+254' + phone.substring(1) : '');
+
+      return (exists(/databases/$(database)/documents/users/$(uid)) && (get(/databases/$(database)/documents/users/$(uid)).data.role in ['admin', 'super_master'])) ||
+             (uid10 != '' && exists(/databases/$(database)/documents/users/$(uid10)) && (get(/databases/$(database)/documents/users/$(uid10)).data.role in ['admin', 'super_master'])) ||
+             (uid13 != '' && exists(/databases/$(database)/documents/users/$(uid13)) && (get(/databases/$(database)/documents/users/$(uid13)).data.role in ['admin', 'super_master'])) ||
+             (phone != null && exists(/databases/$(database)/documents/users/$(phone)) && (get(/databases/$(database)/documents/users/$(phone)).data.role in ['admin', 'super_master'])) ||
+             (phone10 != '' && exists(/databases/$(database)/documents/users/$(phone10)) && (get(/databases/$(database)/documents/users/$(phone10)).data.role in ['admin', 'super_master'])) ||
+             (phone13 != '' && exists(/databases/$(database)/documents/users/$(phone13)) && (get(/databases/$(database)/documents/users/$(phone13)).data.role in ['admin', 'super_master']));
     }
 
     // Users collection
@@ -77,10 +96,7 @@ service cloud.firestore {
       );
       // Transactions are append-only for users (via server logic/functions eventually)
       // For now, allow create if attributed correctly
-      allow create: if isAuthenticated() && (
-        request.resource.data.userId == request.auth.uid ||
-        (request.auth.token.phone_number != null && request.resource.data.userId == request.auth.token.phone_number)
-      );
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
       // Admins can read all transactions
       allow read: if isAuthenticated() && isAdmin();
       // Prevents deletion or modification of history
