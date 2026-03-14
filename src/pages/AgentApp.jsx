@@ -104,8 +104,8 @@ const AgentApp = () => {
 
     const handleWithdraw = async (e) => {
         e.preventDefault();
-        if (!withdrawAmount || Number(withdrawAmount) < 50) {
-            toast.error("Minimum withdrawal is KSh 50");
+        if (!withdrawAmount || Number(withdrawAmount) < 2500) {
+            toast.error("Minimum withdrawal is KSh 2,500");
             return;
         }
 
