@@ -1287,7 +1287,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         let ResolvedAgentId = agentCode; // Default to what was passed
         
         // 1. Try to find agent in 'users' collection
-        const intlCode = agentCode.startsWith('+') ? agentCode : `+${standardizeTo254(agentCode)}`;
+        const intlCode = agentCode.startsWith('+') ? agentCode : formatTo254(agentCode);
         const localCode = formatToLocal(agentCode);
         
         let userDoc = await db.collection("users").doc(agentCode).get();
@@ -1468,7 +1468,7 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
         throw new HttpsError('invalid-argument', 'Missing matching user profile fields.');
     }
 
-    const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    const formatPhone = formatTo254(phoneNumber);
     const fullName = `${firstName.toUpperCase()} ${surname.toUpperCase()}`;
 
     try {
