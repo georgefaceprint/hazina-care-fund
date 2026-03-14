@@ -38,7 +38,10 @@ const Dashboard = () => {
 
     useEffect(() => {
         if (profile) {
-            const depQ = query(collection(db, 'dependents'), where('guardian_id', '==', profile.id));
+            const depQ = query(
+                collection(db, 'dependents'), 
+                where('guardian_id', 'in', [profile.id, profile.phoneNumber, profile.uid].filter(Boolean))
+            );
             const unsubDeps = onSnapshot(depQ, (depSnap) => {
                 setDependents(depSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 if (loading) setLoading(false);

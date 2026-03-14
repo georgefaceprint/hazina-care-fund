@@ -737,13 +737,23 @@ exports.ussd = onRequest(async (req, res) => {
         const { sessionId, serviceCode, phoneNumber, text } = req.body;
 
         // Format phone to match our DB (+254...)
-        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        const intlPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        const localPhone = formatToLocal(phoneNumber);
 
-        // Get user profile
-        const usersSnap = await db.collection("users").where("phoneNumber", "==", formattedPhone).limit(1).get();
-        const userExists = !usersSnap.empty;
-        let profile = userExists ? usersSnap.docs[0].data() : null;
-        let userId = userExists ? usersSnap.docs[0].id : null;
+        // Get user profile - Try international doc ID, then phone field, then local doc ID
+        let userDoc = await db.collection("users").doc(intlPhone).get();
+        if (!userDoc.exists) {
+            const snap = await db.collection("users").where("phoneNumber", "in", [intlPhone, localPhone]).limit(1).get();
+            if (!snap.empty) {
+                userDoc = snap.docs[0];
+            } else {
+                userDoc = await db.collection("users").doc(localPhone).get();
+            }
+        }
+
+        const userExists = userDoc.exists;
+        let profile = userExists ? userDoc.data() : null;
+        let userId = userExists ? userDoc.id : null;
 
         let response = "";
 
@@ -1252,14 +1262,18 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         let agentData = {};
         let ResolvedAgentId = agentCode; // Default to what was passed
         
-        // 1. Try to find agent in 'users' collection (doc ID could be phone or UID)
-        const userDoc = await db.collection("users").doc(agentCode).get();
+        // 1. Try to find agent in 'users' collection
+        const intlCode = agentCode.startsWith('+') ? agentCode : `+${standardizeTo254(agentCode)}`;
+        const localCode = formatToLocal(agentCode);
+        
+        let userDoc = await db.collection("users").doc(agentCode).get();
+        if (!userDoc.exists && agentCode !== intlCode) userDoc = await db.collection("users").doc(intlCode).get();
+        if (!userDoc.exists && agentCode !== localCode) userDoc = await db.collection("users").doc(localCode).get();
+
         if (userDoc.exists) {
             agentData = userDoc.data();
-            // If we found a user with an agent_code, use that as the primary ID for the log
             if (agentData.agent_code) ResolvedAgentId = agentData.agent_code;
         } else {
-            // Fallback: Query by agent_code field if agentCode is a code but doc ID is phone
             const agentByCode = await db.collection("users").where("agent_code", "==", agentCode).limit(1).get();
             if (!agentByCode.empty) {
                 agentData = agentByCode.docs[0].data();
@@ -1392,9 +1406,9 @@ exports.initiateAgentWithdrawal = onCall({ cors: true }, async (request) => {
                 walletBalance: admin.firestore.FieldValue.increment(-amount)
             });
 
-            await db.collection("recruitment_logs").add({
+            await db.collection("withdrawals").add({
+                userId: uid,
                 agentId: agentCode,
-                type: 'withdrawal',
                 amount: amount,
                 phoneNumber: formatPhone,
                 status: 'processing',
