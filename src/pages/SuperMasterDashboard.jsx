@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { formatKenyanPhone } from '../utils/phoneUtils';
+import { formatKenyanPhone, stripPlus } from '../utils/phoneUtils';
 import { db } from '../services/firebase';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Shield, Activity, Plus, TrendingUp, Map, Edit2, Trash2 } from 'lucide-react';
@@ -249,7 +249,7 @@ const SuperMasterDashboard = () => {
                                     </div>
                                 </div>
                                 <h4 className="font-bold text-slate-900 text-lg mb-1">{master.fullName}</h4>
-                                <p className="text-xs text-slate-400 mb-4">{master.phoneNumber}</p>
+                                <p className="text-xs text-slate-400 mb-4">{formatKenyanPhone(master.phoneNumber)}</p>
 
                                 <div className="flex flex-wrap gap-2">
                                     {master.regions?.map((region, idx) => (

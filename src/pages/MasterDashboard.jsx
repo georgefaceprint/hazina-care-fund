@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { formatKenyanPhone } from '../utils/phoneUtils';
+import { formatKenyanPhone, stripPlus } from '../utils/phoneUtils';
 import { db } from '../services/firebase';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, orderBy, Timestamp, limit, serverTimestamp } from 'firebase/firestore';
 import { Users, UserPlus, MapPin, Search, Filter, TrendingUp, DollarSign, ChevronRight, MoreVertical, Activity, Briefcase, Edit2, Trash2 } from 'lucide-react';
@@ -268,7 +268,7 @@ const MasterDashboard = () => {
                                     <div className="min-w-0">
                                         <h4 className="font-bold text-slate-900 truncate">{agent.fullName}</h4>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[10px] font-black text-brand-primary uppercase tracking-tighter bg-brand-50 px-1.5 py-0.5 rounded-md">{agent.agentCode}</span>
+                                            <span className="text-[10px] font-black text-brand-primary uppercase tracking-tighter bg-brand-50 px-1.5 py-0.5 rounded-md">{stripPlus(agent.agentCode)}</span>
                                         </div>
                                     </div>
                                 </div>

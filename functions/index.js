@@ -48,17 +48,13 @@ const fetchUserDoc = async (uid, auth = null) => {
  */
 const formatTo254 = (phoneNumber) => {
     if (!phoneNumber) return "";
-    const cleaned = phoneNumber.replace(/\D/g, '');
+    let cleaned = phoneNumber.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
-        return `254${cleaned.substring(1)}`;
+        cleaned = `254${cleaned.substring(1)}`;
+    } else if (cleaned.length === 9) {
+        cleaned = `254${cleaned}`;
     }
-    if (cleaned.startsWith('254')) {
-        return cleaned;
-    }
-    if (cleaned.length === 9) {
-        return `254${cleaned}`;
-    }
-    return cleaned;
+    return `+${cleaned}`;
 };
 
 const formatToLocal = (phoneNumber) => {
@@ -914,14 +910,12 @@ const africastalking = require('africastalking')({
 exports.sendOtp = onCall({ cors: true }, async (request) => {
     try {
         const { phoneNumber } = request.data;
-        console.log("SEND_OTP_CALLED for:", phoneNumber);
+        const formatPhone = formatTo254(phoneNumber);
+        console.log("SEND_OTP_CALLED for:", phoneNumber, "Standardized to:", formatPhone);
 
-        if (!phoneNumber) {
-            throw new HttpsError('invalid-argument', 'Phone number is required.');
+        if (!formatPhone) {
+            throw new HttpsError('invalid-argument', 'Valid phone number is required.');
         }
-
-        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
-        console.log("Formatted Phone:", formatPhone);
 
         // 1. Check security policy (Mandatory TOTP List)
         const securitySnap = await db.collection('config').doc('security').get();
@@ -990,13 +984,13 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
 exports.verifyOtp = onCall({ cors: true }, async (request) => {
     try {
         const { phoneNumber, validationCode } = request.data;
-        console.log("VERIFY_OTP_CALLED for:", phoneNumber, "with code:", validationCode);
+        const formatPhone = formatTo254(phoneNumber);
+        console.log("SEND_OTP_CALLED for:", phoneNumber, "Standardized to:", formatPhone, "with code:", validationCode);
 
         if (!phoneNumber || !validationCode) {
             throw new HttpsError('invalid-argument', 'Phone number and code are required.');
         }
 
-        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
         let shouldProduceToken = false;
 
         // --- TESTING BYPASS ---

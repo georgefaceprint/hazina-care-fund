@@ -106,29 +106,42 @@ const RecruitmentLogin = () => {
             const { token } = result.data;
             const authResult = await signInWithCustomToken(auth, token);
             
-            // Check role immediately for redirection
-            const userRef = doc(db, 'users', formatPhone);
+            // Check role immediately for redirection - Try both formats
+            const localPhone = formatKenyanPhone(phoneNumber);
+            const intlPhone = `+${standardizeTo254(phoneNumber)}`;
+            
+            let userSnap = await getDoc(doc(db, 'users', localPhone));
+            let finalUserRef = doc(db, 'users', localPhone);
+
+            if (!userSnap.exists()) {
+                console.log("🔍 Local profile not found, trying international format:", intlPhone);
+                const intlSnap = await getDoc(doc(db, 'users', intlPhone));
+                if (intlSnap.exists()) {
+                    userSnap = intlSnap;
+                    finalUserRef = doc(db, 'users', intlPhone);
+                }
+            }
 
             // --- TESTING BYPASS: Force Role from Selection ---
             const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-            const isTestUser = testNumbers.some(tn => formatPhone.includes(tn));
+            const isTestUser = testNumbers.some(tn => phoneNumber.includes(tn.replace('+', '')));
 
             if (isTestUser) {
                 console.log("🛠️ Forcing test role to:", selectedRole);
-                await setDoc(userRef, {
+                await setDoc(finalUserRef, {
                     role: selectedRole,
                     fullName: `Test ${selectedRole.replace('_', ' ').toUpperCase()}`,
-                    phoneNumber: formatPhone,
+                    phoneNumber: phoneNumber.startsWith('+') ? phoneNumber : `+${standardizeTo254(phoneNumber)}`,
                     status: 'active',
                     updatedAt: serverTimestamp()
                 }, { merge: true });
+                userSnap = await getDoc(finalUserRef);
             }
             // -----------------------------------------------
 
-            const userSnap = await getDoc(userRef);
-
             if (userSnap.exists()) {
                 const userData = userSnap.data();
+                const userRef = finalUserRef;
                 // MONITOR the profile until the role is correctly propagated
                 const unsub = onSnapshot(userRef, (snap) => {
                     if (snap.exists()) {
