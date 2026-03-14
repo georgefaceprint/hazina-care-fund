@@ -1110,7 +1110,7 @@ exports.checkOtp = onCall({ cors: true }, async (request) => {
             throw new HttpsError('invalid-argument', 'Phone number and code are required.');
         }
 
-        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        const formatPhone = formatTo254(phoneNumber);
         
         const docRef = db.collection('otp_codes').doc(formatPhone);
         const docSnap = await docRef.get();
@@ -1147,7 +1147,7 @@ exports.checkUserExists = onCall({ cors: true }, async (request) => {
     try {
         const { phoneNumber } = request.data;
         if (!phoneNumber) throw new HttpsError('invalid-argument', 'Phone number is required.');
-        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        const formatPhone = formatTo254(phoneNumber);
 
         const userSnap = await db.collection('users').doc(formatPhone).get();
         if (!userSnap.exists) {

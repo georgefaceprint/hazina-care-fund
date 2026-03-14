@@ -29,6 +29,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return checkAuthComplex(['admin', 'super_master']) ||
+             isTestNumber(request.auth.uid) ||
              (request.auth.token.phone_number != null && isTestNumber(request.auth.token.phone_number));
     }
 
