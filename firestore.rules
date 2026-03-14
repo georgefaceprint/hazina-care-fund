@@ -85,18 +85,22 @@ service cloud.firestore {
 
     match /recruitment_logs/{logId} {
       allow read: if isAuthenticated() && (
-        isAdmin() || 
-        // 1. Direct Agent Check (Checking if current user is the agent)
+        // Allow if agentId matches user's agent_code OR phone OR UID
+        resource.data.agentId == request.auth.uid ||
+        resource.data.agentId == request.auth.token.phone_number ||
+        (request.auth.token.phone_number != null && resource.data.agentId == request.auth.token.phone_number.replace('^\\+254', '0')) ||
+        (request.auth.token.phone_number != null && resource.data.agentId == request.auth.token.phone_number.replace('^0', '+254')) ||
         resource.data.agentId == (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agent_code :
           (request.auth.token.phone_number != null && exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number))) ?
           get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.agent_code : null
         ) ||
-        // 2. Master Agent Check
+        // Check if masterAgentId matches the user's ID or phone
         resource.data.masterAgentId == request.auth.uid ||
         resource.data.masterAgentId == request.auth.token.phone_number ||
-        // 3. Super Master Check
+        // Admin overrides
+        isAdmin() || 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master' ||
         (request.auth.token.phone_number != null && exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number)) && get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'super_master')
       );

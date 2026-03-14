@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { formatKenyanPhone } from '../utils/phoneUtils';
 import { db } from '../services/firebase';
@@ -11,6 +11,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 const SuperMasterDashboard = () => {
     const { profile, impersonate } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const activeTab = queryParams.get('tab') || 'overview';
     const toast = useToast();
     const [masters, setMasters] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -64,7 +67,7 @@ const SuperMasterDashboard = () => {
 
         } catch (error) {
             console.error("Error fetching global data:", error);
-            toast.error("Failed to load global metrics.");
+            toast.error("Failed to load global metrics: " + (error.message || "Unknown error"));
         } finally {
             setLoading(false);
         }
@@ -156,7 +159,8 @@ const SuperMasterDashboard = () => {
         }
     };
 
-    return (
+    // Extract the main UI into a render function to handle tabs
+    const renderOverview = () => (
         <div className="space-y-10">
             <header className="mb-10 lg:flex justify-between items-center">
                 <div>
@@ -285,6 +289,11 @@ const SuperMasterDashboard = () => {
                 </div>
             </div>
 
+        </div>
+    );
+
+    const renderModals = () => (
+        <>
             {/* Add Master Modal */}
             <AnimatePresence>
                 {showAddModal && (
@@ -434,7 +443,38 @@ const SuperMasterDashboard = () => {
                     </div>
                 )}
             </AnimatePresence>
+        </>
+    );
+
+    const renderPerformance = () => (
+        <div className="space-y-10">
+            <header className="mb-10">
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                    <TrendingUp className="w-10 h-10 text-brand-primary" />
+                    Network Performance
+                </h1>
+                <p className="text-slate-500 font-medium text-lg">Detailed analytical overview</p>
+            </header>
+
+            <div className="bg-white rounded-[3rem] p-12 text-center border border-slate-100 shadow-sm">
+                <Activity className="w-24 h-24 text-slate-200 mx-auto mb-6" />
+                <h2 className="text-2xl font-black text-slate-900 mb-2">Detailed Analytics Coming Soon</h2>
+                <p className="text-slate-500 max-w-md mx-auto">We are building out comprehensive charts and historical performance data for the entire network.</p>
+            </div>
         </div>
+    );
+
+    const renderActiveTab = () => {
+        if (activeTab === 'networks') return renderNetworks();
+        if (activeTab === 'performance') return renderPerformance();
+        return renderOverview();
+    };
+
+    return (
+        <>
+            {renderActiveTab()}
+            {renderModals()}
+        </>
     );
 };
 

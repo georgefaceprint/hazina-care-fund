@@ -25,7 +25,7 @@ const AgentApp = () => {
     const [withdrawAmount, setWithdrawAmount] = useState('');
     const [withdrawing, setWithdrawing] = useState(false);
     const [withdrawPhone, setWithdrawPhone] = useState(profile?.phoneNumber || '');
-    
+
     // Registration Form State
     const [regForm, setRegForm] = useState({
         firstName: '',
@@ -41,13 +41,23 @@ const AgentApp = () => {
     const [verificationCode, setVerificationCode] = useState('');
     const [showRegModal, setShowRegModal] = useState(false);
 
-    const agentCode = profile?.agent_code || profile?.id; // Fallback to profile ID if no specific agent_code
-    const registrationLink = `${window.location.origin}/r/${agentCode}`;
+    const agentCode = profile?.agent_code || '';
+    const agentPhone = profile?.phoneNumber || '';
+    const agentUid = profile?.id || '';
+    const basePhoneRaw = agentPhone.replace('+', '');
+    const localPhone = basePhoneRaw.startsWith('254') ? '0' + basePhoneRaw.slice(3) : agentPhone;
+    const internationalPhone = agentPhone.startsWith('0') ? '+254' + agentPhone.slice(1) : agentPhone;
+    
+    // De-duplicate and filter empty strings
+    const allAgentIds = [...new Set([agentCode, agentPhone, localPhone, internationalPhone, agentUid].filter(id => id && id.length > 0))];
+    const displayCode = agentCode || agentPhone || agentUid;
+    const registrationLink = `${window.location.origin}/r/${displayCode}`;
 
     const fetchStats = async () => {
-        if (!agentCode) return;
+        if (allAgentIds.length === 0) return;
 
         try {
+            console.log("🔍 [fetchStats] Querying logs for agent ids:", allAgentIds);
             const now = new Date();
             const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const startOfYesterday = new Date(startOfToday);
@@ -56,29 +66,27 @@ const AgentApp = () => {
             const logsRef = collection(db, 'recruitment_logs');
 
             // 1. Fetch recruitment counts from logs
-            const todayQuery = query(logsRef, where('agentId', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
-            const yesterdayQuery = query(logsRef, where('agentId', '==', agentCode), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
+            const todayQuery = query(logsRef, where('agentId', 'in', allAgentIds), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
+            const yesterdayQuery = query(logsRef, where('agentId', 'in', allAgentIds), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
 
             const [todaySnap, yesterdaySnap] = await Promise.all([getDocs(todayQuery), getDocs(yesterdayQuery)]);
 
             // 2. Fetch Recent Logs
-            const recentQuery = query(logsRef, where('agentId', '==', agentCode), orderBy('timestamp', 'desc'), limit(15));
+            const recentQuery = query(logsRef, where('agentId', 'in', allAgentIds), orderBy('timestamp', 'desc'), limit(15));
             const recentSnap = await getDocs(recentQuery);
+            console.log(`✅ [fetchStats] Found ${recentSnap.size} recent logs.`);
             setRecentLogs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
             setStats({
-                today: todaySnap.size,
-                yesterday: yesterdaySnap.size,
+                today: todaySnap.size || 0,
+                yesterday: yesterdaySnap.size || 0,
                 total: profile?.totalSignups || 0,
                 earnings: profile?.totalEarnings || 0,
                 walletBalance: profile?.walletBalance || 0
             });
         } catch (error) {
             console.error("Error fetching agent stats:", error);
-            // Only show toast if it's a real error (not just loading or empty results)
-            if (error.code !== 'permission-denied') {
-                toast.error("Failed to load some dashboard data. Please try again later.");
-            }
+            toast.error("Analytics Error: " + (error.message || "Failed to sync recruitment logs."));
         } finally {
             setLoading(false);
         }
@@ -178,7 +186,7 @@ const AgentApp = () => {
         setRegLoading(true);
         try {
             let photoUrl = null;
-            
+
             // 1. Upload Photo
             toast.info("Uploading identity capture...");
             const tempId = regForm.phoneNumber.replace(/\D/g, '');
@@ -287,11 +295,10 @@ const AgentApp = () => {
                             <button
                                 onClick={() => stats.walletBalance >= 2500 && setShowWithdrawModal(true)}
                                 disabled={stats.walletBalance < 2500}
-                                className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center gap-2 ${
-                                    stats.walletBalance >= 2500 
-                                    ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:scale-105' 
-                                    : 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
-                                }`}
+                                className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center gap-2 ${stats.walletBalance >= 2500
+                                        ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:scale-105'
+                                        : 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
+                                    }`}
                             >
                                 <ArrowUpRight className="w-4 h-4" />
                                 {stats.walletBalance >= 2500 ? 'Withdraw' : 'Locked'}
@@ -527,7 +534,7 @@ const AgentApp = () => {
 
                         {/* Progress Bar */}
                         <div className="w-full bg-slate-100 h-2 rounded-full mb-8 overflow-hidden">
-                            <motion.div 
+                            <motion.div
                                 className="h-full bg-brand-primary"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${(regStep / 4) * 100}%` }}
@@ -537,7 +544,7 @@ const AgentApp = () => {
                         <form onSubmit={handleRegister} className="space-y-8">
                             <AnimatePresence mode="wait">
                                 {regStep === 1 && (
-                                    <motion.div 
+                                    <motion.div
                                         key="step1"
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
@@ -597,7 +604,7 @@ const AgentApp = () => {
                                 )}
 
                                 {regStep === 2 && (
-                                    <motion.div 
+                                    <motion.div
                                         key="step2"
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
@@ -620,7 +627,7 @@ const AgentApp = () => {
                                                     />
                                                 </div>
                                                 {otpStep === 'phone' && (
-                                                    <button 
+                                                    <button
                                                         type="button"
                                                         onClick={handleSendOtp}
                                                         disabled={regLoading || regForm.phoneNumber.length < 10}
@@ -633,7 +640,7 @@ const AgentApp = () => {
 
                                             <AnimatePresence>
                                                 {otpStep === 'otp' && (
-                                                    <motion.div 
+                                                    <motion.div
                                                         initial={{ height: 0, opacity: 0 }}
                                                         animate={{ height: 'auto', opacity: 1 }}
                                                         className="space-y-3"
@@ -646,7 +653,7 @@ const AgentApp = () => {
                                                             value={verificationCode}
                                                             onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                                                         />
-                                                        <button 
+                                                        <button
                                                             type="button"
                                                             onClick={handleVerifyOtp}
                                                             disabled={regLoading || verificationCode.length !== 6}
@@ -657,7 +664,7 @@ const AgentApp = () => {
                                                     </motion.div>
                                                 )}
                                                 {otpStep === 'verified' && (
-                                                    <motion.div 
+                                                    <motion.div
                                                         initial={{ opacity: 0, scale: 0.9 }}
                                                         animate={{ opacity: 1, scale: 1 }}
                                                         className="bg-emerald-500 text-white p-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm"
@@ -672,7 +679,7 @@ const AgentApp = () => {
                                 )}
 
                                 {regStep === 3 && (
-                                    <motion.div 
+                                    <motion.div
                                         key="step3"
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
@@ -683,9 +690,9 @@ const AgentApp = () => {
                                         <div className="relative aspect-[3/4] max-w-[280px] mx-auto bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden hover:border-brand-primary transition-colors group shadow-inner">
                                             {regForm.photo ? (
                                                 <>
-                                                    <img 
-                                                        src={URL.createObjectURL(regForm.photo)} 
-                                                        alt="Captured" 
+                                                    <img
+                                                        src={URL.createObjectURL(regForm.photo)}
+                                                        alt="Captured"
                                                         className="w-full h-full object-cover"
                                                     />
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -698,7 +705,7 @@ const AgentApp = () => {
                                                         <Camera className="w-8 h-8 text-slate-300 group-hover:text-brand-primary transition-colors" />
                                                     </div>
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-tight leading-relaxed">
-                                                        Position ID or Face <br/> within Vertical Frame
+                                                        Position ID or Face <br /> within Vertical Frame
                                                     </p>
                                                 </div>
                                             )}
@@ -715,7 +722,7 @@ const AgentApp = () => {
                                 )}
 
                                 {regStep === 4 && (
-                                    <motion.div 
+                                    <motion.div
                                         key="step4"
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
@@ -724,7 +731,7 @@ const AgentApp = () => {
                                     >
                                         <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100">
                                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 border-b border-slate-200 pb-2">Enrollment Summary</h4>
-                                            
+
                                             <div className="grid grid-cols-2 gap-8">
                                                 <div className="space-y-4">
                                                     <div>
@@ -773,7 +780,7 @@ const AgentApp = () => {
                                         Back
                                     </button>
                                 )}
-                                
+
                                 {regStep < 4 ? (
                                     <button
                                         type="button"

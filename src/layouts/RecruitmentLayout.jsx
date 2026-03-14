@@ -34,13 +34,13 @@ const RecruitmentLayout = () => {
         ...(isSuperMaster || isMasterAgent ? [
             {
                 name: isSuperMaster ? 'Master Networks' : 'My Agents',
-                path: '#', // Placeholder for now, can be specific routes later
+                path: isSuperMaster ? '/smagent/dashboard?tab=networks' : '/magent/dashboard?tab=networks',
                 icon: Users
             }
         ] : []),
         {
             name: 'Performance',
-            path: '#',
+            path: isSuperMaster ? '/smagent/dashboard?tab=performance' : isMasterAgent ? '/magent/dashboard?tab=performance' : '/agent/dashboard?tab=performance',
             icon: TrendingUp
         },
         {

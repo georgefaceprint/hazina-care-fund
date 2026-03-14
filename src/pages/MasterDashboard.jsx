@@ -79,7 +79,7 @@ const MasterDashboard = () => {
 
         } catch (error) {
             console.error("Error fetching master data:", error);
-            toast.error("Failed to load dashboard data.");
+            toast.error("Failed to load dashboard data: " + (error.message || "Unknown error"));
         } finally {
             setLoading(false);
         }

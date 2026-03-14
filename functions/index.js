@@ -995,6 +995,9 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         // -----------------------
 
         // 1. Check security policy (Mandatory TOTP List)
+        const securitySnap = await db.collection('config').doc('security').get();
+        const forcedList = (securitySnap.exists && securitySnap.data().forced_totp_list) || [];
+        const isForced = forcedList.includes(formatPhone);
 
         // 2. Check if user has TOTP enabled
         const userSnap = await db.collection('users').doc(formatPhone).get();
@@ -1227,26 +1230,43 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
     const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
     const isTestNumber = testNumbers.some(tn => userId.includes(tn.replace('+', '')));
     
+    console.log(`[onUserCreated] Triggered for ${userId}. Recruited by: ${agentCode}. Is test: ${isTestNumber}`);
+
     if (beforeSnapshot && beforeSnapshot.exists && !isTestNumber) {
         const oldUser = beforeSnapshot.data();
-        if (oldUser.recruited_by === agentCode) return; // Already logged
+        if (oldUser.recruited_by === agentCode) {
+            console.log(`[onUserCreated] Skipping ${userId} - already logged for agent ${agentCode}`);
+            return;
+        }
     }
 
     try {
         let agentData = {};
+        let ResolvedAgentId = agentCode; // Default to what was passed
         
-        // 1. Try to find agent in 'users' collection (doc ID is phone number)
+        // 1. Try to find agent in 'users' collection (doc ID could be phone or UID)
         const userDoc = await db.collection("users").doc(agentCode).get();
         if (userDoc.exists) {
             agentData = userDoc.data();
+            // If we found a user with an agent_code, use that as the primary ID for the log
+            if (agentData.agent_code) ResolvedAgentId = agentData.agent_code;
+        } else {
+            // Fallback: Query by agent_code field if agentCode is a code but doc ID is phone
+            const agentByCode = await db.collection("users").where("agent_code", "==", agentCode).limit(1).get();
+            if (!agentByCode.empty) {
+                agentData = agentByCode.docs[0].data();
+                ResolvedAgentId = agentCode;
+            }
         }
 
-        // 2. Try to find agent in 'agents' collection (doc ID is agent code, e.g. CT107)
-        // If it's a code, it won't be in users by ID, so this is essential.
+        // 2. Try to find agent in 'agents' collection (doc ID is agent code)
         const agentEntryDoc = await db.collection("agents").doc(agentCode).get();
         if (agentEntryDoc.exists) {
             agentData = { ...agentData, ...agentEntryDoc.data() };
+            ResolvedAgentId = agentCode;
         }
+        
+        console.log(`[onUserCreated] Resolved Agent ID for log: ${ResolvedAgentId}. Master: ${agentData.masterAgentId}`);
         
         const masterAgentId = agentData.masterAgentId || null;
         const tariff = agentData.tariffRate || 15;
@@ -1256,7 +1276,8 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             userId,
             userName: newUser.fullName,
             tier: newUser.active_tier || 'bronze',
-            agentId: agentCode,
+            agentId: ResolvedAgentId,
+            originalAgentInput: agentCode,
             masterAgentId,
             tariffApplied: tariff,
             commissionEarned: tariff,
