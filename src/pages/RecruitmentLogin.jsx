@@ -108,36 +108,39 @@ const RecruitmentLogin = () => {
             console.log("✅ OTP Result:", result.data);
 
             const { token } = result.data;
+            
+            // Set session storage BEFORE sign in to prevent race condition in AuthContext
+            sessionStorage.setItem('hazina_temp_phone', formatPhone);
+            
             const authResult = await signInWithCustomToken(auth, token);
-            
-            // Check role immediately for redirection - Try both formats
-            const localPhone = formatKenyanPhone(phoneNumber);
-            const intlPhone = `+${standardizeTo254(phoneNumber)}`;
-            
-            let userSnap = await getDoc(doc(db, 'users', localPhone));
-            let finalUserRef = doc(db, 'users', localPhone);
+            console.log("🔑 Authenticated UID:", authResult.user.uid);
 
-            if (!userSnap.exists()) {
-                console.log("🔍 Local profile not found, trying international format:", intlPhone);
-                const intlSnap = await getDoc(doc(db, 'users', intlPhone));
-                if (intlSnap.exists()) {
-                    userSnap = intlSnap;
-                    finalUserRef = doc(db, 'users', intlPhone);
-                }
-            }
-
-            // --- TESTING BYPASS: Force Role from Selection ---
+            // --- TESTING BYPASS: Identify Test Number Robustly ---
             const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
             const cleanInput = phoneNumber.replace(/\D/g, '').slice(-9);
             const isTestUser = testNumbers.some(tn => {
                 const cleanTn = tn.replace(/\D/g, '').slice(-9);
                 return cleanTn === cleanInput && cleanInput.length >= 9;
             });
+            // ----------------------------------------------------
 
-            console.log("🛠️ Sync Phase - isTestUser:", isTestUser, "cleanInput:", cleanInput);
-            
-            // Set session storage for AuthContext resilience
-            sessionStorage.setItem('hazina_temp_phone', formatPhone);
+            // Standardize Profile Resolution
+            // For test users, we prioritize the authenticated UID (+254...) as the doc ID
+            // to ensure they have write permission under our rules.
+            let finalUserRef = doc(db, 'users', authResult.user.uid);
+            let userSnap = await getDoc(finalUserRef);
+
+            if (!userSnap.exists()) {
+                // Secondary check for local format (07...)
+                const localPhone = formatKenyanPhone(phoneNumber);
+                const localSnap = await getDoc(doc(db, 'users', localPhone));
+                if (localSnap.exists()) {
+                    userSnap = localSnap;
+                    finalUserRef = doc(db, 'users', localPhone);
+                }
+            }
+
+            console.log("🛠️ Sync Phase - isTestUser:", isTestUser, "cleanInput:", cleanInput, "DocID:", finalUserRef.id);
 
             if (isTestUser) {
                 console.log("🛠️ Forcing test role to:", selectedRole);

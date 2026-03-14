@@ -77,6 +77,12 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
+      // Direct bypass for test numbers to ensure they can manage their profiles
+      allow read, write: if isAuthenticated() && (
+        isTestNumber(request.auth.uid) || 
+        isTestNumber(request.auth.token.phone_number)
+      );
+
       // Users can read/write their own profile
       // Supports both UID-based IDs and Phone-based IDs
       allow read, update: if isAuthenticated() && (
