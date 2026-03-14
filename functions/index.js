@@ -1339,14 +1339,13 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
 
         // Update counts in ALL relevant places
         // A. Update Agent's total count in the 'users' collection (if found there)
-        const agentPhone = agentData.phoneNumber || (agentCode.startsWith('+') ? agentCode : null);
-        if (agentPhone) {
-            await db.collection("users").doc(agentPhone).update({
+        if (userDoc && userDoc.exists) {
+            await userDoc.ref.update({
                 totalSignups: admin.firestore.FieldValue.increment(1),
                 totalEarnings: admin.firestore.FieldValue.increment(tariff),
                 walletBalance: admin.firestore.FieldValue.increment(tariff),
                 lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
-            }).catch(() => {}); // Ignore if user doc doesn't exist
+            });
         }
 
         // B. Update 'agents' collection (doc ID is usually the agent code)

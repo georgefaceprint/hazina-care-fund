@@ -7,7 +7,7 @@ import { functions, db } from '../services/firebase';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadProfilePhoto } from '../services/storage';
-import { formatKenyanPhone } from '../utils/phoneUtils';
+import { formatKenyanPhone, standardizeTo254 } from '../utils/phoneUtils';
 
 const AgentApp = () => {
     const { profile } = useAuth();
@@ -47,7 +47,8 @@ const AgentApp = () => {
     
     // Standardize to local 0... format
     const localPhone = formatKenyanPhone(agentPhone);
-    const allAgentIds = [...new Set([agentCode, localPhone, agentUid].filter(id => id && id.length > 0))];
+    const intlPhone = `+${standardizeTo254(agentPhone)}`;
+    const allAgentIds = [...new Set([agentCode, localPhone, intlPhone, agentPhone, agentUid].filter(id => id && id.length > 0))];
     
     // Priority: Agent Code > Phone > UID (strip any lingering + or symbols)
     const displayCode = (agentCode || localPhone || agentUid).toString().replace(/[^\w]/g, '');

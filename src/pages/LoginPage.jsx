@@ -35,12 +35,7 @@ const LoginPage = () => {
 
         // If user is already authenticated and has a profile, redirect appropriately
         if (user && profile && !authLoading) {
-            const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(profile.role);
-            if (isRecruiter) {
-                if (profile.role === 'super_master') navigate('/smagent/dashboard');
-                else if (profile.role === 'master_agent') navigate('/magent/dashboard');
-                else if (profile.role === 'agent') navigate('/agent/dashboard');
-            } else if (!profile.profile_completed) {
+            if (!profile.profile_completed) {
                 navigate('/complete-profile');
             } else {
                 navigate('/dashboard');
@@ -109,12 +104,7 @@ const LoginPage = () => {
             if (!userData.referral_code) updates.referral_code = generateReferralCode(6);
             await setDoc(userRef, updates, { merge: true });
 
-            const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(userData.role);
-            if (isRecruiter) {
-                if (userData.role === 'super_master') navigate('/smagent/dashboard');
-                else if (userData.role === 'master_agent') navigate('/magent/dashboard');
-                else navigate('/agent/dashboard');
-            } else if (!userData.profile_completed) {
+            if (!userData.profile_completed) {
                 navigate('/complete-profile');
             } else {
                 navigate('/dashboard');

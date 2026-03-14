@@ -43,10 +43,7 @@ const RoleBasedRedirect = () => {
   if (!profile) return <Navigate to="/login" replace />;
 
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
-  if (profile.role === 'super_master') return <Navigate to="/smagent/dashboard" replace />;
-  if (profile.role === 'master_agent') return <Navigate to="/magent/dashboard" replace />;
-  if (profile.role === 'agent') return <Navigate to="/agent/dashboard" replace />;
-
+  // Everyone else (agents, masters, etc.) goes to the member dashboard so they can see their own shield data
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -154,7 +151,7 @@ const App = () => {
   
                     {/* Mobile App Layout - Consumer Facing (Guardians Only) */}
                     <Route element={
-                      <RoleProtectedRoute noRecruiters={true}>
+                      <RoleProtectedRoute>
                         <AppLayout />
                       </RoleProtectedRoute>
                     }>

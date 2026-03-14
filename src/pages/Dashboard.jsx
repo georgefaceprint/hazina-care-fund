@@ -27,14 +27,11 @@ const Dashboard = () => {
 
     useEffect(() => {
         if (profile) {
-            if (isSuperMaster) navigate('/smagent/dashboard');
-            else if (isMasterAgent) navigate('/magent/dashboard');
-            else if (isAgent) navigate('/agent/dashboard');
-            else if (profile.role === 'guardian' && !profile.registration_fee_paid && !isDemoMode) {
+            if (profile.role === 'guardian' && !profile.registration_fee_paid && !isDemoMode) {
                 navigate('/pay-registration');
             }
         }
-    }, [profile, loading, isSuperMaster, isMasterAgent, isAgent, navigate, isDemoMode]);
+    }, [profile, navigate, isDemoMode]);
 
     useEffect(() => {
         if (profile) {
@@ -210,6 +207,19 @@ const Dashboard = () => {
                         <Globe className="w-5 h-5 text-white" />
                         <span>{language === 'en' ? 'SW' : 'EN'}</span>
                     </button>
+                    {(isAgent || isMasterAgent || isSuperMaster) && (
+                        <button
+                            onClick={() => {
+                                if (isSuperMaster) navigate('/smagent/dashboard');
+                                else if (isMasterAgent) navigate('/magent/dashboard');
+                                else navigate('/agent/dashboard');
+                            }}
+                            className="flex items-center gap-2 p-3 bg-brand-primary text-white rounded-2xl hover:bg-brand-secondary transition-all font-black text-[10px] uppercase shadow-lg shadow-brand-primary/20 min-h-[56px]"
+                        >
+                            <TrendingUp className="w-5 h-5" />
+                            <span>Portal</span>
+                        </button>
+                    )}
                 </div>
 
                 <div className="relative group perspective-1000 -mt-2">
