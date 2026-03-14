@@ -48,7 +48,9 @@ const AgentApp = () => {
     // Standardize to local 0... format
     const localPhone = formatKenyanPhone(agentPhone);
     const allAgentIds = [...new Set([agentCode, localPhone, agentUid].filter(id => id && id.length > 0))];
-    const displayCode = agentCode || localPhone || agentUid;
+    
+    // Priority: Agent Code > Phone > UID (strip any lingering + or symbols)
+    const displayCode = (agentCode || localPhone || agentUid).toString().replace(/[^\w]/g, '');
     const registrationLink = `${window.location.origin}/r/${displayCode}`;
 
     const fetchStats = async () => {

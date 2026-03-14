@@ -10,6 +10,7 @@ import TierUpgradeModal from '../components/TierUpgradeModal';
 import RecentActivity from '../components/RecentActivity';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
+import { formatKenyanPhone, stripPlus } from '../utils/phoneUtils';
 
 const Dashboard = () => {
     const { profile, user, isDemoMode } = useAuth();
@@ -237,7 +238,7 @@ const Dashboard = () => {
                                 <div>
                                     <p className="text-[10px] uppercase font-black tracking-[0.2em] text-brand-accent/80 mb-1">{t('official_digital_id')}</p>
                                     <h3 className="text-xl font-black text-white leading-tight tracking-tight">{profile.fullName || 'Member'}</h3>
-                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">ID: {profile.referral_code || profile.id.substring(0, 8).toUpperCase()}</p>
+                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">ID: {stripPlus(profile.referral_code || profile.agent_code || profile.id.substring(0, 8)).toUpperCase()}</p>
                                 </div>
                             </div>
                             <div className="relative">
@@ -263,7 +264,7 @@ const Dashboard = () => {
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase font-bold text-brand-accent/50 mb-1 tracking-widest">{t('phone_number')}</p>
-                                    <p className="font-bold font-mono tracking-[0.3em] text-white underline decoration-brand-accent/20 underline-offset-4">{profile.phoneNumber}</p>
+                                    <p className="font-bold font-mono tracking-[0.3em] text-white underline decoration-brand-accent/20 underline-offset-4">{formatKenyanPhone(profile.phoneNumber)}</p>
                                 </div>
                             </div>
                             <div className="bg-white p-3.5 rounded-[1.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-brand-accent/20">

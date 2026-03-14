@@ -24,3 +24,8 @@ export const standardizeTo254 = (phone) => {
     if (cleaned.startsWith('254')) return cleaned;
     return cleaned;
 };
+
+export const stripPlus = (str) => {
+    if (!str) return '';
+    return str.toString().replace(/^\+/, '').replace(/\s/g, '');
+};
