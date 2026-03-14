@@ -6,7 +6,7 @@ import { httpsCallable } from 'firebase/functions';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, Phone, ArrowRight, CheckCircle2, RotateCcw, Camera, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { formatKenyanPhone } from '../utils/phoneUtils';
+import { formatKenyanPhone, standardizeTo254 } from '../utils/phoneUtils';
 import { generateReferralCode } from '../utils/referralUtils';
 import { useLanguage } from '../context/LanguageContext';
 

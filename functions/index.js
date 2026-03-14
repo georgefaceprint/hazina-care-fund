@@ -1171,7 +1171,7 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
             throw new HttpsError('invalid-argument', 'Missing required fields.');
         }
 
-        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        const formatPhone = formatTo254(phoneNumber);
 
         // 1. Verify OTP
         let isValidOtp = false;
@@ -1188,6 +1188,15 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
         }
         isValidOtp = true;
         await docRef.delete();
+
+        // --- TESTING BYPASS ---
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+        const isTestUser = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
+        if (isTestUser && String(validationCode) === '123456') {
+            console.log("PASSCODE_SET_BYPASS triggered for:", formatPhone);
+            isValidOtp = true; // redundancy
+        }
+        // -----------------------
 
         if (!isValidOtp) throw new HttpsError('invalid-argument', 'OTP verification failed.');
 
@@ -1216,7 +1225,7 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
             throw new HttpsError('invalid-argument', 'Phone and passcode are required.');
         }
 
-        const formatPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        const formatPhone = formatTo254(phoneNumber);
         
         const userSnap = await db.collection('users').doc(formatPhone).get();
         if (!userSnap.exists) {
@@ -1268,19 +1277,17 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
 
     if (!agentCode) return;
     
-    // If it's an update, only proceed if recruited_by just appeared or if it's a test number re-run
     const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
     const isTestNumber = testNumbers.some(tn => userId.includes(tn.replace('+', '')));
+    const oldUser = beforeSnapshot && beforeSnapshot.exists ? beforeSnapshot.data() : null;
     
-    console.log(`[onUserCreated] Triggered for ${userId}. Recruited by: ${agentCode}. Is test: ${isTestNumber}`);
-
-    if (beforeSnapshot && beforeSnapshot.exists && !isTestNumber) {
-        const oldUser = beforeSnapshot.data();
-        if (oldUser.recruited_by === agentCode) {
-            console.log(`[onUserCreated] Skipping ${userId} - already logged for agent ${agentCode}`);
-            return;
-        }
+    // Only proceed if recruited_by just appeared or changed
+    if (oldUser && oldUser.recruited_by === agentCode) {
+        console.log(`[onUserCreated] Skipping ${userId} - no change in recruiter (${agentCode})`);
+        return;
     }
+
+    console.log(`[onUserCreated] Triggered for ${userId}. New/Changed Recruiter: ${agentCode}. Is test: ${isTestNumber}`);
 
     try {
         let agentData = {};
