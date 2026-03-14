@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, addDoc, serverTimestamp, setDoc, deleteDoc, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, ShieldAlert, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard, Trash2, RefreshCcw, Database, Gift } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldAlert, Clock, XCircle, Search, DollarSign, Filter, FileText, Bot, TrendingUp, Zap, LogOut, Sparkles, Users, UserPlus, MapPin, QrCode, Clipboard, Trash2, RefreshCcw, Database, Gift, CreditCard } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { format, subDays, startOfDay } from 'date-fns';
 import { formatKenyanPhone } from '../utils/phoneUtils';
@@ -258,7 +258,7 @@ const AdminPanel = () => {
         try {
             const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
             const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
             const existingQs = kbItems.map(k => k.question).join('\n');
             const tierInfo = `Bronze: KSh ${tiers.bronze?.cost}/day, KSh ${tiers.bronze?.limit?.toLocaleString()} cover. Silver: KSh ${tiers.silver?.cost}/day, KSh ${tiers.silver?.limit?.toLocaleString()} cover. Gold: KSh ${tiers.gold?.cost}/day, KSh ${tiers.gold?.limit?.toLocaleString()} cover.`;
@@ -316,6 +316,17 @@ Return ONLY a valid JSON array, no markdown, no explanation:
             toast.success(`${tierKey} pricing updated.`);
         } catch (error) {
             toast.error("Failed to update pricing.");
+        }
+    };
+    
+    const handleToggleReferral = async () => {
+        try {
+            const newStatus = !referralSystemActive;
+            await setDoc(doc(db, 'config', 'referrals'), { referralSystemActive: newStatus }, { merge: true });
+            toast.success(newStatus ? "Referral system activated!" : "Referral system deactivated.");
+        } catch (error) {
+            console.error("Error toggling referral system:", error);
+            toast.error("Failed to toggle referral system.");
         }
     };
 
