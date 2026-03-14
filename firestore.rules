@@ -12,17 +12,13 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      // Check if current auth UID has admin role or if their standardized phone doc has it
-      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      let isAdminByUid = profile != null && (profile.data.role == 'admin' || profile.data.role == 'super_master');
-      
-      let phoneProfile = null;
-      if (request.auth.token.phone_number != null) {
-        phoneProfile = get(/databases/$(database)/documents/users/$(request.auth.token.phone_number));
-      }
-      let isAdminByPhone = phoneProfile != null && (phoneProfile.data.role == 'admin' || phoneProfile.data.role == 'super_master');
-      
-      return isAdminByUid || isAdminByPhone;
+      return (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+              (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master')) || 
+             (request.auth.token.phone_number != null && 
+              exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number)) && 
+              (get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'admin' || 
+               get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'super_master'));
     }
 
     // Users collection
