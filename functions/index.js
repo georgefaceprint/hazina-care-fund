@@ -49,12 +49,16 @@ const fetchUserDoc = async (uid, auth = null) => {
 const formatTo254 = (phoneNumber) => {
     if (!phoneNumber) return "";
     let cleaned = phoneNumber.replace(/\D/g, '');
-    if (cleaned.startsWith('0')) {
-        cleaned = `254${cleaned.substring(1)}`;
-    } else if (cleaned.length === 9) {
-        cleaned = `254${cleaned}`;
+    if (cleaned.startsWith('254') && cleaned.length === 12) {
+        return `+${cleaned}`;
     }
-    return `+${cleaned}`;
+    if (cleaned.startsWith('0') && cleaned.length === 10) {
+        return `+254${cleaned.substring(1)}`;
+    }
+    if (cleaned.length === 9) {
+        return `+254${cleaned}`;
+    }
+    return phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
 };
 
 const formatToLocal = (phoneNumber) => {
@@ -1005,13 +1009,20 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
 
         // --- TESTING BYPASS ---
         const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-        if (testNumbers.some(tn => formatPhone.includes(tn)) && validationCode === '123456') {
+        const isTest = testNumbers.some(tn => {
+            const cleanTn = tn.replace(/\D/g, '');
+            const cleanPhone = formatPhone.replace(/\D/g, '');
+            return cleanPhone.includes(cleanTn) || cleanTn.includes(cleanPhone);
+        });
+
+        if (isTest && String(validationCode) === '123456') {
             console.log("TEST_BYPASS triggered for:", formatPhone);
             const token = await admin.auth().createCustomToken(formatPhone, {
                 phone_number: formatPhone
             });
             return { success: true, token };
         }
+        // -----------------------
         // -----------------------
 
         // 1. Check security policy (Mandatory TOTP List)
