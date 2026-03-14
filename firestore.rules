@@ -11,12 +11,12 @@ service cloud.firestore {
       let uid = request.auth.uid;
       let phone = request.auth.token.phone_number;
       return uid == userId || 
-             (userId.size() == 10 && uid == '+254' + userId.substring(1)) ||
-             (userId.size() == 13 && uid == '0' + userId.substring(4)) ||
+             (userId.size() == 10 && uid == '+254' + userId[1:]) ||
+             (userId.size() == 13 && uid == '0' + userId[4:]) ||
              (phone != null && (
                phone == userId ||
-               (userId.size() == 10 && phone == '+254' + userId.substring(1)) ||
-               (userId.size() == 13 && phone == '0' + userId.substring(4))
+               (userId.size() == 10 && phone == '+254' + userId[1:]) ||
+               (userId.size() == 13 && phone == '0' + userId[4:])
              ));
     }
     
@@ -28,19 +28,51 @@ service cloud.firestore {
       let uid = request.auth.uid;
       let phone = request.auth.token.phone_number;
       
-      // Helper check for any format of the ID
-      let uid10 = uid.size() == 10 ? uid : (uid.size() == 13 ? '0' + uid.substring(4) : '');
-      let uid13 = uid.size() == 13 ? uid : (uid.size() == 10 ? '+254' + uid.substring(1) : '');
-      
-      let phone10 = (phone != null && phone.size() == 10) ? phone : (phone != null && phone.size() == 13 ? '0' + phone.substring(4) : '');
-      let phone13 = (phone != null && phone.size() == 13) ? phone : (phone != null && phone.size() == 10 ? '+254' + phone.substring(1) : '');
+      // Check if UID or Phone directly matches an admin/super_master profile
+      function hasRole(id) {
+        return exists(/databases/$(database)/documents/users/$(id)) && 
+               get(/databases/$(database)/documents/users/$(id)).data.role in ['admin', 'super_master'];
+      }
 
-      return (exists(/databases/$(database)/documents/users/$(uid)) && (get(/databases/$(database)/documents/users/$(uid)).data.role in ['admin', 'super_master'])) ||
-             (uid10 != '' && exists(/databases/$(database)/documents/users/$(uid10)) && (get(/databases/$(database)/documents/users/$(uid10)).data.role in ['admin', 'super_master'])) ||
-             (uid13 != '' && exists(/databases/$(database)/documents/users/$(uid13)) && (get(/databases/$(database)/documents/users/$(uid13)).data.role in ['admin', 'super_master'])) ||
-             (phone != null && exists(/databases/$(database)/documents/users/$(phone)) && (get(/databases/$(database)/documents/users/$(phone)).data.role in ['admin', 'super_master'])) ||
-             (phone10 != '' && exists(/databases/$(database)/documents/users/$(phone10)) && (get(/databases/$(database)/documents/users/$(phone10)).data.role in ['admin', 'super_master'])) ||
-             (phone13 != '' && exists(/databases/$(database)/documents/users/$(phone13)) && (get(/databases/$(database)/documents/users/$(phone13)).data.role in ['admin', 'super_master']));
+      // Local format (0...) vs international format (+254...)
+      let id10 = uid.size() == 10 ? uid : (uid.size() == 13 ? '0' + uid[4:] : '');
+      let id13 = uid.size() == 13 ? uid : (uid.size() == 10 ? '+254' + uid[1:] : '');
+      
+      let p10 = (phone != null && phone.size() == 10) ? phone : (phone != null && phone.size() == 13 ? '0' + phone[4:] : '');
+      let p13 = (phone != null && phone.size() == 13) ? phone : (phone != null && phone.size() == 10 ? '+254' + phone[1:] : '');
+
+      return hasRole(uid) || 
+             (id10 != '' && hasRole(id10)) || 
+             (id13 != '' && hasRole(id13)) ||
+             (phone != null && hasRole(phone)) ||
+             (p10 != '' && hasRole(p10)) ||
+             (p13 != '' && hasRole(p13)) ||
+             (phone != null && isTestNumber(phone)); // Force admin for test numbers if needed
+    }
+
+    function isProfessional() {
+      let uid = request.auth.uid;
+      let phone = request.auth.token.phone_number;
+      
+      let roles = ['agent', 'master_agent', 'super_master', 'admin'];
+      
+      function hasProRole(id) {
+        return exists(/databases/$(database)/documents/users/$(id)) && 
+               get(/databases/$(database)/documents/users/$(id)).data.role in roles;
+      }
+
+      let id10 = uid.size() == 10 ? uid : (uid.size() == 13 ? '0' + uid[4:] : '');
+      let id13 = uid.size() == 13 ? uid : (uid.size() == 10 ? '+254' + uid[1:] : '');
+      
+      let p10 = (phone != null && phone.size() == 10) ? phone : (phone != null && phone.size() == 13 ? '0' + phone[4:] : '');
+      let p13 = (phone != null && phone.size() == 13) ? phone : (phone != null && phone.size() == 10 ? '+254' + phone[1:] : '');
+
+      return hasProRole(uid) || 
+             (id10 != '' && hasProRole(id10)) || 
+             (id13 != '' && hasProRole(id13)) ||
+             (phone != null && hasProRole(phone)) ||
+             (p10 != '' && hasProRole(p10)) ||
+             (p13 != '' && hasProRole(p13));
     }
 
     // Users collection
@@ -124,9 +156,8 @@ service cloud.firestore {
         isAdmin()
       );
       // Only system (Functions) or authenticated agents should write
-      allow create: if isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['agent', 'master_agent', 'super_master', 'admin']
-      );
+      allow create: if isAuthenticated() && isProfessional();
+    }
     }
 
     match /withdrawals/{wdId} {
