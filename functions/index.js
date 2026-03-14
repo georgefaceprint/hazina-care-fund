@@ -1007,7 +1007,9 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
         if (testNumbers.some(tn => formatPhone.includes(tn)) && validationCode === '123456') {
             console.log("TEST_BYPASS triggered for:", formatPhone);
-            const token = await admin.auth().createCustomToken(formatPhone);
+            const token = await admin.auth().createCustomToken(formatPhone, {
+                phone_number: formatPhone
+            });
             return { success: true, token };
         }
         // -----------------------
@@ -1064,7 +1066,9 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
 
         if (shouldProduceToken) {
             // Use Phone number as UID for consistency with our rules
-            const token = await admin.auth().createCustomToken(formatPhone);
+            const token = await admin.auth().createCustomToken(formatPhone, {
+                phone_number: formatPhone
+            });
             console.log("Custom Token generated successfully for UID:", formatPhone);
             return { token };
         }

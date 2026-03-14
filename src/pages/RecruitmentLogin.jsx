@@ -8,7 +8,7 @@ import { auth, db, functions } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { signInWithCustomToken } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
-import { formatKenyanPhone } from '../utils/phoneUtils';
+import { formatKenyanPhone, standardizeTo254 } from '../utils/phoneUtils';
 
 const RecruitmentLogin = () => {
     const navigate = useNavigate();

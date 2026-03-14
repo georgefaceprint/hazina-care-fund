@@ -8,7 +8,10 @@ service cloud.firestore {
     }
     
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth.uid == userId || 
+             (userId.size() == 10 && request.auth.uid == '+254' + userId.substring(1)) ||
+             (userId.size() == 13 && request.auth.uid == '0' + userId.substring(4)) ||
+             (request.auth.token.phone_number != null && request.auth.token.phone_number == userId);
     }
     
     function isAdmin() {
