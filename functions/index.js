@@ -55,11 +55,25 @@ const formatTo254 = (phoneNumber) => {
     if (cleaned.startsWith('254')) {
         return cleaned;
     }
-    // Assume it might be a 7XXXXXXXX format if length is 9
     if (cleaned.length === 9) {
         return `254${cleaned}`;
     }
     return cleaned;
+};
+
+const formatToLocal = (phoneNumber) => {
+    if (!phoneNumber) return "";
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    if (cleaned.startsWith('254') && cleaned.length === 12) {
+        return `0${cleaned.substring(3)}`;
+    }
+    if (cleaned.length === 9) {
+        return `0${cleaned}`;
+    }
+    if (cleaned.startsWith('0') && cleaned.length === 10) {
+        return cleaned;
+    }
+    return phoneNumber;
 };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCaAkDtu93ADVaDE0hy0MCK1n9E8ksUdN0";

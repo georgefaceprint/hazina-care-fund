@@ -85,24 +85,28 @@ service cloud.firestore {
 
     match /recruitment_logs/{logId} {
       allow read: if isAuthenticated() && (
-        // Allow if agentId matches user's agent_code OR phone OR UID
+        // Allow if agentId matches user's agent_code OR local phone OR UID
         resource.data.agentId == request.auth.uid ||
-        resource.data.agentId == request.auth.token.phone_number ||
-        (request.auth.token.phone_number != null && resource.data.agentId == request.auth.token.phone_number.replace('^\\+254', '0')) ||
-        (request.auth.token.phone_number != null && resource.data.agentId == request.auth.token.phone_number.replace('^0', '+254')) ||
-        resource.data.agentId == (
-          exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agent_code :
-          (request.auth.token.phone_number != null && exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number))) ?
-          get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.agent_code : null
-        ) ||
-        // Check if masterAgentId matches the user's ID or phone
+        (request.auth.token.phone_number != null && (
+          resource.data.agentId == request.auth.token.phone_number.replace('^\\+254', '0') ||
+          resource.data.agentId == request.auth.token.phone_number.replace('^254', '0')
+        )) ||
+        
+        // Profile-based matches (UID login)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          resource.data.agentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agent_code ||
+          resource.data.agentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phoneNumber // Already standardized to 0...
+        )) ||
+
+        // Master Agent check
         resource.data.masterAgentId == request.auth.uid ||
-        resource.data.masterAgentId == request.auth.token.phone_number ||
+        (request.auth.token.phone_number != null && resource.data.masterAgentId == request.auth.token.phone_number.replace('^\\+254', '0')) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          resource.data.masterAgentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.phoneNumber) ||
+
         // Admin overrides
         isAdmin() || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master' ||
-        (request.auth.token.phone_number != null && exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number)) && get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.role == 'super_master')
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_master'
       );
       allow create: if true;
     }

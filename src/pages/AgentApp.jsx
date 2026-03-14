@@ -44,13 +44,11 @@ const AgentApp = () => {
     const agentCode = profile?.agent_code || '';
     const agentPhone = profile?.phoneNumber || '';
     const agentUid = profile?.id || '';
-    const basePhoneRaw = agentPhone.replace('+', '');
-    const localPhone = basePhoneRaw.startsWith('254') ? '0' + basePhoneRaw.slice(3) : agentPhone;
-    const internationalPhone = agentPhone.startsWith('0') ? '+254' + agentPhone.slice(1) : agentPhone;
     
-    // De-duplicate and filter empty strings
-    const allAgentIds = [...new Set([agentCode, agentPhone, localPhone, internationalPhone, agentUid].filter(id => id && id.length > 0))];
-    const displayCode = agentCode || agentPhone || agentUid;
+    // Standardize to local 0... format
+    const localPhone = formatKenyanPhone(agentPhone);
+    const allAgentIds = [...new Set([agentCode, localPhone, agentUid].filter(id => id && id.length > 0))];
+    const displayCode = agentCode || localPhone || agentUid;
     const registrationLink = `${window.location.origin}/r/${displayCode}`;
 
     const fetchStats = async () => {

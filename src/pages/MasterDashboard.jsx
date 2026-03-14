@@ -29,7 +29,7 @@ const MasterDashboard = () => {
         signupsYesterday: 0
     });
 
-    const masterId = profile?.phoneNumber || profile?.id;
+    const masterId = formatKenyanPhone(profile?.phoneNumber) || profile?.id;
 
     useEffect(() => {
         if (masterId) {
