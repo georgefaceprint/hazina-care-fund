@@ -955,8 +955,14 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
         }
 
         // Generate a random 6-digit code
-        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108', '+254105845108', '+254755881991'];
-        const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+        const cleanPhone = formatPhone.replace(/\D/g, '').slice(-9);
+        const isTestNumber = testNumbers.some(tn => {
+            const cleanTn = tn.replace(/\D/g, '').slice(-9);
+            return cleanTn === cleanPhone && cleanPhone.length >= 9;
+        });
+
+        console.log(`[SEND_OTP] isTestNumber: ${isTestNumber}, cleanPhone: ${cleanPhone}`);
         const code = isTestNumber ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
 
         // Save to Firestore with 1 hour expiration
@@ -999,7 +1005,7 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
     try {
         const { phoneNumber, validationCode } = request.data;
         const formatPhone = formatTo254(phoneNumber);
-        console.log("SEND_OTP_CALLED for:", phoneNumber, "Standardized to:", formatPhone, "with code:", validationCode);
+        console.log("VERIFY_OTP_CALLED for:", phoneNumber, "Standardized to:", formatPhone, "with code:", validationCode);
 
         if (!phoneNumber || !validationCode) {
             throw new HttpsError('invalid-argument', 'Phone number and code are required.');
@@ -1009,11 +1015,13 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
 
         // --- TESTING BYPASS ---
         const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
+        const cleanPhone = formatPhone.replace(/\D/g, '').slice(-9);
         const isTest = testNumbers.some(tn => {
-            const cleanTn = tn.replace(/\D/g, '');
-            const cleanPhone = formatPhone.replace(/\D/g, '');
-            return cleanPhone.includes(cleanTn) || cleanTn.includes(cleanPhone);
+            const cleanTn = tn.replace(/\D/g, '').slice(-9);
+            return cleanTn === cleanPhone && cleanPhone.length >= 9;
         });
+
+        console.log(`[VERIFY_OTP] isTest: ${isTest}, cleanPhone: ${cleanPhone}, code: ${validationCode}`);
 
         if (isTest && String(validationCode) === '123456') {
             console.log("TEST_BYPASS triggered for:", formatPhone);
@@ -1022,6 +1030,7 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
             });
             return { success: true, token };
         }
+        // -----------------------
         // -----------------------
         // -----------------------
 

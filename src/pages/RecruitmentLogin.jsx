@@ -96,12 +96,16 @@ const RecruitmentLogin = () => {
 
         try {
             const formatPhone = formatKenyanPhone(phoneNumber);
+            console.log("🚀 Attempting OTP Verification:", { phoneNumber, formatPhone, verificationCode });
+            
             const verifyOtpFunc = httpsCallable(functions, 'verifyOtp');
 
             const result = await verifyOtpFunc({
                 phoneNumber: formatPhone,
                 validationCode: verificationCode
             });
+
+            console.log("✅ OTP Result:", result.data);
 
             const { token } = result.data;
             const authResult = await signInWithCustomToken(auth, token);
