@@ -63,8 +63,25 @@ const LoginPage = () => {
         const authResult = await signInWithCustomToken(auth, token);
         const user = authResult.user;
         sessionStorage.setItem('hazina_temp_phone', formatPhone);
-        const userRef = doc(db, 'users', formatPhone);
-        const userSnap = await getDoc(userRef);
+        
+        // --- Resilient Profile Lookup ---
+        const localPhone = formatKenyanPhone(formatPhone);
+        const intlPhone = `+${standardizeTo254(formatPhone)}`;
+        
+        const localRef = doc(db, 'users', localPhone);
+        const intlRef = doc(db, 'users', intlPhone);
+        
+        let userSnap = await getDoc(localRef);
+        let userRef = localRef;
+
+        if (!userSnap.exists()) {
+            const intlSnap = await getDoc(intlRef);
+            if (intlSnap.exists()) {
+                userSnap = intlSnap;
+                userRef = intlRef;
+            }
+        }
+        // ------------------------------
 
         if (!userSnap.exists()) {
             const referrerId = sessionStorage.getItem('hazina_referrer');

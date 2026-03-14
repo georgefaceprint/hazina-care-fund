@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
+import { formatKenyanPhone, standardizeTo254 } from '../utils/phoneUtils';
 
 const AuthContext = createContext();
 
@@ -72,25 +73,38 @@ export const AuthProvider = ({ children }) => {
 
             setUser(authUser);
             
-            // Determine the profile reference
-            let profileRef = null;
-            if (authUser.email) {
-                profileRef = doc(db, 'users', authUser.uid);
-            } else {
-                const phone = authUser.phoneNumber || sessionStorage.getItem('hazina_temp_phone');
-                if (phone) profileRef = doc(db, 'users', phone);
-            }
+            // --- Resilient Profile Resolution Strategy ---
+            const resolveProfile = async () => {
+                if (authUser.email) return doc(db, 'users', authUser.uid);
 
-            // Fallback: Query by UID if the doc ID is unknown
-            if (!profileRef) {
+                const rawPhone = authUser.phoneNumber || sessionStorage.getItem('hazina_temp_phone');
+                if (!rawPhone) return null;
+
+                const localPhone = formatKenyanPhone(rawPhone);
+                const intlPhone = `+${standardizeTo254(rawPhone)}`;
+
+                // 1. Try Local Doc ID
+                const localSnap = await getDoc(doc(db, 'users', localPhone));
+                if (localSnap.exists()) return doc(db, 'users', localPhone);
+
+                // 2. Try International Doc ID
+                const intlSnap = await getDoc(doc(db, 'users', intlPhone));
+                if (intlSnap.exists()) return doc(db, 'users', intlPhone);
+
+                // 3. Try UID Fallback Query
                 try {
                     const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
                     const qs = await getDocs(q);
-                    if (!qs.empty) profileRef = doc(db, 'users', qs.docs[0].id);
-                } catch (e) { console.error("Search error", e); }
-            }
+                    if (!qs.empty) return doc(db, 'users', qs.docs[0].id);
+                } catch (e) {
+                    console.error("🔍 Profile Fallback Query Error:", e);
+                }
 
-            if (!profileRef) profileRef = doc(db, 'users', authUser.uid);
+                // 4. Ultimate Fallback (Default to UID-based doc for new users)
+                return doc(db, 'users', authUser.uid);
+            };
+
+            const profileRef = await resolveProfile();
 
             // Listen to profile
             const unsubProfile = onSnapshot(profileRef, async (snap) => {
