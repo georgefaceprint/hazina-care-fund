@@ -46,7 +46,8 @@ const AgentApp = () => {
     const stripPlus = (str) => str.startsWith('+') ? str.substring(1) : str;
 
     // 2. Identify all possible Agent IDs for this user
-    const agentCode = profile?.agent_code || '';
+    // Standardize all IDs to UPPERCASE if they are strings/codes to prevent casing mismatch
+    const agentCode = (profile?.agent_code || '').trim().toUpperCase();
     const agentPhoneRaw = profile?.phoneNumber || '';
     const localPhone = formatKenyanPhone(agentPhoneRaw); // e.g. 07...
     const intlPhone = standardizeTo254(agentPhoneRaw);   // e.g. 2547...
@@ -60,7 +61,7 @@ const AgentApp = () => {
         agentPhoneRaw, 
         agentUid,
         agentCode ? stripPlus(agentCode) : null
-    ].filter(id => id && id.toString().length > 3))]; // Filter out short/null values
+    ].filter(id => id && id.toString().length > 3))].map(id => typeof id === 'string' ? id.trim().toUpperCase() : id);
     
     const displayCode = (agentCode || localPhone || agentUid).toString().replace(/^(\+254|254|\+)/, '');
     const registrationLink = `${window.location.origin}/r/${displayCode}`;

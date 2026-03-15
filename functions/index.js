@@ -1345,7 +1345,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
 
     try {
         let agentData = {};
-        let ResolvedAgentId = agentCode; // Default to what was passed
+        let ResolvedAgentId = (agentCode || '').toString().trim().toUpperCase(); // Standardize to uppercase
         
         // 1. Try to find agent in 'users' collection
         // 1. Try to find agent in 'users' collection
@@ -1394,12 +1394,13 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
 
         // Log the recruitment record with data needed by the dashboard
         // ID is deterministic to prevent duplicate logs on retries
-        const logId = `recruitment_${ResolvedAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
+        const finalAgentId = ResolvedAgentId.toUpperCase();
+        const logId = `recruitment_${finalAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
         await db.collection("recruitment_logs").doc(logId).set({
             userId,
             userName: newUser.fullName,
             tier: newUser.active_tier || 'bronze',
-            agentId: ResolvedAgentId,
+            agentId: finalAgentId,
             originalAgentInput: agentCode,
             masterAgentId,
             tariffApplied: tariff,
