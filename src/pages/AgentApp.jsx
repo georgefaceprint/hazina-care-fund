@@ -48,11 +48,11 @@ const AgentApp = () => {
     // 2. Identify all possible Agent IDs for this user
     const agentCode = profile?.agent_code || '';
     const agentPhoneRaw = profile?.phoneNumber || '';
-    const localPhone = formatKenyanPhone(agentPhoneRaw); // e.g. +2547...
+    const localPhone = formatKenyanPhone(agentPhoneRaw); // e.g. 07...
     const intlPhone = standardizeTo254(agentPhoneRaw);   // e.g. 2547...
     const agentUid = profile?.id || profile?.uid || '';
     
-    // Comprehensive Set of IDs to match logs (Agent Code, Phone (+), Phone (no +), Raw Phone, UID)
+    // Comprehensive Set of IDs to match logs (Agent Code, Local Phone, 254 Phone, Raw Phone, UID)
     const allAgentIds = [...new Set([
         agentCode, 
         localPhone, 
@@ -60,9 +60,9 @@ const AgentApp = () => {
         agentPhoneRaw, 
         agentUid,
         agentCode ? stripPlus(agentCode) : null
-    ].filter(id => id && id.length > 3))]; // Filter out short/null values
+    ].filter(id => id && id.toString().length > 3))]; // Filter out short/null values
     
-    const displayCode = (agentCode || localPhone || agentUid).toString().replace(/^\+/, '');
+    const displayCode = (agentCode || localPhone || agentUid).toString().replace(/^(\+254|254|\+)/, '');
     const registrationLink = `${window.location.origin}/r/${displayCode}`;
 
     // 🔍 Refactored Stats Fetching with React Query
