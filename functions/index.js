@@ -91,95 +91,135 @@ exports.calculateDailyDeduction = onSchedule({
     schedule: "0 2 * * *",
     timeZone: "Africa/Nairobi"
 }, async (event) => {
-    const usersSnap = await db.collection("users").get();
-    const TIER_COSTS = { bronze: 50, silver: 147, gold: 229 };
+    try {
+        // 1. Fetch Tier Config from DB (Fix for hardcoded discrepancy)
+        const tierConfigSnap = await db.collection("config").doc("tiers").get();
+        const TIER_CONFIG = tierConfigSnap.exists ? tierConfigSnap.data() : {
+            bronze: { cost: 50 },
+            silver: { cost: 147 },
+            gold: { cost: 229 }
+        };
 
-    const batch = db.batch();
+        const getCost = (tier) => {
+            if (!tier) return 0;
+            const normalized = tier.toLowerCase();
+            return TIER_CONFIG[normalized]?.cost || TIER_CONFIG[tier]?.cost || 0;
+        };
 
-    for (const userDoc of usersSnap.docs) {
-        const profile = userDoc.data();
-        const getCost = (tier) => TIER_COSTS[tier?.toLowerCase()] || 0;
-        let totalDeduction = getCost(profile.active_tier);
+        console.log("⚡ Starting daily deduction engine with synced tiers:", JSON.stringify(TIER_CONFIG));
 
-        // Sum up dependents costs
-        const dependentsSnap = await db.collection("dependents")
-            .where("guardian_id", "==", userDoc.id)
-            .get();
+        const usersSnap = await db.collection("users").get();
+        let batch = db.batch();
+        let opCount = 0;
+        const BATCH_LIMIT = 450; // Firestore limit is 500, we use 450 for safety margin
 
-        dependentsSnap.forEach(depDoc => {
-            const dep = depDoc.data();
-            totalDeduction += getCost(dep.active_tier);
-        });
+        const commitBatch = async () => {
+            if (opCount > 0) {
+                await batch.commit();
+                console.log(`📦 Committed batch of ${opCount} operations.`);
+                batch = db.batch();
+                opCount = 0;
+            }
+        };
 
-        // Check for Payment Holiday
-        const holidayUntil = profile.payment_holiday_until?.toDate();
-        if (holidayUntil && holidayUntil > new Date()) {
-            console.log(`User ${userDoc.id} is on payment holiday until ${holidayUntil}`);
-            continue;
-        }
+        for (const userDoc of usersSnap.docs) {
+            const profile = userDoc.data();
+            let totalDeduction = getCost(profile.active_tier);
 
-        // Deduct from Balance
-        const newBalance = (profile.balance || 0) - totalDeduction;
-        if (newBalance < 0) {
-            // Check if they were already negative
-            const lastNegativeAt = profile.negative_since ? new Date(profile.negative_since._seconds * 1000) : null;
-            const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+            // Sum up dependents costs
+            const dependentsSnap = await db.collection("dependents")
+                .where("guardian_id", "==", userDoc.id)
+                .get();
 
-            if (lastNegativeAt && lastNegativeAt < fortyEightHoursAgo) {
-                batch.update(userDoc.ref, { 
-                    balance: newBalance,
-                    status: 'lapsed',
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    last_deduction: admin.firestore.FieldValue.serverTimestamp(),
-                    last_deduction_amount: totalDeduction
-                });
-            } else if (!profile.negative_since) {
-                batch.update(userDoc.ref, { 
-                    balance: newBalance,
-                    negative_since: admin.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    last_deduction: admin.firestore.FieldValue.serverTimestamp(),
-                    last_deduction_amount: totalDeduction
-                });
+            dependentsSnap.forEach(depDoc => {
+                const dep = depDoc.data();
+                totalDeduction += getCost(dep.active_tier);
+            });
+
+            // Check for Payment Holiday
+            const holidayUntil = profile.payment_holiday_until?.toDate();
+            if (holidayUntil && holidayUntil > new Date()) {
+                console.log(`User ${userDoc.id} is on payment holiday until ${holidayUntil}`);
+                continue;
+            }
+
+            if (totalDeduction <= 0) continue;
+
+            // Deduct from Balance
+            const newBalance = (profile.balance || 0) - totalDeduction;
+            const now = admin.firestore.FieldValue.serverTimestamp();
+
+            if (newBalance < 0) {
+                const lastNegativeAt = profile.negative_since ? new Date(profile.negative_since._seconds * 1000) : null;
+                const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+                if (lastNegativeAt && lastNegativeAt < fortyEightHoursAgo) {
+                    batch.update(userDoc.ref, { 
+                        balance: newBalance,
+                        status: 'lapsed',
+                        updatedAt: now,
+                        last_deduction: now,
+                        last_deduction_amount: totalDeduction
+                    });
+                } else if (!profile.negative_since) {
+                    batch.update(userDoc.ref, { 
+                        balance: newBalance,
+                        negative_since: now,
+                        updatedAt: now,
+                        last_deduction: now,
+                        last_deduction_amount: totalDeduction
+                    });
+                } else {
+                    batch.update(userDoc.ref, { 
+                        balance: newBalance,
+                        updatedAt: now,
+                        last_deduction: now,
+                        last_deduction_amount: totalDeduction
+                    });
+                }
             } else {
                 batch.update(userDoc.ref, { 
                     balance: newBalance,
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    last_deduction: admin.firestore.FieldValue.serverTimestamp(),
+                    negative_since: null,
+                    status: profile.status === 'lapsed' ? 'fully-active' : profile.status,
+                    updatedAt: now,
+                    last_deduction: now,
                     last_deduction_amount: totalDeduction
                 });
             }
-        } else {
-            batch.update(userDoc.ref, { 
-                balance: newBalance,
-                negative_since: null,
-                status: profile.status === 'lapsed' ? 'fully-active' : profile.status,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                last_deduction: admin.firestore.FieldValue.serverTimestamp(),
-                last_deduction_amount: totalDeduction
+            opCount++;
+
+            // Log Transaction
+            const transRef = db.collection("transactions").doc();
+            batch.set(transRef, {
+                user_id: userDoc.id,
+                amount: -totalDeduction,
+                type: "daily-burn",
+                timestamp: now
             });
+            opCount++;
+
+            // Update global analytics
+            const statsRef = db.collection("totals").doc("liquidity");
+            batch.set(statsRef, {
+                total_fund: admin.firestore.FieldValue.increment(-totalDeduction),
+                total_burn: admin.firestore.FieldValue.increment(totalDeduction),
+                last_updated: now
+            }, { merge: true });
+            opCount++;
+
+            // Check if we need to commit this batch
+            if (opCount >= BATCH_LIMIT) {
+                await commitBatch();
+            }
         }
 
-        // Log Transaction
-        const transRef = db.collection("transactions").doc();
-        batch.set(transRef, {
-            user_id: userDoc.id,
-            amount: -totalDeduction,
-            type: "daily-burn",
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        // Update global analytics
-        const statsRef = db.collection("totals").doc("liquidity");
-        batch.set(statsRef, {
-            total_fund: admin.firestore.FieldValue.increment(-totalDeduction),
-            total_burn: admin.firestore.FieldValue.increment(totalDeduction),
-            last_updated: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        // Final commit for remaining operations
+        await commitBatch();
+        console.log("✅ Daily deductions processed successfully.");
+    } catch (error) {
+        console.error("❌ Critical error in calculateDailyDeduction:", error);
     }
-
-    await batch.commit();
-    console.log("Daily deductions processed.");
 });
 
 // 2. Maturation Status Checker
@@ -314,9 +354,21 @@ exports.manualDeduction = onCall(async (request) => {
 
     const userDoc = usersSnap.docs[0];
     const profile = userDoc.data();
-    const TIER_COSTS = { bronze: 50, silver: 147, gold: 229 };
 
-    const getCost = (tier) => TIER_COSTS[tier?.toLowerCase()] || 0;
+    // Fetch Tier Config from DB
+    const tierConfigSnap = await db.collection("config").doc("tiers").get();
+    const TIER_CONFIG = tierConfigSnap.exists ? tierConfigSnap.data() : {
+        bronze: { cost: 50 },
+        silver: { cost: 147 },
+        gold: { cost: 229 }
+    };
+
+    const getCost = (tier) => {
+        if (!tier) return 0;
+        const normalized = tier.toLowerCase();
+        return TIER_CONFIG[normalized]?.cost || TIER_CONFIG[tier]?.cost || 0;
+    };
+
     let totalDeduction = getCost(profile.active_tier);
 
     // Sum up dependents costs
@@ -330,12 +382,13 @@ exports.manualDeduction = onCall(async (request) => {
     });
 
     const batch = db.batch();
+    const now = admin.firestore.FieldValue.serverTimestamp();
 
     // Deduct from Balance
     const newBalance = (profile.balance || 0) - totalDeduction;
     batch.update(userDoc.ref, {
         balance: newBalance,
-        last_deduction: admin.firestore.FieldValue.serverTimestamp(),
+        last_deduction: now,
         last_deduction_amount: totalDeduction
     });
 
@@ -345,7 +398,7 @@ exports.manualDeduction = onCall(async (request) => {
         user_id: userDoc.id,
         amount: -totalDeduction,
         type: "daily-burn",
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
+        timestamp: now
     });
 
     // Update global analytics
@@ -353,7 +406,7 @@ exports.manualDeduction = onCall(async (request) => {
     batch.set(statsRef, {
         total_fund: admin.firestore.FieldValue.increment(-totalDeduction),
         total_burn: admin.firestore.FieldValue.increment(totalDeduction),
-        last_updated: admin.firestore.FieldValue.serverTimestamp()
+        last_updated: now
     }, { merge: true });
 
     await batch.commit();

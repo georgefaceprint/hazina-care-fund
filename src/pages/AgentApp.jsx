@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp, doc, onSnapshot, getCountFromServer } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -20,7 +21,7 @@ const AgentApp = () => {
         walletBalance: 0
     });
     const [recentLogs, setRecentLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const loading = statsLoading;
     const [showWithdrawModal, setShowWithdrawModal] = useState(false);
     const [withdrawAmount, setWithdrawAmount] = useState('');
     const [withdrawing, setWithdrawing] = useState(false);
@@ -54,57 +55,61 @@ const AgentApp = () => {
     const displayCode = (agentCode || localPhone || agentUid).toString().replace(/[^\w]/g, '');
     const registrationLink = `${window.location.origin}/r/${displayCode}`;
 
-    const fetchStats = async (isInitial = false) => {
-        if (allAgentIds.length === 0) return;
-        if (isInitial) setLoading(true);
-
-        try {
-            console.log("🔍 [fetchStats] Querying logs for agent ids:", allAgentIds);
+    // 🔍 Refactored Stats Fetching with React Query
+    const { data: qStats, isLoading: statsLoading, refetch } = useQuery({
+        queryKey: ['agent-stats', agentCode, allAgentIds],
+        queryFn: async () => {
+            if (allAgentIds.length === 0) return null;
+            console.log("🔍 [useQuery] Fetching agent stats for:", allAgentIds);
+            
             const now = new Date();
             const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const startOfYesterday = new Date(startOfToday);
             startOfYesterday.setDate(startOfYesterday.getDate() - 1);
 
             const logsRef = collection(db, 'recruitment_logs');
-
-            // Define Parallel Queries
             const todayQuery = query(logsRef, where('agentId', 'in', allAgentIds), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
             const yesterdayQuery = query(logsRef, where('agentId', 'in', allAgentIds), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
             const recentQuery = query(logsRef, where('agentId', 'in', allAgentIds), orderBy('timestamp', 'desc'), limit(15));
 
-            // Execute in Parallel with Aggregation
             const [todayCountSnap, yesterdayCountSnap, recentSnap] = await Promise.all([
                 getCountFromServer(todayQuery),
                 getCountFromServer(yesterdayQuery),
                 getDocs(recentQuery)
             ]);
 
-            console.log(`✅ [fetchStats] Aggregation complete. Found ${recentSnap.size} recent entries.`);
-            
-            setRecentLogs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            setStats({
+            return {
                 today: todayCountSnap.data().count || 0,
                 yesterday: yesterdayCountSnap.data().count || 0,
+                recentLogs: recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
                 total: profile?.totalSignups || 0,
                 earnings: profile?.totalEarnings || 0,
                 walletBalance: profile?.walletBalance || 0
+            };
+        },
+        enabled: !!profile && allAgentIds.length > 0,
+        refetchOnMount: true,
+        staleTime: 1000 * 30 // 30 seconds
+    });
+
+    // Update local state when query finishes (to keep existing UI compatible)
+    useEffect(() => {
+        if (qStats) {
+            setStats({
+                today: qStats.today,
+                yesterday: qStats.yesterday,
+                total: qStats.total,
+                earnings: qStats.earnings,
+                walletBalance: qStats.walletBalance
             });
-        } catch (error) {
-            console.error("Error fetching agent stats:", error);
-            toast.error("Analytics Sync Error: " + (error.message || "Failed to sync."));
-        } finally {
-            if (isInitial) setLoading(false);
+            setRecentLogs(qStats.recentLogs);
         }
-    };
+    }, [qStats]);
 
+    // Background update on profile changes
     useEffect(() => {
-        fetchStats(true); // Initial load shows spinner
-    }, [agentCode]);
-
-    useEffect(() => {
-        // Background updates don't show spinner to prevent flashes
         if (profile?.totalSignups || profile?.walletBalance) {
-            fetchStats(false);
+            // React Query will auto-refetch if we invalidate or just rely on staleTime
         }
     }, [profile?.totalSignups, profile?.walletBalance]);
 
@@ -134,7 +139,7 @@ const AgentApp = () => {
                 setShowWithdrawModal(false);
                 setWithdrawAmount('');
                 // Refresh stats
-                fetchStats();
+                refetch();
             }
         } catch (error) {
             console.error("Withdrawal error:", error);
@@ -219,7 +224,7 @@ const AgentApp = () => {
                 handleResetReg();
                 setShowRegModal(false);
                 // Stats will auto-refresh via useEffect dependency on profile.totalSignups
-                if (fetchStats) fetchStats();
+                refetch();
             }
         } catch (error) {
             console.error("Registration error details:", error);
