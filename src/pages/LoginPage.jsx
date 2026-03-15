@@ -4,11 +4,57 @@ import { auth, db, functions } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Phone, ArrowRight, CheckCircle2, RotateCcw, Camera, Upload } from 'lucide-react';
+import { Shield, Phone, ArrowRight, CheckCircle2, RotateCcw, Camera, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatKenyanPhone, standardizeTo254 } from '../utils/phoneUtils';
 import { generateReferralCode } from '../utils/referralUtils';
 import { useLanguage } from '../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
+import { useToast } from '../context/ToastContext';
+
+const DigitInput = ({ value, onChange, length = 6, type = "text", label = "" }) => {
+    return (
+        <div className="space-y-4">
+            {label && <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 text-center mb-1">{label}</label>}
+            <div className="relative group flex justify-center">
+                {/* Hidden Input to capture raw text */}
+                <input
+                    type="tel"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    autoFocus
+                    maxLength={length}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
+                    className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+                />
+                
+                {/* Visual Segments */}
+                <div className="flex justify-center gap-2 md:gap-3 w-full max-w-sm px-2">
+                    {Array.from({ length }).map((_, i) => {
+                        const isFocused = value.length === i || (value.length === length && i === length - 1);
+                        const isFilled = i < value.length;
+                        const char = value[i];
+                        
+                        return (
+                            <div 
+                                key={i}
+                                className={`flex-1 aspect-square h-14 md:h-16 flex items-center justify-center bg-slate-50 rounded-2xl border-2 transition-all text-2xl font-black ${
+                                    isFocused ? 'border-brand-primary bg-white shadow-xl shadow-brand-primary/10 ring-4 ring-brand-primary/5 scale-105 z-10' : 
+                                    isFilled ? 'border-emerald-100 bg-white text-brand-primary' : 'border-slate-100 text-slate-300'
+                                }`}
+                            >
+                                {char ? (type === 'password' ? '•' : char) : (
+                                    <span className="opacity-20">0</span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -310,19 +356,16 @@ const LoginPage = () => {
                             <p className="text-sm text-slate-600">Enter your secure passcode</p>
                             <p className="font-bold text-slate-900 text-lg mt-1 tracking-wider">{formatKenyanPhone(phoneNumber)}</p>
                         </div>
-                        <div>
-                            <input
-                                type="password"
-                                placeholder="• • • •"
-                                className="w-full text-center bg-slate-100 border-none rounded-2xl py-4 focus:ring-2 focus:ring-brand-primary transition-all text-3xl font-bold tracking-[0.5em]"
-                                value={passcode}
-                                onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
-                                required
-                            />
-                        </div>
+                        <DigitInput 
+                            length={6}
+                            value={passcode}
+                            onChange={setPasscode}
+                            type="password"
+                            label="Secure Entry"
+                        />
                         <button
                             type="submit"
-                            disabled={loading || passcode.length < 4}
+                            disabled={loading || passcode.length < 6}
                             className="btn-primary w-full py-4 text-lg disabled:opacity-50"
                         >
                             {loading ? 'Verifying...' : 'Login'}
@@ -357,17 +400,13 @@ const LoginPage = () => {
                             <p className="text-sm text-slate-600">Enter the 6-digit code sent via SMS to</p>
                             <p className="font-bold text-slate-900 text-lg mt-1 tracking-wider">{formatKenyanPhone(phoneNumber)}</p>
                         </div>
-                        <div>
-                            <input
-                                type="text"
-                                maxLength="6"
-                                placeholder="• • • • • •"
-                                className="w-full text-center bg-slate-100 border-none rounded-2xl py-4 focus:ring-2 focus:ring-brand-primary transition-all text-3xl font-bold tracking-[0.5em]"
-                                value={verificationCode}
-                                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                                required
-                            />
-                        </div>
+                        <DigitInput 
+                            length={6}
+                            value={verificationCode}
+                            onChange={setVerificationCode}
+                            type="text"
+                            label="Verification Code"
+                        />
                         <button
                             type="submit"
                             disabled={loading || verificationCode.length !== 6}
@@ -398,22 +437,20 @@ const LoginPage = () => {
                             </p>
                             <p className="font-bold text-slate-900 mt-1">Create a numeric passcode</p>
                         </div>
-                        <div className="space-y-4">
-                            <input
-                                type="password"
-                                placeholder="New Passcode"
-                                className="w-full text-center bg-slate-100 border-none rounded-2xl py-4 focus:ring-2 focus:ring-brand-primary transition-all text-xl font-bold tracking-[0.2em]"
+                        <div className="space-y-8">
+                            <DigitInput 
+                                length={6}
                                 value={newPasscode}
-                                onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, ''))}
-                                required
-                            />
-                            <input
+                                onChange={setNewPasscode}
                                 type="password"
-                                placeholder="Confirm Passcode"
-                                className="w-full text-center bg-slate-100 border-none rounded-2xl py-4 focus:ring-2 focus:ring-brand-primary transition-all text-xl font-bold tracking-[0.2em]"
+                                label="Create Passcode"
+                            />
+                            <DigitInput 
+                                length={6}
                                 value={confirmPasscode}
-                                onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, ''))}
-                                required
+                                onChange={setConfirmPasscode}
+                                type="password"
+                                label="Confirm Passcode"
                             />
                         </div>
 
@@ -485,7 +522,7 @@ const LoginPage = () => {
 
                          <button
                              type="submit"
-                             disabled={loading || newPasscode.length < 4 || newPasscode !== confirmPasscode || (isNewUser && (!facePhoto || !fullName || !nationalId))}
+                             disabled={loading || newPasscode.length < 6 || newPasscode !== confirmPasscode || (isNewUser && (!facePhoto || !fullName || !nationalId))}
                              className="btn-primary w-full py-4 text-lg disabled:opacity-50 mt-6"
                          >
                             {loading ? 'Saving...' : 'Set Passcode & Enter'}
