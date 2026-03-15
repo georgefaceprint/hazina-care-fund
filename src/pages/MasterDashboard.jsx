@@ -30,10 +30,26 @@ const MasterDashboard = () => {
         signupsYesterday: 0
     });
 
-    const masterId = formatKenyanPhone(profile?.phoneNumber) || profile?.id;
+    // Standardize master identification logic
+    const masterCode = (profile?.agent_code || '').trim().toUpperCase();
+    const masterPhoneRaw = profile?.phoneNumber || '';
+    const localPhone = formatKenyanPhone(masterPhoneRaw);
+    const intlPhone = standardizeTo254(masterPhoneRaw);
+    const masterUid = profile?.id || profile?.uid || '';
+
+    const allMasterIds = [...new Set([
+        masterCode,
+        localPhone,
+        intlPhone,
+        masterPhoneRaw,
+        masterUid,
+        masterCode ? stripPlus(masterCode) : null
+    ].filter(id => id && id.toString().length > 3))].map(id => typeof id === 'string' ? id.trim().toUpperCase() : id);
+
+    const masterId = masterCode || localPhone || masterUid;
 
     useEffect(() => {
-        if (!masterId) return;
+        if (allMasterIds.length === 0) return;
         
         // Initial fetch
         fetchData();
@@ -43,7 +59,7 @@ const MasterDashboard = () => {
         const logsRef = collection(db, 'recruitment_logs');
         const q = query(
             logsRef, 
-            where('masterAgentId', '==', masterId), 
+            where('masterAgentId', 'in', allMasterIds), 
             orderBy('timestamp', 'desc'), 
             limit(1)
         );
@@ -56,7 +72,7 @@ const MasterDashboard = () => {
         });
 
         return () => unsubscribe();
-    }, [masterId]);
+    }, [masterId, allMasterIds.join(',')]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -77,12 +93,12 @@ const MasterDashboard = () => {
             const logsRef = collection(db, 'recruitment_logs');
             const todayQuery = query(
                 logsRef,
-                where('masterAgentId', '==', masterId),
+                where('masterAgentId', 'in', allMasterIds),
                 where('timestamp', '>=', Timestamp.fromDate(startOfToday))
             );
             const yesterdayQuery = query(
                 logsRef,
-                where('masterAgentId', '==', masterId),
+                where('masterAgentId', 'in', allMasterIds),
                 where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)),
                 where('timestamp', '<', Timestamp.fromDate(startOfToday))
             );

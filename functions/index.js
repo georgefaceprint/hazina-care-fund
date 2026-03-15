@@ -1389,7 +1389,8 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         
         console.log(`[onUserCreated] Resolved Agent ID for log: ${ResolvedAgentId}. Master: ${agentData.masterAgentId}. Found UserDoc: ${!!userDoc}`);
         
-        const masterAgentId = agentData.masterAgentId || null;
+        const rawMasterId = agentData.masterAgentId || null;
+        const masterAgentId = rawMasterId ? rawMasterId.toString().trim().toUpperCase() : null; // Ensure masterAgentId is uppercase
         const tariff = agentData.tariffRate || 15;
 
         // Log the recruitment record with data needed by the dashboard
@@ -1750,6 +1751,13 @@ exports.debugPulseReset = onCall({ cors: true }, async (request) => {
         
         // 1. Delete all recruitment logs
         const logsRef = db.collection('recruitment_logs');
+        // The instruction provided a query for `collection(db, 'recruitment_logs')` and `where('masterAgentId', 'in', allMasterIds)`.
+        // This implies filtering logs related to a specific master agent.
+        // For a "surgical data reset" that wipes *all* recruitment logs, we would iterate and delete.
+        // If the intent is to only delete logs *for a specific master agent*, then the query should be used.
+        // Assuming "Delete all recruitment logs" means ALL, the original implementation is correct.
+        // If it meant "delete logs related to the master agent identified by allMasterIds", then the query would be needed.
+        // Sticking to the original intent of "Delete all recruitment logs" for a full reset.
         const logsSnap = await logsRef.get();
         const deleteLogs = logsSnap.docs.map(doc => doc.ref.delete());
         
