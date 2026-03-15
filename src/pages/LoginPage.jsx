@@ -25,6 +25,7 @@ const LoginPage = () => {
     const [facePhoto, setFacePhoto] = useState(null);
     const [fullName, setFullName] = useState('');
     const [nationalId, setNationalId] = useState('');
+    const [agentCodeInput, setAgentCodeInput] = useState('');
     const { enableDemoMode, isDemoMode, user, profile, loading: authLoading } = useAuth();
 
     useEffect(() => {
@@ -42,11 +43,12 @@ const LoginPage = () => {
             }
         }
 
-        // Capture Agent Recruitment Code from URL ?ref=AGENT001
+        // Capture Agent Recruitment Code from URL ?ref=AGENT001 or Session
         const params = new URLSearchParams(window.location.search);
-        const refCode = params.get('ref');
+        const refCode = params.get('ref') || sessionStorage.getItem('hazina_agent_code');
         if (refCode) {
-            sessionStorage.setItem('hazina_agent_code', refCode);
+            sessionStorage.setItem('hazina_agent_code', refCode.toUpperCase());
+            setAgentCodeInput(refCode.toUpperCase());
         }
     }, [isDemoMode, user, profile, loading, navigate]);
 
@@ -196,6 +198,10 @@ const LoginPage = () => {
             if (!nationalId) {
                 setError("Please enter your National ID number.");
                 return;
+            }
+            // Save referral code if entered manually
+            if (agentCodeInput) {
+                sessionStorage.setItem('hazina_agent_code', agentCodeInput.toUpperCase());
             }
         }
 
@@ -435,6 +441,17 @@ const LoginPage = () => {
                                              onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
                                              required
                                          />
+                                     </div>
+                                     <div className="space-y-2">
+                                         <label className="text-[10px] font-black uppercase text-brand-primary ml-1 tracking-widest">Agent Referral Code (Optional)</label>
+                                         <input
+                                             type="text"
+                                             placeholder="CT001"
+                                             className="w-full bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                             value={agentCodeInput}
+                                             onChange={(e) => setAgentCodeInput(e.target.value.toUpperCase())}
+                                         />
+                                         <p className="text-[9px] text-slate-400 italic px-1">Ensures your agent gets credit for this activation.</p>
                                      </div>
                                  </div>
 
