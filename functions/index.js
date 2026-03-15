@@ -1348,23 +1348,36 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         let ResolvedAgentId = agentCode; // Default to what was passed
         
         // 1. Try to find agent in 'users' collection
-        const intlCode = agentCode.startsWith('+') ? agentCode : formatTo254(agentCode);
-        const localCode = formatToLocal(agentCode);
+        // 1. Try to find agent in 'users' collection
+        let userDoc = null;
+        const isLikelyPhone = /^\+?\d+$/.test(agentCode);
         
-        let userDoc = await db.collection("users").doc(agentCode).get();
-        if (!userDoc.exists && agentCode !== intlCode) userDoc = await db.collection("users").doc(intlCode).get();
-        if (!userDoc.exists && agentCode !== localCode) userDoc = await db.collection("users").doc(localCode).get();
+        // Try direct ID lookup first
+        userDoc = await db.collection("users").doc(agentCode).get();
+        
+        // If not found and looks like a phone, try formatted variants
+        if (!userDoc.exists && isLikelyPhone) {
+            const intlCode = agentCode.startsWith('+') ? agentCode : formatTo254(agentCode);
+            const localCode = formatToLocal(agentCode);
+            if (agentCode !== intlCode) {
+                userDoc = await db.collection("users").doc(intlCode).get();
+            }
+            if (!userDoc.exists && agentCode !== localCode) {
+                userDoc = await db.collection("users").doc(localCode).get();
+            }
+        }
 
-        if (userDoc.exists) {
-            agentData = userDoc.data();
-            if (agentData.agent_code) ResolvedAgentId = agentData.agent_code;
-        } else {
+        // If still not found, try searching by agent_code field
+        if (!userDoc || !userDoc.exists) {
             const agentByCode = await db.collection("users").where("agent_code", "==", agentCode).limit(1).get();
             if (!agentByCode.empty) {
-                userDoc = agentByCode.docs[0]; // CRITICAL FIX: Update userDoc so handle A works
+                userDoc = agentByCode.docs[0];
                 agentData = userDoc.data();
                 ResolvedAgentId = agentCode;
             }
+        } else {
+            agentData = userDoc.data();
+            ResolvedAgentId = agentData.agent_code || agentCode;
         }
 
         // 2. Try to find agent in 'agents' collection (doc ID is agent code)
@@ -1374,7 +1387,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             ResolvedAgentId = agentCode;
         }
         
-        console.log(`[onUserCreated] Resolved Agent ID for log: ${ResolvedAgentId}. Master: ${agentData.masterAgentId}`);
+        console.log(`[onUserCreated] Resolved Agent ID for log: ${ResolvedAgentId}. Master: ${agentData.masterAgentId}. Found UserDoc: ${!!userDoc}`);
         
         const masterAgentId = agentData.masterAgentId || null;
         const tariff = agentData.tariffRate || 15;
@@ -1402,12 +1415,15 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         // Update counts in ALL relevant places
         // A. Update Agent's total count in the 'users' collection (if found there)
         if (userDoc && userDoc.exists) {
+            console.log(`[onUserCreated] Updating agent totals for ${userDoc.id}`);
             await userDoc.ref.update({
                 totalSignups: admin.firestore.FieldValue.increment(1),
                 totalEarnings: admin.firestore.FieldValue.increment(tariff),
                 walletBalance: admin.firestore.FieldValue.increment(tariff),
                 lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
             });
+        } else {
+            console.warn(`[onUserCreated] AGENT NOT FOUND for update! Tried ID/Phone: ${agentCode}, Intl: ${intlCode}, Local: ${localCode}`);
         }
 
         // B. Update 'agents' collection (doc ID is usually the agent code)

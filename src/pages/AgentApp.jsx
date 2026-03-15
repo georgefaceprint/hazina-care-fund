@@ -70,7 +70,7 @@ const AgentApp = () => {
         queryKey: ['agent-stats', agentCode, allAgentIds],
         queryFn: async () => {
             if (allAgentIds.length === 0) return null;
-            console.log("🔍 [useQuery] Fetching agent stats for:", allAgentIds);
+            console.log("🕵️ [AgentApp] Fetching stats for IDs:", allAgentIds);
             
             const now = new Date();
             const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -88,7 +88,7 @@ const AgentApp = () => {
                 getDocs(recentQuery)
             ]);
 
-            return {
+            const statsRes = {
                 today: todayCountSnap.data().count || 0,
                 yesterday: yesterdayCountSnap.data().count || 0,
                 recentLogs: recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
@@ -96,6 +96,8 @@ const AgentApp = () => {
                 earnings: profile?.totalEarnings || 0,
                 walletBalance: profile?.walletBalance || 0
             };
+            console.log("📊 [AgentApp] Stats Result:", { today: statsRes.today, yesterday: statsRes.yesterday, recent: statsRes.recentLogs.length });
+            return statsRes;
         },
         enabled: !!profile && allAgentIds.length > 0,
         refetchOnMount: true,
