@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { collection, query, where, getDocs, orderBy, limit, Timestamp, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp, doc, onSnapshot, getCountFromServer } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { Users, TrendingUp, DollarSign, QrCode, Share2, Clipboard, ChevronRight, Award, Zap, Activity, ArrowUpRight, Wallet, User, Smartphone, XCircle, Camera, CheckCircle2, ShieldCheck, Loader2, RotateCcw } from 'lucide-react';
 import { functions, db } from '../services/firebase';
@@ -54,8 +54,9 @@ const AgentApp = () => {
     const displayCode = (agentCode || localPhone || agentUid).toString().replace(/[^\w]/g, '');
     const registrationLink = `${window.location.origin}/r/${displayCode}`;
 
-    const fetchStats = async () => {
+    const fetchStats = async (isInitial = false) => {
         if (allAgentIds.length === 0) return;
+        if (isInitial) setLoading(true);
 
         try {
             console.log("🔍 [fetchStats] Querying logs for agent ids:", allAgentIds);
@@ -66,36 +67,46 @@ const AgentApp = () => {
 
             const logsRef = collection(db, 'recruitment_logs');
 
-            // 1. Fetch recruitment counts from logs
+            // Define Parallel Queries
             const todayQuery = query(logsRef, where('agentId', 'in', allAgentIds), where('timestamp', '>=', Timestamp.fromDate(startOfToday)));
             const yesterdayQuery = query(logsRef, where('agentId', 'in', allAgentIds), where('timestamp', '>=', Timestamp.fromDate(startOfYesterday)), where('timestamp', '<', Timestamp.fromDate(startOfToday)));
-
-            const [todaySnap, yesterdaySnap] = await Promise.all([getDocs(todayQuery), getDocs(yesterdayQuery)]);
-
-            // 2. Fetch Recent Logs
             const recentQuery = query(logsRef, where('agentId', 'in', allAgentIds), orderBy('timestamp', 'desc'), limit(15));
-            const recentSnap = await getDocs(recentQuery);
-            console.log(`✅ [fetchStats] Found ${recentSnap.size} recent logs.`);
-            setRecentLogs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
+            // Execute in Parallel with Aggregation
+            const [todayCountSnap, yesterdayCountSnap, recentSnap] = await Promise.all([
+                getCountFromServer(todayQuery),
+                getCountFromServer(yesterdayQuery),
+                getDocs(recentQuery)
+            ]);
+
+            console.log(`✅ [fetchStats] Aggregation complete. Found ${recentSnap.size} recent entries.`);
+            
+            setRecentLogs(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             setStats({
-                today: todaySnap.size || 0,
-                yesterday: yesterdaySnap.size || 0,
+                today: todayCountSnap.data().count || 0,
+                yesterday: yesterdayCountSnap.data().count || 0,
                 total: profile?.totalSignups || 0,
                 earnings: profile?.totalEarnings || 0,
                 walletBalance: profile?.walletBalance || 0
             });
         } catch (error) {
             console.error("Error fetching agent stats:", error);
-            toast.error("Analytics Error: " + (error.message || "Failed to sync recruitment logs."));
+            toast.error("Analytics Sync Error: " + (error.message || "Failed to sync."));
         } finally {
-            setLoading(false);
+            if (isInitial) setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchStats();
-    }, [agentCode, profile?.totalSignups, profile?.walletBalance]);
+        fetchStats(true); // Initial load shows spinner
+    }, [agentCode]);
+
+    useEffect(() => {
+        // Background updates don't show spinner to prevent flashes
+        if (profile?.totalSignups || profile?.walletBalance) {
+            fetchStats(false);
+        }
+    }, [profile?.totalSignups, profile?.walletBalance]);
 
     useEffect(() => {
         if (profile?.phoneNumber && !withdrawPhone) {
