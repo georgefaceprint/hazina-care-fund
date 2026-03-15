@@ -43,7 +43,11 @@ const RoleBasedRedirect = () => {
   if (!profile) return <Navigate to="/login" replace />;
 
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
-  // Everyone else (agents, masters, etc.) goes to the member dashboard so they can see their own shield data
+  if (profile.role === 'super_master') return <Navigate to="/smagent/dashboard" replace />;
+  if (profile.role === 'master_agent') return <Navigate to="/magent/dashboard" replace />;
+  if (profile.role === 'agent') return <Navigate to="/agent/dashboard" replace />;
+
+  // Default for guardians
   return <Navigate to="/dashboard" replace />;
 };
 
