@@ -16,14 +16,6 @@ const CompleteProfile = () => {
     const { t } = useLanguage();
     const navigate = useNavigate();
     const toast = useToast();
-    useEffect(() => {
-        const isRecruiter = ['super_master', 'master_agent', 'agent'].includes(profile?.role);
-        if (isRecruiter) {
-            if (profile.role === 'super_master') navigate('/smagent/dashboard');
-            else if (profile.role === 'master_agent') navigate('/magent/dashboard');
-            else if (profile.role === 'agent') navigate('/agent/dashboard');
-        }
-    }, [profile, navigate]);
     const [fullName, setFullName] = useState('');
     const [nationalId, setNationalId] = useState('');
     const [idPhoto, setIdPhoto] = useState(null);

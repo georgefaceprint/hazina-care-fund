@@ -163,6 +163,16 @@ export const AuthProvider = ({ children }) => {
 
             if (cache_version && local && cache_version.toString() !== local) {
                 localStorage.setItem('hazina_cache_version', cache_version.toString());
+                
+                // --- Loop Breaker Guard ---
+                const sessionReloaded = sessionStorage.getItem('hazina_session_reloaded');
+                if (sessionReloaded) {
+                    console.warn("⚠️ [AuthContext] Prevented refresh loop. Cache version mismatch detected again.");
+                    return;
+                }
+                sessionStorage.setItem('hazina_session_reloaded', 'true');
+                // --------------------------
+
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.getRegistrations().then(regs => {
                         regs.forEach(r => r.unregister());

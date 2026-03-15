@@ -23,19 +23,6 @@ const RecruitmentLogin = () => {
     const [error, setError] = useState('');
     const [selectedRole, setSelectedRole] = useState('agent'); // 'super_master', 'master_agent', 'agent'
 
-    useEffect(() => {
-        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-        const isTestUser = user && (testNumbers.includes(user.phoneNumber) || testNumbers.includes(user.uid));
-
-        // If user is already authenticated and has a professional role, redirect appropriately
-        // BUT: Let test users stay on the login page so they can switch between portals (SMA/Master/Agent)
-        if (user && profile && !authLoading && !isTestUser) {
-            if (profile.role === 'super_master') navigate('/smagent/dashboard');
-            else if (profile.role === 'master_agent') navigate('/magent/dashboard');
-            else if (profile.role === 'agent') navigate('/agent/dashboard');
-            else navigate('/dashboard'); // Fallback for guardians
-        }
-    }, [user, profile, authLoading, navigate]);
 
     const roleConfig = {
         super_master: {

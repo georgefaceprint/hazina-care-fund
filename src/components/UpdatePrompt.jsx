@@ -42,9 +42,12 @@ const UpdatePrompt = () => {
 
         checkForUpdate();
 
+        let initialized = false;
+        setTimeout(() => { initialized = true; }, 2000);
+
         // Detect controller change (new SW activated) -> reload to get fresh assets
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            window.location.reload();
+            if (initialized) window.location.reload();
         });
     }, []);
 
