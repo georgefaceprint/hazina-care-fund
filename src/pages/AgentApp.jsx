@@ -42,17 +42,27 @@ const AgentApp = () => {
     const [verificationCode, setVerificationCode] = useState('');
     const [showRegModal, setShowRegModal] = useState(false);
 
+    // Helper to strip leading '+' from a string
+    const stripPlus = (str) => str.startsWith('+') ? str.substring(1) : str;
+
+    // 2. Identify all possible Agent IDs for this user
     const agentCode = profile?.agent_code || '';
-    const agentPhone = profile?.phoneNumber || '';
-    const agentUid = profile?.id || '';
+    const agentPhoneRaw = profile?.phoneNumber || '';
+    const localPhone = formatKenyanPhone(agentPhoneRaw); // e.g. +2547...
+    const intlPhone = standardizeTo254(agentPhoneRaw);   // e.g. 2547...
+    const agentUid = profile?.id || profile?.uid || '';
     
-    // Standardize to local 0... format
-    const localPhone = formatKenyanPhone(agentPhone);
-    const intlPhone = `+${standardizeTo254(agentPhone)}`;
-    const allAgentIds = [...new Set([agentCode, localPhone, intlPhone, agentPhone, agentUid].filter(id => id && id.length > 0))];
+    // Comprehensive Set of IDs to match logs (Agent Code, Phone (+), Phone (no +), Raw Phone, UID)
+    const allAgentIds = [...new Set([
+        agentCode, 
+        localPhone, 
+        intlPhone, 
+        agentPhoneRaw, 
+        agentUid,
+        agentCode ? stripPlus(agentCode) : null
+    ].filter(id => id && id.length > 3))]; // Filter out short/null values
     
-    // Priority: Agent Code > Phone > UID (strip any lingering + or symbols)
-    const displayCode = (agentCode || localPhone || agentUid).toString().replace(/[^\w]/g, '');
+    const displayCode = (agentCode || localPhone || agentUid).toString().replace(/^\+/, '');
     const registrationLink = `${window.location.origin}/r/${displayCode}`;
 
     // 🔍 Refactored Stats Fetching with React Query
