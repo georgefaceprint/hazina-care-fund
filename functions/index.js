@@ -48,32 +48,32 @@ const fetchUserDoc = async (uid, auth = null) => {
  */
 const formatTo254 = (phoneNumber) => {
     if (!phoneNumber) return "";
-    let cleaned = phoneNumber.replace(/\D/g, '');
+    let cleaned = phoneNumber.toString().replace(/\D/g, '');
     if (cleaned.startsWith('254') && cleaned.length === 12) {
-        return `+${cleaned}`;
+        return cleaned;
     }
     if (cleaned.startsWith('0') && cleaned.length === 10) {
-        return `+254${cleaned.substring(1)}`;
+        return `254${cleaned.substring(1)}`;
     }
     if (cleaned.length === 9) {
-        return `+254${cleaned}`;
+        return `254${cleaned}`;
     }
-    return phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    return cleaned.startsWith('254') ? cleaned : `254${cleaned}`;
 };
 
 const formatToLocal = (phoneNumber) => {
     if (!phoneNumber) return "";
-    const cleaned = phoneNumber.replace(/\D/g, '');
+    let cleaned = phoneNumber.toString().replace(/\D/g, '');
     if (cleaned.startsWith('254') && cleaned.length === 12) {
         return `0${cleaned.substring(3)}`;
     }
-    if (cleaned.length === 9) {
-        return `0${cleaned}`;
+    if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
+        if (cleaned.length === 9) return `0${cleaned}`;
     }
     if (cleaned.startsWith('0') && cleaned.length === 10) {
         return cleaned;
     }
-    return phoneNumber;
+    return cleaned;
 };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCaAkDtu93ADVaDE0hy0MCK1n9E8ksUdN0";
