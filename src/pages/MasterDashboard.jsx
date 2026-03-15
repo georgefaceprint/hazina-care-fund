@@ -33,9 +33,29 @@ const MasterDashboard = () => {
     const masterId = formatKenyanPhone(profile?.phoneNumber) || profile?.id;
 
     useEffect(() => {
-        if (masterId) {
-            fetchData();
-        }
+        if (!masterId) return;
+        
+        // Initial fetch
+        fetchData();
+
+        // Real-time update on new registrations
+        console.log("📡 [MasterDashboard] Initializing real-time listener for network signups...");
+        const logsRef = collection(db, 'recruitment_logs');
+        const q = query(
+            logsRef, 
+            where('masterAgentId', '==', masterId), 
+            orderBy('timestamp', 'desc'), 
+            limit(1)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                console.log("✨ [MasterDashboard] New registration in network detected! Refreshing stats...");
+                fetchData();
+            }
+        });
+
+        return () => unsubscribe();
     }, [masterId]);
 
     const fetchData = async () => {

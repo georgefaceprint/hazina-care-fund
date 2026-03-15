@@ -33,7 +33,22 @@ const SuperMasterDashboard = () => {
     });
 
     useEffect(() => {
+        // Initial fetch
         fetchGlobalData();
+
+        // Real-time update on ANY new registration (Global oversight)
+        console.log("📡 [SuperMaster] Initializing global real-time listener...");
+        const logsRef = collection(db, 'recruitment_logs');
+        const q = query(logsRef, orderBy('timestamp', 'desc'), limit(1));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                console.log("✨ [SuperMaster] Global registration detected! Refreshing metrics...");
+                fetchGlobalData();
+            }
+        });
+
+        return () => unsubscribe();
     }, []);
 
     const fetchGlobalData = async () => {

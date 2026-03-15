@@ -106,12 +106,36 @@ const AgentApp = () => {
         }
     }, [qStats]);
 
-    // Background update on profile changes
+    // Background refetch on profile changes (totalSignups / walletBalance)
     useEffect(() => {
-        if (profile?.totalSignups || profile?.walletBalance) {
-            // React Query will auto-refetch if we invalidate or just rely on staleTime
+        if (profile?.totalSignups !== undefined || profile?.walletBalance !== undefined) {
+            console.log("♻️ [AgentApp] Profile metrics changed, refetching dashboard stats...");
+            refetch();
         }
-    }, [profile?.totalSignups, profile?.walletBalance]);
+    }, [profile?.totalSignups, profile?.walletBalance, refetch]);
+
+    // Real-Time Registration Listener: Auto-refetch when a new log appears
+    useEffect(() => {
+        if (allAgentIds.length === 0) return;
+
+        console.log("📡 [AgentApp] Initializing real-time listener for registrations...");
+        const logsRef = collection(db, 'recruitment_logs');
+        const q = query(
+            logsRef, 
+            where('agentId', 'in', allAgentIds), 
+            orderBy('timestamp', 'desc'), 
+            limit(1)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                console.log("✨ [AgentApp] New registration detected! Updating dashboard...");
+                refetch();
+            }
+        });
+
+        return () => unsubscribe();
+    }, [JSON.stringify(allAgentIds), refetch]);
 
     useEffect(() => {
         if (profile?.phoneNumber && !withdrawPhone) {
