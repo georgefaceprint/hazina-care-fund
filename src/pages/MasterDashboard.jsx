@@ -7,6 +7,7 @@ import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, o
 import { Users, UserPlus, MapPin, Search, Filter, TrendingUp, DollarSign, ChevronRight, MoreVertical, Activity, Briefcase, Edit2, Trash2 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { generateAgentPrefix } from '../utils/referralUtils';
 
 const MasterDashboard = () => {
     const { profile, impersonate } = useAuth();
@@ -83,6 +84,37 @@ const MasterDashboard = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const calculateNextAgentCode = (existingAgents) => {
+        if (!existingAgents || existingAgents.length === 0) {
+            return `${generateAgentPrefix()}001`;
+        }
+
+        // Find the best code to use as base
+        // We look for codes following the XX000 format
+        const sequentialCodes = existingAgents
+            .map(a => a.agentCode || "")
+            .filter(code => /^[A-Z]{2}\d{3,}/.test(code))
+            .sort();
+
+        if (sequentialCodes.length === 0) {
+            return `${generateAgentPrefix()}001`;
+        }
+
+        // Extract prefix and max number
+        const lastCode = sequentialCodes[sequentialCodes.length - 1];
+        const prefix = lastCode.substring(0, 2);
+        const number = parseInt(lastCode.substring(2));
+        
+        const nextNumber = (number + 1).toString().padStart(3, '0');
+        return `${prefix}${nextNumber}`;
+    };
+
+    const openAddModal = () => {
+        const nextCode = calculateNextAgentCode(agents);
+        setNewAgent(prev => ({ ...prev, agentCode: nextCode }));
+        setShowAddModal(true);
     };
 
     const handleAddAgent = async (e) => {
@@ -186,7 +218,7 @@ const MasterDashboard = () => {
                     <p className="text-slate-500 font-medium">Recruitment management for {profile?.fullName}</p>
                 </div>
                 <button
-                    onClick={() => setShowAddModal(true)}
+                    onClick={openAddModal}
                     className="bg-brand-primary text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-brand-secondary transition-all shadow-xl shadow-brand-primary/20 active:scale-95"
                 >
                     <UserPlus className="w-5 h-5" />
@@ -251,7 +283,7 @@ const MasterDashboard = () => {
                             <Users className="w-16 h-16 text-slate-100 mx-auto mb-6" />
                             <p className="text-slate-900 font-bold mb-2 text-lg">No agents registered yet.</p>
                             <p className="text-slate-400 text-sm mb-6">Start expanding your network to begin recruitment.</p>
-                            <button onClick={() => setShowAddModal(true)} className="bg-brand-primary text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest">Register First Agent</button>
+                            <button onClick={openAddModal} className="bg-brand-primary text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest">Register First Agent</button>
                         </div>
                     ) : agents.map(agent => (
                         <motion.div
