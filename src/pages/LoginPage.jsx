@@ -186,7 +186,7 @@ const LoginPage = () => {
                 // Either new user, or existing user without a passcode
                 const sendOtp = httpsCallable(functions, 'sendOtp');
                 await sendOtp({ phoneNumber: formatPhone });
-                setIsNewUser(!result.data.exists);
+                setIsNewUser(!result.data.exists || !result.data.profile_completed);
                 setStep('otp');
             }
         } catch (error) {

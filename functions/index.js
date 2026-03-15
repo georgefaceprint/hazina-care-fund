@@ -1157,7 +1157,8 @@ exports.checkUserExists = onCall({ cors: true }, async (request) => {
         const userData = userSnap.data();
         return { 
             exists: true, 
-            hasPasscode: !!userData.passcodeHash 
+            hasPasscode: !!userData.passcodeHash,
+            profile_completed: !!userData.profile_completed
         };
     } catch (error) {
         throw new HttpsError('internal', error.message);
