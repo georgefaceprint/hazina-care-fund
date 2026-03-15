@@ -1437,84 +1437,110 @@ exports.initiateAgentWithdrawal = onCall({ cors: true }, async (request) => {
         throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
 
-    if (!amount || amount < 50) {
-        throw new HttpsError('invalid-argument', 'Minimum withdrawal is KSh 50.');
+    if (!amount || amount < 2500) {
+        throw new HttpsError('invalid-argument', 'Minimum withdrawal is KSh 2,500.');
     }
 
     const formatPhone = formatTo254(phoneNumber);
+    const userRef = db.collection("users").doc(uid);
+    const withdrawalId = `WD-${Date.now().toString().substring(5)}`;
+    const withdrawalRef = db.collection("withdrawals").doc(withdrawalId);
 
     try {
-        // 1. Find user to get their agent_code
-        // Note: Auth UID is the phone number for SMS users
-        const userDoc = await db.collection("users").doc(uid).get();
-        if (!userDoc.exists) {
-            throw new HttpsError('not-found', 'User profile not found.');
-        }
+        // --- STEP 1: ATOMIC TRANSACTION ---
+        // Subtract balance and create record in one atomic operation
+        const result = await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) {
+                throw new Error('User record not found.');
+            }
 
-        const userData = userDoc.data();
-        const agentCode = userData.agent_code || userData.phoneNumber || uid;
+            const userData = userDoc.data();
+            const currentBalance = userData.walletBalance || 0;
+            const agentCode = userData.agent_code || userData.phoneNumber || uid;
 
-        // 2. Check Agent Balance (READ FROM USERS COLLECTION)
-        const userRef = db.collection("users").doc(uid);
-        const userDocAgain = await userRef.get(); // Refresh data
+            if (currentBalance < 2500) {
+                throw new Error('Withdrawals are disabled until your wallet reaches KSh 2,500.');
+            }
 
-        if (!userDocAgain.exists) {
-            throw new HttpsError('not-found', 'User record not found.');
-        }
+            if (currentBalance < amount) {
+                throw new Error(`Insufficient wallet balance. Available: KSh ${currentBalance}`);
+            }
 
-        const userDataAgain = userDocAgain.data();
-        const currentBalance = userDataAgain.walletBalance || 0;
-
-        if (currentBalance < 2500) {
-            throw new HttpsError('failed-precondition', 'Withdrawals are disabled until your wallet reaches KSh 2,500.');
-        }
-
-        if (currentBalance < amount) {
-            throw new HttpsError('failed-precondition', `Insufficient wallet balance. Available: KSh ${currentBalance}`);
-        }
-
-        // 3. Initiate SasaPay B2C
-        const token = await getSasapayToken();
-        const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
-
-        const payload = {
-            MerchantCode: SASAPAY_MERCHANT_CODE,
-            MerchantTransactionReference: `WD-${Date.now().toString().substring(5)}`,
-            Amount: Number(amount),
-            Currency: "KES",
-            ReceiverNumber: formatPhone,
-            Channel: "63902", // M-Pesa
-            Reason: `Hazina Agent Withdrawal: ${agentCode}`,
-            CallBackURL: callbackUrl
-        };
-
-        const response = await axios.post(`${SASAPAY_BASE_URL}/payments/b2c/`, payload, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (response.data.status) {
-            // 4. Update Balance and Log
-            await userRef.update({
-                walletBalance: admin.firestore.FieldValue.increment(-amount)
+            // Perform Atomic Writes
+            transaction.update(userRef, {
+                walletBalance: admin.firestore.FieldValue.increment(-amount),
+                last_withdrawal_attempt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            await db.collection("withdrawals").add({
+            transaction.set(withdrawalRef, {
                 userId: uid,
                 agentId: agentCode,
                 amount: amount,
                 phoneNumber: formatPhone,
-                status: 'processing',
-                transactionReference: response.data.TransactionReference,
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
+                status: 'payout_initiated',
+                transactionReference: withdrawalId,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                retryCount: 0
             });
 
-            return { success: true, message: "Withdrawal initiated successfully." };
-        } else {
-            throw new HttpsError('internal', response.data.detail || "SasaPay B2C failed.");
+            return { agentCode, withdrawalId };
+        });
+
+        const { agentCode } = result;
+
+        // --- STEP 2: EXTERNAL SASAPAY CALL ---
+        try {
+            const token = await getSasapayToken();
+            const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
+
+            const payload = {
+                MerchantCode: SASAPAY_MERCHANT_CODE,
+                MerchantTransactionReference: withdrawalId,
+                Amount: Number(amount),
+                Currency: "KES",
+                ReceiverNumber: formatPhone,
+                Channel: "63902", // M-Pesa
+                Reason: `Hazina Agent Withdrawal: ${agentCode}`,
+                CallBackURL: callbackUrl
+            };
+
+            const response = await axios.post(`${SASAPAY_BASE_URL}/payments/b2c/`, payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.status) {
+                // Update with external reference
+                await withdrawalRef.update({
+                    status: 'processing',
+                    externalReference: response.data.TransactionReference || null
+                });
+                return { success: true, message: "Withdrawal initiated successfully." };
+            } else {
+                throw new Error(response.data.detail || "SasaPay B2C API rejected the request.");
+            }
+
+        } catch (sasaError) {
+            console.error("🔴 SasaPay Payout Error:", sasaError.message);
+            
+            // --- STEP 3: ATOMIC ROLLBACK ---
+            // On external failure, refund the balance and mark as failed
+            await db.runTransaction(async (transaction) => {
+                transaction.update(userRef, {
+                    walletBalance: admin.firestore.FieldValue.increment(amount)
+                });
+                transaction.update(withdrawalRef, {
+                    status: 'failed',
+                    errorMessage: sasaError.message,
+                    failedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+            });
+
+            throw new HttpsError('internal', `Payment Gateway Error: ${sasaError.message}. Funds have been returned to your wallet.`);
         }
 
     } catch (error) {
-        console.error("Withdrawal Error:", error);
+        console.error("❌ Withdrawal Logic Error:", error);
         if (error instanceof HttpsError) throw error;
         throw new HttpsError('internal', error.message || 'Withdrawal failed.');
     }
