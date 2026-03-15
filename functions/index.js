@@ -1307,7 +1307,8 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         } else {
             const agentByCode = await db.collection("users").where("agent_code", "==", agentCode).limit(1).get();
             if (!agentByCode.empty) {
-                agentData = agentByCode.docs[0].data();
+                userDoc = agentByCode.docs[0]; // CRITICAL FIX: Update userDoc so handle A works
+                agentData = userDoc.data();
                 ResolvedAgentId = agentCode;
             }
         }
@@ -1325,7 +1326,9 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         const tariff = agentData.tariffRate || 15;
 
         // Log the recruitment record with data needed by the dashboard
-        await db.collection("recruitment_logs").add({
+        // ID is deterministic to prevent duplicate logs on retries
+        const logId = `recruitment_${ResolvedAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
+        await db.collection("recruitment_logs").doc(logId).set({
             userId,
             userName: newUser.fullName,
             tier: newUser.active_tier || 'bronze',
@@ -1335,7 +1338,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             tariffApplied: tariff,
             commissionEarned: tariff,
             timestamp: admin.firestore.FieldValue.serverTimestamp()
-        });
+        }, { merge: true });
 
         // Update counts in ALL relevant places
         // A. Update Agent's total count in the 'users' collection (if found there)
