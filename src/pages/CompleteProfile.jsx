@@ -20,8 +20,10 @@ const CompleteProfile = () => {
     const [nationalId, setNationalId] = useState('');
     const [idPhoto, setIdPhoto] = useState(null);
     const [idPhotoBack, setIdPhotoBack] = useState(null);
-    const [county, setCounty] = useState('');
-    const [town, setTown] = useState('');
+    const [currentCounty, setCurrentCounty] = useState('');
+    const [currentTown, setCurrentTown] = useState('');
+    const [homeCounty, setHomeCounty] = useState('');
+    const [nearestTown, setNearestTown] = useState('');
     const [uploadingState, setUploadingState] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -33,7 +35,7 @@ const CompleteProfile = () => {
             return;
         }
 
-        if (!county || !town) {
+        if (!currentCounty || !currentTown) {
             toast.error("Please select your County and Town.");
             return;
         }
@@ -63,8 +65,10 @@ const CompleteProfile = () => {
                 national_id: nationalId,
                 id_photo_url: photoUrl,
                 id_photo_back_url: photoUrlBack,
-                county: county,
-                town: town,
+                currentCounty: currentCounty,
+                currentTown: currentTown,
+                homeCounty: homeCounty,
+                nearestTown: nearestTown,
                 profile_completed: true,
                 updatedAt: serverTimestamp()
             });
@@ -100,11 +104,12 @@ const CompleteProfile = () => {
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Profile Completion</span>
                         <span className="text-sm font-black text-brand-primary">
                             {Math.round(
-                                (fullName.trim().split(/\s+/).length >= 2 ? 20 : 0) +
-                                (nationalId ? 20 : 0) +
-                                (idPhoto ? 20 : 0) +
-                                (idPhotoBack ? 20 : 0) +
-                                (county && town ? 20 : 0)
+                                (fullName.trim().split(/\s+/).length >= 2 ? 15 : 0) +
+                                (nationalId ? 15 : 0) +
+                                (idPhoto ? 15 : 0) +
+                                (idPhotoBack ? 15 : 0) +
+                                (county && town ? 20 : 0) +
+                                (homeCounty && nearestTown ? 20 : 0)
                             )}%
                         </span>
                     </div>
@@ -197,10 +202,10 @@ const CompleteProfile = () => {
                             <div className="relative">
                                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <select
-                                    value={county}
+                                    value={currentCounty}
                                     onChange={(e) => {
-                                        setCounty(e.target.value);
-                                        setTown('');
+                                        setCurrentCounty(e.target.value);
+                                        setCurrentTown('');
                                     }}
                                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-10 pr-8 py-3.5 text-slate-900 font-bold text-sm appearance-none outline-none focus:ring-2 focus:ring-brand-primary"
                                     required
@@ -212,17 +217,44 @@ const CompleteProfile = () => {
                             </div>
                             <div className="relative">
                                 <select
-                                    value={town}
-                                    onChange={(e) => setTown(e.target.value)}
-                                    disabled={!county}
+                                    value={currentTown}
+                                    onChange={(e) => setCurrentTown(e.target.value)}
+                                    disabled={!currentCounty}
                                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3.5 text-slate-900 font-bold text-sm appearance-none outline-none focus:ring-2 focus:ring-brand-primary disabled:opacity-50"
                                     required
                                 >
                                     <option value="">Closest Town</option>
-                                    {(COUNTY_TOWNS[county] || []).map(t => <option key={t} value={t}>{t}</option>)}
+                                    {(COUNTY_TOWNS[currentCounty] || []).map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1 ml-1">Home Connection</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <select
+                                    value={homeCounty}
+                                    onChange={(e) => setHomeCounty(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-10 pr-8 py-3.5 text-slate-900 font-bold text-sm appearance-none outline-none focus:ring-2 focus:ring-brand-primary"
+                                    required
+                                >
+                                    <option value="">Home County</option>
+                                    {KENYA_COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Nearest Town"
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-slate-900 font-bold text-sm outline-none focus:ring-2 focus:ring-brand-primary"
+                                value={nearestTown}
+                                onChange={(e) => setNearestTown(e.target.value.toUpperCase())}
+                                required
+                            />
                         </div>
                     </div>
 

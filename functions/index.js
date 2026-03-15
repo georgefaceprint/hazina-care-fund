@@ -1337,6 +1337,11 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             masterAgentId,
             tariffApplied: tariff,
             commissionEarned: tariff,
+            // Carry forward residence data for analytics
+            city: newUser.currentTown || '',
+            county: newUser.currentCounty || '',
+            homeCounty: newUser.homeCounty || '',
+            nearestTown: newUser.nearestTown || '',
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
@@ -1629,6 +1634,72 @@ exports.backfillRecruitmentLogs = onCall({ cors: true }, async (request) => {
             message: `Backfill complete. Updated: ${updatedCount}, Skipped/Already OK: ${skipCount}` 
         };
     } catch (error) {
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * SURGICAL DATA RESET (Debug Utility)
+ * Only wipes recruitment-related data and resets agent stats.
+ */
+exports.debugPulseReset = onCall({ cors: true }, async (request) => {
+    // Basic auth check
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Management authentication required.');
+    }
+
+    try {
+        console.log('🚀 Starting surgical cleanup via Cloud Function...');
+        
+        // 1. Delete all recruitment logs
+        const logsRef = db.collection('recruitment_logs');
+        const logsSnap = await logsRef.get();
+        const deleteLogs = logsSnap.docs.map(doc => doc.ref.delete());
+        
+        // 2. Clear counters for agents
+        const agentsRef = db.collection('agents');
+        const agentsSnap = await agentsRef.get();
+        const resetAgents = agentsSnap.docs.map(doc => doc.ref.update({
+            totalSignups: 0,
+            walletBalance: 0,
+            totalEarnings: 0,
+            lastSignupAt: null
+        }));
+
+        // 3. Reset stats for professional users and delete standard recruited members
+        const usersRef = db.collection('users');
+        const allUsersSnap = await usersRef.get();
+        
+        let deletedCount = 0;
+        let resetCount = 0;
+        
+        const userOps = allUsersSnap.docs.map(async (doc) => {
+            const data = doc.data();
+            const isProfessional = data.role === 'agent' || data.role === 'master' || data.role === 'super_master';
+            const isRecruited = data.recruited_by != null;
+
+            if (isProfessional) {
+                await doc.ref.update({
+                    totalSignups: 0,
+                    walletBalance: 0,
+                    totalEarnings: 0,
+                    lastSignupAt: null
+                });
+                resetCount++;
+            } else if (isRecruited) {
+                await doc.ref.delete();
+                deletedCount++;
+            }
+        });
+
+        await Promise.all([...deleteLogs, ...resetAgents, ...userOps]);
+
+        return { 
+            success: true, 
+            message: `Environment Reset! Removed ${deletedCount} members, cleared ${logsSnap.size} logs, reset ${resetAgents.length} agent files.` 
+        };
+    } catch (error) {
+        console.error("Pulse Reset Error:", error);
         throw new HttpsError('internal', error.message);
     }
 });

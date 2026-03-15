@@ -11,6 +11,8 @@ import { generateReferralCode } from '../utils/referralUtils';
 import { useLanguage } from '../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
+import { kenyanCounties, countyTowns } from '../utils/kenyanGeog';
+import { MapPin, Home } from 'lucide-react';
 
 const DigitInput = ({ value, onChange, length = 6, type = "text", label = "" }) => {
     return (
@@ -72,6 +74,13 @@ const LoginPage = () => {
     const [fullName, setFullName] = useState('');
     const [nationalId, setNationalId] = useState('');
     const [agentCodeInput, setAgentCodeInput] = useState('');
+    
+    // Geographical State
+    const [currentCounty, setCurrentCounty] = useState('');
+    const [currentTown, setCurrentTown] = useState('');
+    const [homeCounty, setHomeCounty] = useState('');
+    const [nearestTown, setNearestTown] = useState('');
+
     const { enableDemoMode, isDemoMode, user, profile, loading: authLoading } = useAuth();
 
     useEffect(() => {
@@ -492,6 +501,68 @@ const LoginPage = () => {
                                      </div>
                                  </div>
 
+                                 <div className="space-y-4 pt-4 border-t border-slate-50">
+                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Current Residence</p>
+                                     <div className="space-y-2">
+                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">County</label>
+                                         <select
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                             value={currentCounty}
+                                             onChange={(e) => { setCurrentCounty(e.target.value); setCurrentTown(''); }}
+                                             required
+                                         >
+                                             <option value="">Select County</option>
+                                             {kenyanCounties.map(county => (
+                                                 <option key={county} value={county}>{county}</option>
+                                             ))}
+                                         </select>
+                                     </div>
+                                     <div className="space-y-2">
+                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Town</label>
+                                         <select
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                             value={currentTown}
+                                             onChange={(e) => setCurrentTown(e.target.value)}
+                                             disabled={!currentCounty}
+                                             required
+                                         >
+                                             <option value="">Select Town</option>
+                                             {(countyTowns[currentCounty] || []).map(town => (
+                                                 <option key={town} value={town}>{town}</option>
+                                             ))}
+                                         </select>
+                                     </div>
+                                 </div>
+
+                                 <div className="space-y-4 pt-4 border-t border-slate-50">
+                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Home Location</p>
+                                     <div className="space-y-2">
+                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">County</label>
+                                         <select
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                             value={homeCounty}
+                                             onChange={(e) => { setHomeCounty(e.target.value); setNearestTown(''); }}
+                                             required
+                                         >
+                                             <option value="">Select County</option>
+                                             {kenyanCounties.map(county => (
+                                                 <option key={county} value={county}>{county}</option>
+                                             ))}
+                                         </select>
+                                     </div>
+                                     <div className="space-y-2">
+                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Nearest Town/Market Center</label>
+                                         <input
+                                             type="text"
+                                             placeholder="e.g., Kutus, Sagana"
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                             value={nearestTown}
+                                             onChange={(e) => setNearestTown(e.target.value)}
+                                             required
+                                         />
+                                     </div>
+                                 </div>
+
                                  <div className="space-y-2">
                                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Identity Face Capture</label>
                                      <div className="relative border-2 border-dashed border-slate-200 rounded-[2.5rem] p-6 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 group overflow-hidden">
@@ -522,7 +593,7 @@ const LoginPage = () => {
 
                          <button
                              type="submit"
-                             disabled={loading || newPasscode.length < 6 || newPasscode !== confirmPasscode || (isNewUser && (!facePhoto || !fullName || !nationalId))}
+                             disabled={loading || newPasscode.length < 6 || newPasscode !== confirmPasscode || (isNewUser && (!facePhoto || !fullName || !nationalId || !currentCounty || !currentTown || !homeCounty || !nearestTown))}
                              className="btn-primary w-full py-4 text-lg disabled:opacity-50 mt-6"
                          >
                             {loading ? 'Saving...' : 'Set Passcode & Enter'}
