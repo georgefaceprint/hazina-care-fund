@@ -181,9 +181,9 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="min-h-[100dvh] bg-slate-50 pb-24">
+        <div className="min-h-[100dvh] bg-slate-50 pb-32">
             {/* Header / Nav */}
-            <div className="pt-8 pb-12 bg-brand-secondary rounded-b-[3rem] px-6 text-white relative overflow-hidden">
+            <div className="pt-10 pb-16 bg-brand-secondary rounded-b-[3.5rem] px-8 text-white relative overflow-hidden">
                 <div className="flex justify-between items-center relative z-10">
                      <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
@@ -196,8 +196,8 @@ const Dashboard = () => {
             </div>
 
             {/* Premium Digital ID Card */}
-            <div className="mobile-px -mt-10 relative z-20">
-                <div className="bg-gradient-to-br from-brand-secondary via-[#2a0a0d] to-black rounded-[2.5rem] p-6 shadow-2xl border border-white/10 relative overflow-hidden ring-1 ring-white/5">
+            <div className="px-8 -mt-12 relative z-20">
+                <div className="bg-gradient-to-br from-brand-secondary via-[#2a0a0d] to-black rounded-[3rem] p-8 shadow-2xl border border-white/10 relative overflow-hidden ring-1 ring-white/5">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
                     
                     <div className="flex justify-between items-start mb-8">
@@ -259,7 +259,7 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <div className="mobile-px mt-6 space-y-6">
+            <div className="px-8 mt-10 space-y-10">
                 {/* Status Banners */}
                 {profile?.balance < 0 && (
                     <div className="p-4 bg-red-500/10 rounded-[2rem] border border-red-500/20 flex items-center gap-4">
@@ -274,7 +274,7 @@ const Dashboard = () => {
                 )}
 
                 {/* Shield Maturation Mini-Card */}
-                <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100">
+                <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-xl ${isMatured ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}`}>
@@ -296,7 +296,7 @@ const Dashboard = () => {
 
                 {/* Referrals Banner */}
                 {referralSystemActive && (
-                    <div onClick={() => navigate('/referrals')} className="bg-gradient-to-r from-brand-primary to-brand-secondary rounded-[2rem] p-6 shadow-lg shadow-brand-primary/20 relative overflow-hidden cursor-pointer group transform hover:-translate-y-1 transition-all">
+                    <div onClick={() => navigate('/referrals')} className="bg-gradient-to-r from-brand-primary to-brand-secondary rounded-[2.5rem] p-8 shadow-lg shadow-brand-primary/20 relative overflow-hidden cursor-pointer group transform hover:-translate-y-1 transition-all">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-duration-700"></div>
                         <div className="relative z-10 flex items-center justify-between">
                             <div className="flex-1">
@@ -316,10 +316,10 @@ const Dashboard = () => {
 
                 {/* Sifuna Hub / Concierge */}
                 <div className="space-y-4">
-                    <div className="flex justify-between items-center px-1">
+                    <div className="flex justify-between items-center px-2">
                         <h4 className="font-black text-xs uppercase tracking-widest text-slate-400">{t('ask_sifuna') || 'Ask Sifuna AI'}</h4>
                     </div>
-                    <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar -mx-2 px-2">
+                    <div className="flex overflow-x-auto justify-center gap-4 pb-2 no-scrollbar">
                         {[
                             { id: 'wallet', icon: '💰', label: language === 'sw' ? 'M-Pesa' : 'Wallet' },
                             { id: 'shield', icon: '🛡️', label: language === 'sw' ? 'Ngao' : 'Shield' },
@@ -349,7 +349,7 @@ const Dashboard = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <button
                             onClick={() => navigate('/claim')}
-                            className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
+                            className="flex flex-col items-center gap-4 p-8 bg-white rounded-[2.5rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
                         >
                             <div className="p-4 bg-red-50 text-red-500 rounded-2xl group-hover:bg-red-500 group-hover:text-white transition-colors duration-500">
                                 <Heart className="w-6 h-6" />
@@ -358,7 +358,7 @@ const Dashboard = () => {
                         </button>
                         <button
                             onClick={() => setIsUpgradeModalOpen(true)}
-                            className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
+                            className="flex flex-col items-center gap-4 p-8 bg-white rounded-[2.5rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
                         >
                             <div className="p-4 bg-amber-50 text-amber-500 rounded-2xl group-hover:bg-amber-500 group-hover:text-white transition-colors duration-500">
                                 <Zap className="w-6 h-6" />
@@ -367,7 +367,7 @@ const Dashboard = () => {
                         </button>
                         <button
                             onClick={() => navigate('/benefits')}
-                            className="flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
+                            className="flex flex-col items-center gap-4 p-8 bg-white rounded-[2.5rem] shadow-sm hover:shadow-md transition-all active:scale-95 border border-slate-100 group"
                         >
                             <div className="p-4 bg-blue-50 text-blue-500 rounded-2xl group-hover:bg-blue-500 group-hover:text-white transition-colors duration-500">
                                 <Info className="w-6 h-6" />

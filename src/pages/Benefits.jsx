@@ -41,22 +41,22 @@ const Benefits = () => {
     const { t } = useLanguage();
 
     return (
-        <div className="min-h-screen bg-slate-50 pt-8 px-6 pb-32">
-            <div className="flex items-center gap-4 mb-8">
+        <div className="min-h-screen bg-slate-50 pt-10 px-8 pb-32">
+            <div className="flex items-center gap-4 mb-10">
                 <button
                     onClick={() => navigate('/dashboard')}
-                    className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100"
+                    className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100"
                 >
                     <ArrowLeft className="w-6 h-6 text-slate-700" />
                 </button>
                 <h1 className="text-2xl font-black font-heading text-slate-900">{t('package_info') || "Shield Packages"}</h1>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-10">
                 {Object.entries(TIER_BENEFITS).map(([key, data]) => {
                     const Icon = data.icon;
                     return (
-                        <div key={key} className={`p-6 rounded-[2rem] border-2 bg-white ${data.border} shadow-sm relative overflow-hidden`}>
+                        <div key={key} className={`p-8 rounded-[2.5rem] border-2 bg-white ${data.border} shadow-sm relative overflow-hidden`}>
                             <div className={`absolute top-0 right-0 w-32 h-32 ${data.bg} rounded-full -mr-16 -mt-16 opacity-50`}></div>
 
                             <div className="flex items-center gap-4 mb-6 relative">
