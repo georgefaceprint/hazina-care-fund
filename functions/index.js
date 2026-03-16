@@ -1892,6 +1892,14 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
     }
 
     if (!firstName || !surname || !idNumber || !phoneNumber || !tier) {
+        console.warn("⚠️ [registerUserByAgent] Missing fields check failed:", {
+            hasFirstName: !!firstName,
+            hasSurname: !!surname,
+            hasId: !!idNumber,
+            hasPhone: !!phoneNumber,
+            hasTier: !!tier,
+            receivedData: request.data
+        });
         throw new HttpsError('invalid-argument', 'Missing matching user profile fields.');
     }
 

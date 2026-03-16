@@ -249,10 +249,14 @@ const AgentApp = () => {
             // 2. Register Member
             toast.info("Registering member and triggering STK Push...");
             const registerFunc = httpsCallable(functions, 'registerUserByAgent');
+            
+            // Exclude File object from payload as it's not JSON-serializable
+            const { photo, ...regData } = regForm;
+            
             const result = await registerFunc({
-                ...regForm,
+                ...regData,
                 photoUrl,
-                // Pass formatted phone to match backend storage
+                // Ensure phone is passed in the format the backend expects
                 phoneNumber: formatKenyanPhone(regForm.phoneNumber)
             });
 
