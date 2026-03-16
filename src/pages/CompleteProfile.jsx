@@ -108,7 +108,7 @@ const CompleteProfile = () => {
                                 (nationalId ? 15 : 0) +
                                 (idPhoto ? 15 : 0) +
                                 (idPhotoBack ? 15 : 0) +
-                                (county && town ? 20 : 0) +
+                                (currentCounty && currentTown ? 20 : 0) +
                                 (homeCounty && nearestTown ? 20 : 0)
                             )}%
                         </span>
@@ -121,7 +121,7 @@ const CompleteProfile = () => {
                                     (nationalId ? 20 : 0) +
                                     (idPhoto ? 20 : 0) +
                                     (idPhotoBack ? 20 : 0) +
-                                    (county && town ? 20 : 0)}%`
+                                    (currentCounty && currentTown ? 20 : 0)}%`
                             }}
                             className="h-full bg-gradient-to-r from-brand-primary to-emerald-500"
                             transition={{ type: "spring", stiffness: 50, damping: 15 }}
