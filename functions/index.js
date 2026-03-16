@@ -1713,7 +1713,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         
         // 1. Level 1: Immediate Agent (Gets Commission + Signup Count)
         const agentTariff = agentData.tariffRate || 15;
-        const agentRes = await distributeCommission(finalAgentId, agentTariff, "AGENT");
+        const agentRes = await distributeCommission(ResolvedAgentId, agentTariff, "AGENT");
         
         // Use the most up-to-date data for hierarchy resolution
         const currentAgentData = agentRes || agentData;
@@ -1735,12 +1735,12 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         }
 
         // Log the recruitment record with data needed by the dashboard
-        const logId = `recruitment_${finalAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
+        const logId = `recruitment_${ResolvedAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
         await db.collection("recruitment_logs").doc(logId).set({
             userId,
             userName: newUser.fullName,
             tier: newUser.active_tier || 'bronze',
-            agentId: finalAgentId,
+            agentId: ResolvedAgentId,
             originalAgentInput: agentCode,
             masterAgentId,
             superMasterId,
@@ -1754,7 +1754,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        console.log(`User ${userId} recruited by ${agentCode} processed. Hierarchy: Agent(${finalAgentId}) -> Master(${masterAgentId}) -> Super(${superMasterId})`);
+        console.log(`User ${userId} recruited by ${agentCode} processed. Hierarchy: Agent(${ResolvedAgentId}) -> Master(${masterAgentId}) -> Super(${superMasterId})`);
     } catch (error) {
         console.error("Recruitment trigger error:", error);
     }
@@ -2021,7 +2021,7 @@ exports.createTestUser = onCall({ cors: true }, async (request) => {
 });
 
 // TEMPORARY: Backfill missing data in recruitment logs
-exports.backfillRecruitmentLogs = onCall({ cors: true }, async (request) => {
+exports.backfillRecruitmentLogs = onCall({ cors: true, memory: "512MiB" }, async (request) => {
     try {
         const logsSnap = await db.collection("recruitment_logs").get();
         let updatedCount = 0;
@@ -2029,15 +2029,35 @@ exports.backfillRecruitmentLogs = onCall({ cors: true }, async (request) => {
 
         const updates = logsSnap.docs.map(async (logDoc) => {
             const data = logDoc.data();
-            if (!data.userName && data.userId) {
-                const userDoc = await db.collection("users").doc(data.userId).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    await logDoc.ref.update({
-                        userName: userData.fullName || 'Member',
-                        tier: userData.active_tier || 'bronze',
-                        commissionEarned: data.tariffApplied || 15
-                    });
+            const logId = logDoc.id;
+            
+            // Check if log is missing critical fields or has faulty agentId
+            const needsRepair = !data.userName || !data.agentId || data.agentId === "undefined";
+            
+            if (needsRepair) {
+                const updatePayload = {};
+                
+                // 1. Repair agentId from originalAgentInput or logId if possible
+                if (!data.agentId || data.agentId === "undefined") {
+                    const recoveredId = data.originalAgentInput || logId.split('_')[1];
+                    if (recoveredId && recoveredId !== "undefined") {
+                        updatePayload.agentId = recoveredId.toUpperCase();
+                    }
+                }
+
+                // 2. Repair userName and tier from user doc
+                if (data.userId) {
+                    const userDoc = await db.collection("users").doc(data.userId).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        updatePayload.userName = userData.fullName || data.userName || 'Member';
+                        updatePayload.tier = userData.active_tier || data.tier || 'bronze';
+                        updatePayload.commissionEarned = data.tariffApplied || 15;
+                    }
+                }
+
+                if (Object.keys(updatePayload).length > 0) {
+                    await logDoc.ref.update(updatePayload);
                     updatedCount++;
                 } else {
                     skipCount++;
