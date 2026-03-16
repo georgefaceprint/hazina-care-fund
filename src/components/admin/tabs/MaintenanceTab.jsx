@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshCcw, Zap, Database } from 'lucide-react';
-import { db } from '../../services/firebase';
+import { db } from '../../../services/firebase';
 
 const MaintenanceTab = () => {
     return (

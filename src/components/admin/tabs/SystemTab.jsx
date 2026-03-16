@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trash2, RefreshCcw, Database, Gift, ShieldCheck, QrCode, ShieldAlert } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { db } from '../../../services/firebase';
 
 const SystemTab = ({ 
     profile, 

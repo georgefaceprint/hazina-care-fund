@@ -1,9 +1,9 @@
 import React from 'react';
 import { ShieldCheck, TrendingUp, UserPlus, ArrowLeft } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../services/firebase';
-import { formatKenyanPhone } from '../../utils/phoneUtils';
-import { getSafeDate } from '../../utils/dateUtils';
+import { db } from '../../../services/firebase';
+import { formatKenyanPhone } from '../../../utils/phoneUtils';
+import { getSafeDate } from '../../../utils/dateUtils';
 import { format } from 'date-fns';
 
 const RecruitmentTab = ({ 

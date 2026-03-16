@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, Zap, Clock } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { db } from '../../../services/firebase';
 
 const PricingTab = ({ tiers, handleUpdateTiers, setTiers }) => {
     return (

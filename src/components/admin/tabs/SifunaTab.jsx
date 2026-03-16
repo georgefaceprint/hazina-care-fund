@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bot, Sparkles, XCircle } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { db } from '../../../services/firebase';
 
 const SifunaTab = ({ kbItems, newKb, setNewKb, handleAddKb, handleDeleteKb, handleAutoGenerateKb, isGenerating, toast }) => {
     return (

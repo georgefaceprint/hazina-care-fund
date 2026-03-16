@@ -1,6 +1,6 @@
 import React from 'react';
 import { CreditCard } from 'lucide-react';
-import { getSafeDate } from '../../utils/dateUtils';
+import { getSafeDate } from '../../../utils/dateUtils';
 import { format } from 'date-fns';
 
 const WithdrawalsTab = ({ withdrawals }) => {

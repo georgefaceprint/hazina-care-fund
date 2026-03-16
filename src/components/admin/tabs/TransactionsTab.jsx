@@ -1,6 +1,6 @@
 import React from 'react';
 import { DollarSign, ArrowLeft } from 'lucide-react';
-import { getSafeDate } from '../../utils/dateUtils';
+import { getSafeDate } from '../../../utils/dateUtils';
 import { format } from 'date-fns';
 
 const TransactionsTab = ({ transactions }) => {
