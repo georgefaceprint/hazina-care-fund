@@ -12,6 +12,31 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("CRITICAL UI CRASH:", error, errorInfo);
+    
+    // Auto-recovery for "Failed to fetch dynamically imported module"
+    const errorMessage = error?.message || "";
+    if (errorMessage.includes("dynamically imported module") || 
+        errorMessage.includes("loading chunk") ||
+        errorMessage.includes("Load chunk")) {
+        console.warn("🔄 Detected module load failure. Attempting auto-reload...");
+        
+        // Use a session-based retry guard to prevent infinite reload loops
+        const retryCount = parseInt(sessionStorage.getItem('chunk-load-retries') || '0');
+        if (retryCount < 2) {
+            sessionStorage.setItem('chunk-load-retries', (retryCount + 1).toString());
+            
+            // Clear SW and reload
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    for(let reg of regs) reg.unregister();
+                });
+            }
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+    }
   }
 
   render() {

@@ -16,6 +16,15 @@ export const lazyRetry = (componentImport) => {
         // First failure: Clear cache/reload to get fresh manifest
         console.warn('🔄 Module load failed. Refreshing to fetch new version...', error);
         window.sessionStorage.setItem('lazy-retry-done', 'true');
+        
+        // --- Loop Breaker & Cache Buster ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                for(let reg of regs) reg.unregister();
+            });
+        }
+        // ------------------------------------
+        
         window.location.reload();
         return;
       }
