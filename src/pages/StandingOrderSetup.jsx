@@ -23,7 +23,7 @@ const StandingOrderSetup = () => {
     });
 
     const TIER_COSTS = { bronze: 50, silver: 147, gold: 229 };
-    const dailyRate = TIER_COSTS[profile?.active_tier?.toLowerCase()] || 50;
+    const dailyRate = profile?.required_daily_burn || TIER_COSTS[profile?.active_tier?.toLowerCase()] || 50;
 
     const handleSetup = async () => {
         setLoading(true);

@@ -277,21 +277,47 @@ const Dashboard = () => {
                 )}
 
                 {/* M-Pesa Ratiba Auto-Pay Setup */}
-                <div onClick={() => navigate('/auto-pay/setup')} className="p-5 bg-slate-900 rounded-[2rem] border border-slate-800 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition-all group overflow-hidden relative">
+                <div onClick={() => navigate('/auto-pay/setup')} className={`p-5 rounded-[2rem] border flex items-center gap-4 cursor-pointer transition-all group overflow-hidden relative ${
+                    profile?.ratiba_mismatch 
+                        ? 'bg-amber-500/10 border-amber-500/30' 
+                        : 'bg-slate-900 border-slate-800 hover:bg-slate-800'
+                }`}>
                     <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/10 rounded-full -mr-8 -mt-8 blur-xl"></div>
-                    <div className="p-3 bg-brand-primary text-white rounded-2xl shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform">
-                        <Zap className="w-5 h-5 animate-pulse" />
+                    <div className={`p-3 rounded-2xl shadow-lg transition-transform group-hover:scale-110 ${
+                        profile?.ratiba_mismatch 
+                            ? 'bg-amber-500 text-white shadow-amber-500/20' 
+                            : 'bg-brand-primary text-white shadow-brand-primary/20'
+                    }`}>
+                        {profile?.ratiba_mismatch ? <AlertCircle className="w-5 h-5" /> : <Zap className="w-5 h-5 animate-pulse" />}
                     </div>
                     <div className="flex-1 relative z-10">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em]">Safaricom</span>
+                            <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                                profile?.ratiba_mismatch ? 'text-amber-500' : 'text-brand-primary'
+                            }`}>
+                                {profile?.ratiba_mismatch ? 'Payment Mismatch' : 'Safaricom'}
+                            </span>
                             <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
-                            <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">Setup Ratiba</span>
+                            <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">
+                                {profile?.ratiba_mismatch ? 'Update Required' : 'Setup Ratiba'}
+                            </span>
                         </div>
-                        <h4 className="text-sm font-black text-white mt-0.5">M-Pesa Auto-Pay</h4>
-                        <p className="text-[10px] text-white/40 font-bold uppercase tracking-tight mt-1">Never lose protection &rarr;</p>
+                        <h4 className={`text-sm font-black mt-0.5 ${
+                            profile?.ratiba_mismatch ? 'text-amber-200' : 'text-white'
+                        }`}>
+                            {profile?.ratiba_mismatch ? 'Ratiba Amount Too Low' : 'M-Pesa Auto-Pay'}
+                        </h4>
+                        <p className={`text-[10px] font-bold uppercase tracking-tight mt-1 ${
+                            profile?.ratiba_mismatch ? 'text-amber-500/80' : 'text-white/40'
+                        }`}>
+                            {profile?.ratiba_mismatch 
+                                ? `Current cost KSh ${totalDailyBurn} > Ratiba` 
+                                : 'Never lose protection &rarr;'}
+                        </p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                    <ChevronRight className={`w-5 h-5 transition-all group-hover:translate-x-1 ${
+                        profile?.ratiba_mismatch ? 'text-amber-500/30 group-hover:text-amber-500' : 'text-white/20 group-hover:text-white'
+                    }`} />
                 </div>
 
                 {/* Shield Maturation Mini-Card */}

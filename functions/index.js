@@ -341,7 +341,7 @@ async function performStandingOrderSetup(userId, amount, frequency, phoneNumber,
         MerchantRequestID: merchantRequestID
     };
 
-    const response = await axios.post(`${SASAPAY_BASE_URL}/payments/standing-order/`, payload, {
+    const response = await axios.post(`${SASAPAY_BASE_URL}/payments/request-payment/`, payload, {
         headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -2160,5 +2160,54 @@ exports.debugPulseReset = onCall({ cors: true }, async (request) => {
     } catch (error) {
         console.error("Pulse Reset Error:", error);
         throw new HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * Triggers when a new dependent is added.
+ * Checks if the guardian has auto-pay enabled and calculates the mismatch.
+ */
+exports.onDependentCreated = onDocumentCreated("dependents/{depId}", async (event) => {
+    const depData = event.data.data();
+    const guardianId = depData.guardian_id;
+    
+    if (!guardianId) return;
+
+    try {
+        const userRef = db.collection("users").doc(guardianId);
+        const userSnap = await userRef.get();
+        if (!userSnap.exists) return;
+
+        const profile = userSnap.data();
+        
+        // Calculate new burn
+        const selfCost = await getTierCost(profile.active_tier || 'bronze');
+        let totalBurn = selfCost;
+        
+        const dependentsSnap = await db.collection("dependents")
+            .where("guardian_id", "==", guardianId)
+            .get();
+            
+        for (const doc of dependentsSnap.docs) {
+            const d = doc.data();
+            const cost = await getTierCost(d.active_tier || 'bronze');
+            totalBurn += cost;
+        }
+
+        // Check for Ratiba mismatch
+        const activeSO = await getActiveStandingOrder(guardianId);
+        const soAmount = activeSO ? Number(activeSO.amount) : 0;
+        
+        // Update user profile with latest burn requirements
+        await userRef.update({
+            required_daily_burn: totalBurn,
+            ratiba_mismatch: soAmount < totalBurn,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log(`Updated burn req for ${guardianId}: Total ${totalBurn}, SO Amount ${soAmount}`);
+        
+    } catch (error) {
+        console.error("Error in onDependentCreated:", error);
     }
 });
