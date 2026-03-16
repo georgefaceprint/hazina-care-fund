@@ -303,7 +303,7 @@ exports.checkMaturation = onSchedule({
 const SASAPAY_CLIENT_ID = process.env.SASAPAY_CLIENT_ID || 'B1tnESQjLEyaGAG9KXf7Og9vf7DLDpfL1Fkc7sgZ';
 const SASAPAY_CLIENT_SECRET = process.env.SASAPAY_CLIENT_SECRET || 'aqRafb6tWAjw0MWVCllHIsk7AygSKylMwPR81VaoeevldIScPFx8qPX2GySaVvcBEwxbkgWGOZmsmcMlgfP41T8PXha4sEPCx7PUI6QX2as1lXr1CWK6RadskX9RpRzN';
 
-const SASAPAY_MERCHANT_CODE = process.env.SASAPAY_MERCHANT_CODE || '600980'; // Default sandbox merchant code
+const SASAPAY_MERCHANT_CODE = process.env.SASAPAY_MERCHANT_CODE || '9348463'; // Updated for testing
 const SASAPAY_BASE_URL = 'https://sandbox.sasapay.app/api/v1'; // Sandbox URL
 
 // Helper to get SasaPay Access Token

@@ -3,7 +3,7 @@ const axios = require('axios');
 // SasaPay Credentials
 const SASAPAY_CLIENT_ID = 'B1tnESQjLEyaGAG9KXf7Og9vf7DLDpfL1Fkc7sgZ';
 const SASAPAY_CLIENT_SECRET = 'aqRafb6tWAjw0MWVCllHIsk7AygSKylMwPR81VaoeevldIScPFx8qPX2GySaVvcBEwxbkgWGOZmsmcMlgfP41T8PXha4sEPCx7PUI6QX2as1lXr1CWK6RadskX9RpRzN';
-const SASAPAY_MERCHANT_CODE = '600980';
+const SASAPAY_MERCHANT_CODE = '9348463';
 const SASAPAY_BASE_URL = 'https://sandbox.sasapay.app/api/v1';
 
 const testPhone = '254793717860';
