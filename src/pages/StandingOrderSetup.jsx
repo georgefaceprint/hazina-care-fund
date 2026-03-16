@@ -65,9 +65,9 @@ const StandingOrderSetup = () => {
                             <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
                         </div>
                     </div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Auto-Pay Shield</h1>
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2 px-4">
-                        Process your {profile?.active_tier} renewal automatically
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight text-center">M-Pesa Ratiba</h1>
+                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2 px-4 text-center">
+                        Automated {profile?.active_tier} Shield Protection
                     </p>
                 </div>
 
@@ -159,7 +159,7 @@ const StandingOrderSetup = () => {
                                     />
                                 </div>
                                 <p className="text-[10px] text-slate-400 font-medium italic text-center px-4">
-                                    You will receive a SasaPay prompt to authorize this standing order on your phone.
+                                    Funds will be automatically deducted from your M-Pesa via SasaPay Ratiba. You will receive a prompt to authorize this setup.
                                 </p>
                             </div>
 
@@ -190,7 +190,7 @@ const StandingOrderSetup = () => {
                             <div>
                                 <h3 className="text-2xl font-black text-slate-900">Request Sent!</h3>
                                 <p className="text-slate-500 font-medium mt-2">
-                                    Please check your phone for the SasaPay authorization prompt. Once confirmed, your shield will be automatically protected.
+                                    Please check your phone for the M-Pesa Ratiba authorization prompt. Once confirmed, your shield will be automatically protected on your chosen schedule.
                                 </p>
                             </div>
                             <button

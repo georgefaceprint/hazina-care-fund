@@ -335,8 +335,8 @@ async function performStandingOrderSetup(userId, amount, frequency, phoneNumber,
         Currency: "KES",
         PhoneNumber: formatTo254(phoneNumber),
         CallBackURL: callbackUrl,
-        TransactionDesc: `Hazina Auto-Pay Setup`,
-        AccountReference: `HAZINA-SO-${userId.substring(0, 8)}`,
+        TransactionDesc: `Hazina M-Pesa Ratiba`,
+        AccountReference: `HAZINA-RATIBA-${userId.substring(0, 8)}`,
         Frequency: frequency.toUpperCase(), // DAILY, WEEKLY, MONTHLY
         MerchantRequestID: merchantRequestID
     };

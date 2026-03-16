@@ -276,6 +276,24 @@ const Dashboard = () => {
                     </div>
                 )}
 
+                {/* M-Pesa Ratiba Auto-Pay Setup */}
+                <div onClick={() => navigate('/standing-order')} className="p-5 bg-slate-900 rounded-[2rem] border border-slate-800 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition-all group overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/10 rounded-full -mr-8 -mt-8 blur-xl"></div>
+                    <div className="p-3 bg-brand-primary text-white rounded-2xl shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform">
+                        <Zap className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div className="flex-1 relative z-10">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em]">Safaricom</span>
+                            <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
+                            <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">Setup Ratiba</span>
+                        </div>
+                        <h4 className="text-sm font-black text-white mt-0.5">M-Pesa Auto-Pay</h4>
+                        <p className="text-[10px] text-white/40 font-bold uppercase tracking-tight mt-1">Never lose protection &rarr;</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                </div>
+
                 {/* Shield Maturation Mini-Card */}
                 <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100">
                     <div className="flex justify-between items-center mb-4">
