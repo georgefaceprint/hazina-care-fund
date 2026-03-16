@@ -1668,7 +1668,8 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             }
         } else {
             agentData = userDoc.data();
-            ResolvedAgentId = agentData.agent_code || agentCode;
+            // Important: Use agent_code if it exists, otherwise use agentCode (which is already uppercase)
+            ResolvedAgentId = (agentData.agent_code || agentData.agentCode || agentCode).toString().toUpperCase();
         }
 
         // 2. Try to find agent in 'agents' collection (doc ID is agent code)
@@ -1744,12 +1745,14 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         }
 
         // Log the recruitment record with data needed by the dashboard
-        const logId = `recruitment_${ResolvedAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
+        const normalizedAgentId = ResolvedAgentId.toString().toUpperCase();
+        const logId = `recruitment_${normalizedAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
+        
         await db.collection("recruitment_logs").doc(logId).set({
             userId,
             userName: newUser.fullName,
             tier: newUser.active_tier || 'bronze',
-            agentId: ResolvedAgentId,
+            agentId: normalizedAgentId,
             originalAgentInput: agentCode,
             masterAgentId,
             superMasterId,
