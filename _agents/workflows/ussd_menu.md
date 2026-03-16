@@ -18,12 +18,14 @@ graph TD
     MemberMenu --> M3[3. Add Dependent]
     MemberMenu --> M4[4. Topup Wallet]
     MemberMenu --> M5[5. Standing Order]
+    MemberMenu --> M6[6. Upgrade Tier]
     
     M1 --> ShieldRes[Status: Active/Waiting]
     M2 --> ClaimType[Select: Medical/Bereavement/Fees]
     M3 --> DepPhone[Enter Phone] --> DepName[Enter Name] --> DepSuccess[Dependent Added]
     M4 --> TopupAmt[Enter Amount] --> TopupSTK[STK Push Sent]
     M5 --> Freeq[Select: Daily/Weekly/Monthly] --> SOAmt[Enter Amount] --> SOSTK[SO Prompt Sent]
+    M6 --> TierSel[Select: Silver/Gold] --> TierConf[Tier Updated] --> SmartSO[Prompt: Update Auto-Pay?]
     
     CheckUser -- No --> GuestMenu[Guest Menu]
     GuestMenu --> G1[1. Register]

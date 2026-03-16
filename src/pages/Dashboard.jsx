@@ -22,7 +22,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const [burnPeriod, setBurnPeriod] = useState('daily');
-    const [referralSystemActive, setReferralSystemActive] = useState(true);
+    const [referralSystemActive, setReferralSystemActive] = useState(false); // Forced Off for lightweight experience
     const { isAgent, isMasterAgent, isSuperMaster } = useAuth();
 
     useEffect(() => {
@@ -136,15 +136,15 @@ const Dashboard = () => {
             if (docSnap.exists()) setTierConfig(docSnap.data());
         });
         const unsubRefs = onSnapshot(doc(db, 'config', 'referrals'), (docSnap) => {
-            if (docSnap.exists()) setReferralSystemActive(docSnap.data().referralSystemActive !== false);
+            // Overridden locally to false, but keeping listener for possible future use
+            // setReferralSystemActive(docSnap.exists() && docSnap.data().referralSystemActive !== false);
         });
         return () => { unsub(); unsubRefs(); };
     }, []);
 
-    const getTierCost = (tierName) => {
+            const getTierCost = (tierName) => {
         if (!tierName) return 0;
         const normalizedKey = tierName.toLowerCase();
-        // Check case-insensitively
         const config = tierConfig[normalizedKey] ||
             tierConfig[tierName.charAt(0).toUpperCase() + tierName.slice(1)] ||
             tierConfig[tierName.toUpperCase()] ||
@@ -160,16 +160,11 @@ const Dashboard = () => {
     const multipliers = { daily: 1, weekly: 7, monthly: 30, yearly: 365 };
     const calculatedBurn = totalDailyBurn * multipliers[burnPeriod];
 
-    // Per-person rate
-    const perPersonRate = peopleCount > 0 ? (totalDailyBurn / peopleCount).toFixed(0) : 0;
-
-
     const runTestDeduction = async () => {
         if (isDemoMode) {
             toast.info("Test deduction simulated in Demo Mode.");
             return;
         }
-
         setLoading(true);
         try {
             const { httpsCallable } = await import('firebase/functions');
@@ -187,268 +182,116 @@ const Dashboard = () => {
 
     return (
         <div className="min-h-[100dvh] bg-slate-50 pb-24">
-            {/* Header Profile Section */}
-            <div className="bg-brand-secondary text-white pt-12 pb-24 rounded-b-[3rem] shadow-2xl relative overflow-hidden mobile-px">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
-                            <Shield className="w-7 h-7 text-brand-primary" />
+            {/* Header / Nav */}
+            <div className="pt-8 pb-12 bg-brand-secondary rounded-b-[3rem] px-6 text-white relative overflow-hidden">
+                <div className="flex justify-between items-center relative z-10">
+                     <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
+                            <Shield className="w-6 h-6 text-brand-primary" />
                         </div>
-                        <div>
-                            <h2 className="text-xl font-bold font-heading">{t('dashboard')}</h2>
-                            <p className="text-white/60 text-sm">Community Member Since {joinedDate instanceof Date && !isNaN(joinedDate) ? format(joinedDate, 'MMM yyyy') : '...'}</p>
-                        </div>
+                        <h2 className="text-lg font-black tracking-tight">{t('dashboard')}</h2>
                     </div>
-                    <button
-                        onClick={toggleLanguage}
-                        className="flex items-center gap-2 p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 hover:bg-white/20 transition-all font-bold text-xs uppercase min-h-[56px]"
-                    >
-                        <Globe className="w-5 h-5 text-white" />
-                        <span>{language === 'en' ? 'SW' : 'EN'}</span>
-                    </button>
-                    {(isAgent || isMasterAgent || isSuperMaster) && (
-                        <button
-                            onClick={() => {
-                                if (isSuperMaster) navigate('/smagent/dashboard');
-                                else if (isMasterAgent) navigate('/magent/dashboard');
-                                else navigate('/agent/dashboard');
-                            }}
-                            className="flex items-center gap-2 p-3 bg-brand-primary text-white rounded-2xl hover:bg-brand-secondary transition-all font-black text-[10px] uppercase shadow-lg shadow-brand-primary/20 min-h-[56px]"
-                        >
-                            <TrendingUp className="w-5 h-5" />
-                            <span>Portal</span>
-                        </button>
-                    )}
+                    <button onClick={toggleLanguage} className="bg-white/10 p-3 rounded-xl border border-white/20 font-black text-[10px]">{language === 'en' ? 'SW' : 'EN'}</button>
                 </div>
+            </div>
 
-                <div className="relative group perspective-1000 -mt-2">
-                    <div className="bg-gradient-to-br from-brand-primary via-brand-secondary to-[#1a0406] p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative overflow-hidden transform-gpu hover:rotate-y-3 transition-all duration-700">
-                        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                        <div className="flex justify-between items-start mb-10">
-                            <div className="flex items-center gap-4 sm:gap-5">
+            {/* Premium Digital ID Card */}
+            <div className="mobile-px -mt-10 relative z-20">
+                <div className="bg-gradient-to-br from-brand-secondary via-[#2a0a0d] to-black rounded-[2.5rem] p-6 shadow-2xl border border-white/10 relative overflow-hidden ring-1 ring-white/5">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                    
+                    <div className="flex justify-between items-start mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
                                 {profile.id_photo_url ? (
-                                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl flex-shrink-0 relative">
-                                        <img
-                                            src={profile.id_photo_url}
-                                            alt="ID Photo"
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.style.display = 'none';
-                                                e.target.nextElementSibling.style.display = 'flex';
-                                            }}
-                                        />
-                                        <div className="absolute inset-0 bg-brand-primary text-white flex items-center justify-center font-bold text-2xl hidden fallback-icon">
-                                            {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : '?'}
-                                        </div>
+                                    <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl">
+                                        <img src={profile.id_photo_url} alt="ID" className="w-full h-full object-cover" />
                                     </div>
                                 ) : (
-                                    <div className="w-20 h-20 rounded-2xl bg-white/5 border-2 border-white/10 flex items-center justify-center shadow-inner flex-shrink-0">
-                                        <User className="w-10 h-10 text-brand-accent/40" />
+                                    <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                        <User className="w-10 h-10 text-white/20" />
                                     </div>
                                 )}
-                                <div>
-                                    <p className="text-[10px] uppercase font-black tracking-[0.2em] text-brand-accent/80 mb-1">{t('official_digital_id')}</p>
-                                    <h3 className="text-xl font-black text-white leading-tight tracking-tight">{profile.fullName || 'Member'}</h3>
-                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">ID: {stripPlus(profile.referral_code || profile.agent_code || profile.id.substring(0, 8)).toUpperCase()}</p>
+                                <div className="absolute -bottom-2 -right-2 bg-brand-primary p-1.5 rounded-lg border border-white/20 shadow-lg">
+                                    <Shield className="w-4 h-4 text-white" />
                                 </div>
                             </div>
-                            <div className="relative">
-                                {!isMatured && (
-                                    <div className="bg-brand-accent/10 backdrop-blur-md text-brand-accent px-4 py-1.5 rounded-full flex items-center gap-2 shadow-xl border border-brand-accent/30 scale-90 translate-x-2 -translate-y-2">
-                                        <Clock className="w-3.5 h-3.5" />
-                                        <span className="text-[9px] font-black uppercase tracking-widest">{t('in_waiting')}</span>
-                                    </div>
-                                )}
+                            <div>
+                                <h3 className="text-xl font-black text-white leading-tight">{profile.fullName || 'Member'}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
+                                        profile.active_tier === 'gold' ? 'bg-amber-400 text-amber-950' :
+                                        profile.active_tier === 'silver' ? 'bg-slate-300 text-slate-800' :
+                                        'bg-brand-primary text-white'
+                                    }`}>
+                                        {profile.active_tier}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">
+                                        ID: {stripPlus(profile.referral_code || profile.id.substring(0, 8)).toUpperCase()}
+                                    </span>
+                                </div>
                             </div>
                         </div>
+                        <div className="bg-white p-2.5 rounded-2xl shadow-xl">
+                            <QRCodeSVG value={profile.id} size={65} fgColor="#1a0a0d" />
+                        </div>
+                    </div>
 
-                        <div className="flex justify-between items-end">
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-inner border flex items-center gap-2 ${profile.active_tier === 'gold' ? 'bg-amber-400 text-amber-950 border-amber-300' :
-                                        profile.active_tier === 'silver' ? 'bg-slate-300 text-slate-800 border-slate-200' :
-                                            'bg-orange-800/20 text-orange-200 border-orange-700/30'
-                                        }`}>
-                                        <Zap className="w-3 h-3" />
-                                        {profile.active_tier} Member
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] uppercase font-bold text-brand-accent/50 mb-1 tracking-widest">{t('phone_number')}</p>
-                                    <p className="font-bold font-mono tracking-[0.3em] text-white underline decoration-brand-accent/20 underline-offset-4">{formatKenyanPhone(profile.phoneNumber)}</p>
-                                </div>
-                            </div>
-                            <div className="bg-white p-3.5 rounded-[1.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-brand-accent/20">
-                                <QRCodeSVG value={profile.id} size={85} fgColor="#6B2324" />
-                            </div>
+                    {/* Consolidated Stats Strip */}
+                    <div className="grid grid-cols-2 gap-px bg-white/10 rounded-3xl overflow-hidden border border-white/5">
+                        <div className="bg-white/5 backdrop-blur-md p-4 flex flex-col items-center border-r border-white/5 cursor-pointer" onClick={() => navigate('/topup')}>
+                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">{t('wallet_balance') || 'Wallet'}</p>
+                            <p className="text-lg font-black text-white">KSh {profile.balance?.toLocaleString() || 0}</p>
+                        </div>
+                        <div className="bg-white/5 backdrop-blur-md p-4 flex flex-col items-center relative group overflow-hidden">
+                            <select
+                                value={burnPeriod}
+                                onChange={(e) => setBurnPeriod(e.target.value)}
+                                className="text-[10px] font-black text-white/40 uppercase tracking-widest bg-transparent border-none p-0 pr-4 focus:ring-0 cursor-pointer outline-none appearance-none text-center"
+                            >
+                                <option value="daily" className="text-black">DAILY COST</option>
+                                <option value="weekly" className="text-black">WEEKLY COST</option>
+                                <option value="monthly" className="text-black">MONTHLY COST</option>
+                            </select>
+                            <p className="text-lg font-black text-brand-primary">KSh {calculatedBurn.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Stats and Info Area */}
-            <div className="mobile-px -mt-10 space-y-6 relative">
+            <div className="mobile-px mt-6 space-y-6">
+                {/* Status Banners */}
                 {profile?.balance < 0 && (
-                    <div className="p-5 bg-red-50 rounded-[2rem] border border-red-200 shadow-xl shadow-red-900/10 animate-in fade-in slide-in-from-top-4 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-red-100/50 rounded-full -mr-8 -mt-8"></div>
-                        <div className="flex items-center gap-4 relative">
-                            <div className="p-3 bg-red-500 text-white rounded-2xl shadow-lg shadow-red-500/30">
-                                <AlertCircle className="w-6 h-6" />
-                            </div>
-                            <div className="flex-1">
-                                <h4 className="font-black text-red-900 text-sm">{t('overdraft_alert') || "🚨 Overdraft Alert!"}</h4>
-                                <p className="text-[11px] text-red-800 font-medium opacity-80 mt-0.5">
-                                    {t('overdraft_desc') || "Your wallet is negative. You have 48 hours to top up before your shield protection lapses."}
-                                </p>
-                                <button 
-                                    onClick={() => navigate('/topup?amount=' + Math.abs(profile.balance))}
-                                    className="mt-3 px-6 py-2.5 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl flex items-center gap-2 hover:bg-red-600 active:scale-95 transition-all shadow-md shadow-red-500/20"
-                                >
-                                    {t('clear_my_dues') || "Clear My Dues"} (KSh {Math.abs(profile.balance)})
-                                </button>
-                            </div>
+                    <div className="p-4 bg-red-500/10 rounded-[2rem] border border-red-500/20 flex items-center gap-4">
+                        <div className="p-3 bg-red-500 text-white rounded-2xl shadow-lg shadow-red-500/20">
+                            <AlertCircle className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-[11px] text-red-100/80 font-medium">Overdraft Alert: KSh {Math.abs(profile.balance)}</p>
+                            <button onClick={() => navigate('/topup')} className="text-[10px] font-black text-red-400 uppercase tracking-widest mt-1">Top up now &rarr;</button>
                         </div>
                     </div>
                 )}
 
-                {profile?.status === 'pending_payment' && !profile?.balance < 0 && (
-                    <div className="p-4 bg-amber-50 rounded-[2rem] border border-amber-200 shadow-lg animate-in fade-in slide-in-from-top-4">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-amber-400 text-amber-950 rounded-2xl">
-                                <AlertCircle className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-amber-900 text-sm">{t('action_required')}</h4>
-                                <p className="text-xs text-amber-800 opacity-80 mt-0.5">{t('activate_shield')}</p>
-                                <button onClick={() => navigate('/topup')} className="mt-2 text-xs font-black uppercase text-amber-950 flex items-center gap-1 min-h-[56px]">
-                                    {t('fund_now')} <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Daily Burn Card */}
-                <div className="card-grid">
-                    <div className="card bg-white border-none shadow-md overflow-hidden relative group">
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-brand-primary/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
-                        <div className="flex items-center justify-between mb-3 relative z-10">
-                            <div className="flex items-center gap-2">
-                                <div className="p-2 bg-brand-primary/10 rounded-xl">
-                                    <TrendingUp className="w-5 h-5 text-brand-primary" />
-                                </div>
-                                <select
-                                    value={burnPeriod}
-                                    onChange={(e) => setBurnPeriod(e.target.value)}
-                                    className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter bg-transparent border-none p-0 pr-4 focus:ring-0 cursor-pointer outline-none min-h-[56px]"
-                                >
-                                    <option value="daily">{t('daily_burn')}</option>
-                                    <option value="weekly">{t('weekly_burn')}</option>
-                                    <option value="monthly">{t('monthly_burn')}</option>
-                                    <option value="yearly">{t('yearly_burn')}</option>
-                                </select>
-                            </div>
-                        </div>
-                        <p className="text-3xl font-black text-slate-900 relative z-10">KSh {calculatedBurn.toLocaleString()}</p>
-                        <div className="flex flex-col mt-2 relative z-10">
-                            <p className="text-[10px] text-slate-400 flex items-center gap-1 italic">
-                                <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {t('auto_deducted')}</span>
-                                <span className="font-bold text-brand-primary/60 not-italic font-sans ml-auto">
-                                    {peopleCount} {t('people')} Total
-                                </span>
-                            </p>
-                            <div className="mt-2 p-2 bg-slate-50 rounded-xl space-y-1">
-                                <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase">
-                                    <span>You ({profile.active_tier})</span>
-                                    <span>KSh {baseDailyBurn}/day</span>
-                                </div>
-                                {dependents.map(dep => (
-                                    <div key={dep.id} className="flex justify-between text-[9px] font-medium text-slate-400 uppercase">
-                                        <span>{dep.name} ({dep.active_tier})</span>
-                                        <span>KSh {getTierCost(dep.active_tier)}/day</span>
-                                    </div>
-                                ))}
-                                <div className="border-t border-slate-200 pt-1 mt-1 flex justify-between text-[10px] font-black text-brand-primary uppercase">
-                                    <span>Total Rate</span>
-                                    <span>KSh {totalDailyBurn}/day</span>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                    <div className="card bg-white border-none shadow-md overflow-hidden relative group">
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150"></div>
-                        <div className="flex items-center justify-between mb-3 relative z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-500/10 rounded-xl">
-                                    <CreditCard className="w-5 h-5 text-blue-500" />
-                                </div>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('your_fund')}</span>
-                            </div>
-                            {profile.auto_pay_enabled ? (
-                                <div className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
-                                    <Zap className="w-3 h-3 text-emerald-500 fill-emerald-500" />
-                                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Auto: ON</span>
-                                </div>
-                            ) : (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); navigate('/auto-pay/setup'); }}
-                                    className="text-[8px] font-black text-brand-primary uppercase tracking-widest bg-brand-primary/5 px-2 py-1 rounded-lg border border-brand-primary/10 hover:bg-brand-primary/10 transition-colors"
-                                >
-                                    Enable Auto-Pay
-                                </button>
-                            )}
-                        </div>
-                        <div className="cursor-pointer" onClick={() => navigate('/topup')}>
-                            <p className="text-3xl font-black text-slate-900">KSh {profile.balance || 0}</p>
-                            <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 italic">
-                                {t('top_up_via_mpesa')} <ChevronRight className="w-3 h-3" />
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Maturation Status */}
-                <div className="card bg-white p-6 shadow-md border-none relative overflow-hidden">
-                    <div className="flex justify-between items-center mb-6">
+                {/* Shield Maturation Mini-Card */}
+                <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100">
+                    <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-3">
-                            <Shield className={`w-6 h-6 ${isMatured ? 'text-brand-primary' : 'text-yellow-500 animate-pulse'}`} />
+                            <div className={`p-2 rounded-xl ${isMatured ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}`}>
+                                <Shield className="w-5 h-5" />
+                            </div>
                             <div>
-                                <h4 className="font-bold text-slate-900">{t('shield_growth')}</h4>
-                                <p className="text-xs text-slate-400">
-                                    {isMatured ? t('fully_protected') : `${tierConfig[profile.active_tier]?.maturation || 180} ${t('days')} ${t('maturation_desc')}`}
-                                </p>
+                                <h4 className="font-bold text-slate-800 text-sm">{t('shield_growth')}</h4>
+                                <p className="text-[10px] text-slate-400 uppercase font-black">{progressPercent}% Matured</p>
                             </div>
                         </div>
-                        <span className="text-2xl font-black text-brand-primary">{progressPercent}%</span>
+                        {isAgent && (
+                             <button onClick={runTestDeduction} className="text-[10px] font-black text-brand-primary uppercase">Run Test</button>
+                        )}
                     </div>
-
-                    <div className="w-full h-5 bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner border border-slate-50">
-                        <div
-                            className="h-full bg-gradient-to-r from-brand-primary to-emerald-500 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                            style={{ width: `${progressPercent}%` }}
-                        >
-                            <div className="absolute top-0 right-0 h-full w-full bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:24px_24px] animate-shimmer"></div>
-                        </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-brand-primary rounded-full transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
                     </div>
-
-                    {/* Test Deduction Trigger (Only for testers/admin in this phase) */}
-                    <div className="mt-8 pt-6 border-t border-slate-50">
-                        <button
-                            onClick={runTestDeduction}
-                            disabled={loading}
-                            className="w-full py-4 bg-brand-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-brand-secondary transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-brand-primary/20"
-                        >
-                            <TrendingUp className="w-4 h-4 text-brand-accent" />
-                            {loading ? "Processing..." : "Run Daily Burn Test"}
-                        </button>
-                        <p className="text-[9px] text-center text-slate-400 mt-3 font-bold uppercase tracking-tighter">
-                            🛠️ Tester Tool: Trigger one-day deduction of KSh {totalDailyBurn}
-                        </p>
-                    </div>
-
                 </div>
 
                 {/* Referrals Banner */}

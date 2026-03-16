@@ -76,6 +76,56 @@ const formatToLocal = (phoneNumber) => {
     return cleaned;
 };
 
+/**
+ * Get the daily cost for a specific tier
+ */
+const getTierCost = async (tier) => {
+    if (!tier) return 0;
+    const tierConfigSnap = await db.collection("config").doc("tiers").get();
+    const TIER_CONFIG = tierConfigSnap.exists ? tierConfigSnap.data() : {
+        bronze: { cost: 50 },
+        silver: { cost: 147 },
+        gold: { cost: 229 }
+    };
+    const normalized = tier.toLowerCase();
+    return TIER_CONFIG[normalized]?.cost || TIER_CONFIG[tier]?.cost || 0;
+};
+
+/**
+ * Calculate total daily burn for a user and their dependents
+ */
+const calculateUserBurn = async (userId, profile) => {
+    if (!profile) return 0;
+    let total = await getTierCost(profile.active_tier || 'bronze');
+    
+    // Sum dependents
+    const dependentsSnap = await db.collection("dependents")
+        .where("guardian_id", "==", userId)
+        .get();
+    
+    for (const depDoc of dependentsSnap.docs) {
+        const dep = depDoc.data();
+        const cost = await getTierCost(dep.active_tier || 'bronze');
+        total += cost;
+    }
+    
+    return total;
+};
+
+/**
+ * Finds the latest active or pending standing order for a user
+ */
+const getActiveStandingOrder = async (userId) => {
+    const snap = await db.collection("standing_orders")
+        .where("userId", "==", userId)
+        .orderBy("createdAt", "desc")
+        .limit(1)
+        .get();
+    
+    if (snap.empty) return null;
+    return snap.docs[0].data();
+};
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCaAkDtu93ADVaDE0hy0MCK1n9E8ksUdN0";
 
 if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
@@ -832,7 +882,8 @@ exports.ussd = onRequest(async (req, res) => {
                     `2. Claim Fund\n` +
                     `3. Add Dependent\n` +
                     `4. Top Up Wallet\n` +
-                    `5. Setup Standing Order`;
+                    `5. Setup Standing Order\n` +
+                    `6. Upgrade Tier`;
             } else {
                 response = `CON Welcome to Hazina Care.\n` +
                     `Register to protect your family.\n` +
@@ -877,19 +928,52 @@ exports.ussd = onRequest(async (req, res) => {
                 response = `CON Enter Dependent's Phone Number (07...):`;
             } else if (level === 2) {
                 response = `CON Enter Dependent's Full Name:`;
-            } else if (level >= 3) {
+            } else if (level === 3) {
                 const depPhone = parts[1];
                 const depName = parts.slice(2).join(" ");
                 try {
-                    await db.collection("users").doc(userId).collection("dependants").add({
+                    // Standardized root collection with guardian_id
+                    await db.collection("dependents").add({
+                        guardian_id: userId,
                         fullName: depName,
                         phoneNumber: depPhone,
+                        active_tier: 'bronze', // Default tier
                         timestamp: admin.firestore.FieldValue.serverTimestamp()
                     });
-                    response = `END Dependent ${depName} added successfully.`;
+
+                    // Calculate new total burn
+                    const totalBurn = await calculateUserBurn(userId, profile);
+                    const activeSO = await getActiveStandingOrder(userId);
+                    
+                    if (activeSO && activeSO.amount < totalBurn) {
+                         response = `CON Success! ${depName} added.\n` +
+                                   `Your total daily cost is now KSh ${totalBurn}.\n` +
+                                   `Update your Auto-Pay to KSh ${totalBurn}?\n` +
+                                   `1. Yes (Authorize Now)\n` +
+                                   `2. No (Keep current KSh ${activeSO.amount})`;
+                    } else if (!activeSO) {
+                        response = `CON Success! ${depName} added.\n` +
+                                   `Daily cost: KSh ${totalBurn}.\n` +
+                                   `Setup Auto-Pay now?\n` +
+                                   `1. Yes\n` +
+                                   `2. No`;
+                    } else {
+                        response = `END Success! ${depName} added. Your total daily cost is KSh ${totalBurn}.`;
+                    }
                 } catch (depError) {
+                    console.error("USSD Add Dep Error:", depError);
                     response = `END Failed to add dependent. Please try again later.`;
                 }
+            } else if (level >= 4) {
+                 const selection = parts[3];
+                 if (selection === "1") {
+                     const totalBurn = await calculateUserBurn(userId, profile);
+                     // Trigger Standing Order Setup (Daily is the default for cost-matching)
+                     response = `END Great! We are sending a SasaPay prompt to authorize your new KSh ${totalBurn} daily Auto-Pay.`;
+                     performStandingOrderSetup(userId, totalBurn, "DAILY", phoneNumber).catch(e => console.error("USSD Smart SO Error:", e));
+                 } else {
+                     response = `END No problem. You can update your Auto-Pay anytime from Option 5.`;
+                 }
             }
         } else if (parts[0] === "4" && userExists) {
             // Top Up
@@ -921,6 +1005,75 @@ exports.ussd = onRequest(async (req, res) => {
                 } else {
                     response = `END Setting up ${frequency} Standing Order for KSh ${amount}. You will receive a prompt to authorize.`;
                     performStandingOrderSetup(userId, amount, frequency, phoneNumber).catch(e => console.error("USSD SO Error:", e));
+                }
+            }
+        } else if (parts[0] === "6" && userExists) {
+            // Upgrade Tier
+            const currentTier = (profile.active_tier || 'bronze').toLowerCase();
+            
+            if (level === 1) {
+                if (currentTier === 'gold') {
+                    response = `END You are already on the highest tier (GOLD).`;
+                } else if (currentTier === 'silver') {
+                    response = `CON Upgrade to GOLD?\nDaily Cost: KSh 229\n1. Confirm Upgrade\n2. Cancel`;
+                } else {
+                    response = `CON Select Upgrade Tier:\n1. SILVER (KSh 147/day)\n2. GOLD (KSh 229/day)`;
+                }
+            } else if (level === 2) {
+                let targetTier = "";
+                if (currentTier === 'silver') {
+                    if (parts[1] === "1") targetTier = "gold";
+                } else if (currentTier === 'bronze') {
+                    if (parts[1] === "1") targetTier = "silver";
+                    else if (parts[1] === "2") targetTier = "gold";
+                }
+
+                if (targetTier) {
+                    try {
+                        // Update User Tier
+                        await db.collection("users").doc(userId).update({
+                            active_tier: targetTier,
+                            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                        });
+
+                        // Calculate new total burn
+                        const totalBurn = await calculateUserBurn(userId, { ...profile, active_tier: targetTier });
+                        const activeSO = await getActiveStandingOrder(userId);
+
+                        if (activeSO && activeSO.amount < totalBurn) {
+                            response = `CON Level Up! You are now a ${targetTier.toUpperCase()} member.\n` +
+                                      `New daily cost is KSh ${totalBurn}.\n` +
+                                      `Update your Auto-Pay to KSh ${totalBurn}?\n` +
+                                      `1. Yes (Authorize Now)\n` +
+                                      `2. No`;
+                        } else if (!activeSO) {
+                            response = `CON Success! Upgraded to ${targetTier.toUpperCase()}.\n` +
+                                      `Daily cost: KSh ${totalBurn}.\n` +
+                                      `Setup Auto-Pay now?\n` +
+                                      `1. Yes\n` +
+                                      `2. No`;
+                        } else {
+                            response = `END Success! You are now on ${targetTier.toUpperCase()} tier. Your daily cost is KSh ${totalBurn}.`;
+                        }
+                    } catch (err) {
+                        console.error("USSD Upgrade Error:", err);
+                        response = `END Failed to upgrade. Please try again later.`;
+                    }
+                } else {
+                    response = `END Upgrade cancelled or invalid selection.`;
+                }
+            } else if (level >= 3) {
+                const selection = parts[2];
+                if (selection === "1") {
+                    // Get updated profile
+                    const uSnap = await db.collection("users").doc(userId).get();
+                    const uProfile = uSnap.data();
+                    const totalBurn = await calculateUserBurn(userId, uProfile);
+                    
+                    response = `END Great! We are sending a SasaPay prompt to authorize your new KSh ${totalBurn} daily Auto-Pay.`;
+                    performStandingOrderSetup(userId, totalBurn, "DAILY", phoneNumber).catch(e => console.error("USSD Upgrade SO Error:", e));
+                } else {
+                    response = `END No problem. You can update your Auto-Pay anytime from Option 5.`;
                 }
             }
         } else {
