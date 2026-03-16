@@ -21,9 +21,6 @@ const AgentApp = () => {
         walletBalance: 0
     });
     const [recentLogs, setRecentLogs] = useState([]);
-    const loading = statsLoading;
-    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-    const [withdrawAmount, setWithdrawAmount] = useState('');
     const [withdrawing, setWithdrawing] = useState(false);
     const [withdrawPhone, setWithdrawPhone] = useState(profile?.phoneNumber || '');
 
@@ -104,6 +101,9 @@ const AgentApp = () => {
         refetchOnMount: true,
         staleTime: 1000 * 30 // 30 seconds
     });
+    const loading = statsLoading;
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
 
     // Update local state when query finishes (to keep existing UI compatible)
     useEffect(() => {
