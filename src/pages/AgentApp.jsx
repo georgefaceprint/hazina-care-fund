@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp, doc, onSnapshot, getCountFromServer } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -12,6 +13,7 @@ import { formatKenyanPhone, standardizeTo254 } from '../utils/phoneUtils';
 
 const AgentApp = () => {
     const { profile } = useAuth();
+    const navigate = useNavigate();
     const toast = useToast();
     const [stats, setStats] = useState({
         today: 0,
@@ -420,6 +422,25 @@ const AgentApp = () => {
                         <Share2 className="w-5 h-5" />
                         Share Invitation Link
                     </button>
+
+                    {/* M-Pesa Ratiba Auto-Pay Setup */}
+                    <div onClick={() => navigate('/auto-pay/setup')} className="mt-6 p-6 bg-slate-900 rounded-3xl border border-slate-800 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition-all group overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/10 rounded-full -mr-8 -mt-8 blur-xl"></div>
+                        <div className="p-3 bg-brand-primary text-white rounded-2xl shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform">
+                            <Zap className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em]">Safaricom</span>
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.1em]">• Setup Ratiba</span>
+                            </div>
+                            <h4 className="text-white font-black text-lg">M-Pesa Auto-Pay</h4>
+                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 group-hover:text-brand-primary transition-colors">
+                                Never lose protection <ChevronRight className="w-3 h-3" />
+                            </p>
+                        </div>
+                        <ChevronRight className="w-6 h-6 text-slate-700 group-hover:text-white transition-colors" />
+                    </div>
                 </div>
 
                 {/* Progress Log */}

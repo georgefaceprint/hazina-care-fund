@@ -277,7 +277,7 @@ const Dashboard = () => {
                 )}
 
                 {/* M-Pesa Ratiba Auto-Pay Setup */}
-                <div onClick={() => navigate('/standing-order')} className="p-5 bg-slate-900 rounded-[2rem] border border-slate-800 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition-all group overflow-hidden relative">
+                <div onClick={() => navigate('/auto-pay/setup')} className="p-5 bg-slate-900 rounded-[2rem] border border-slate-800 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition-all group overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/10 rounded-full -mr-8 -mt-8 blur-xl"></div>
                     <div className="p-3 bg-brand-primary text-white rounded-2xl shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform">
                         <Zap className="w-5 h-5 animate-pulse" />
