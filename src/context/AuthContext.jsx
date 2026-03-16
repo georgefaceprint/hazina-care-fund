@@ -87,41 +87,55 @@ export const AuthProvider = ({ children }) => {
                     const localPhone = formatKenyanPhone(rawPhone);
                     const intlPhone = `+${standardizeTo254(rawPhone)}`;
 
-                    // 1. Try Local Doc ID
+                    // 1. Try Local Doc ID (07...)
                     try {
                         const localSnap = await getDoc(doc(db, 'users', localPhone));
-                        if (localSnap.exists()) return doc(db, 'users', localPhone);
+                        if (localSnap.exists()) {
+                            console.log("✅ [Auth] Found profile via local phone:", localPhone);
+                            return doc(db, 'users', localPhone);
+                        }
                     } catch (e) { console.warn("🔍 [Auth] Local doc check failed:", e.message); }
 
-                    // 2. Try International Doc ID
+                    // 2. Try International Doc ID (+254...)
                     try {
                         const intlSnap = await getDoc(doc(db, 'users', intlPhone));
-                        if (intlSnap.exists()) return doc(db, 'users', intlPhone);
+                        if (intlSnap.exists()) {
+                            console.log("✅ [Auth] Found profile via intl phone:", intlPhone);
+                            return doc(db, 'users', intlPhone);
+                        }
                     } catch (e) { console.warn("🔍 [Auth] Intl doc check failed:", e.message); }
 
                     // 3. Try UID Fallback Query
                     try {
                         const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
                         const qs = await getDocs(q);
-                        if (!qs.empty) return doc(db, 'users', qs.docs[0].id);
+                        if (!qs.empty) {
+                            console.log("✅ [Auth] Found profile via UID query:", qs.docs[0].id);
+                            return doc(db, 'users', qs.docs[0].id);
+                        }
                     } catch (e) {
                         console.error("🔍 [Auth] Profile Fallback Query Error:", e);
                     }
 
-                    // 4. Ultimate Fallback (Default to UID-based doc for new users)
+                    // 4. Ultimate Fallback (Default to preferred residency for new users)
+                    // If we have a phone number but no doc exists yet, it's likely a new signup.
+                    // Hazina prefers local format (07...) for user documents.
+                    if (localPhone) {
+                        console.log("🎯 [Auth] New user residency fallback: local phone", localPhone);
+                        return doc(db, 'users', localPhone);
+                    }
+
+                    console.log("🎯 [Auth] Absolute fallback: authUser.uid", authUser.uid);
                     return doc(db, 'users', authUser.uid);
                 } catch (err) {
                     console.error("❌ [Auth] critical error in resolveProfile:", err);
-                    return doc(db, 'users', authUser.uid); 
+                    return authUser.uid ? doc(db, 'users', authUser.uid) : null; 
                 }
             };
 
             try {
                 const profileRef = await resolveProfile();
-                console.log("🔍 [Auth] Resolved profileRef:", profileRef?.path || "NULL");
-
                 if (!profileRef) {
-                    console.warn("⚠️ [Auth] Could not resolve profile reference. Marking profile as false.");
                     setRealProfile(false);
                     setLoading(false);
                     return;
@@ -129,15 +143,14 @@ export const AuthProvider = ({ children }) => {
 
                 // Listen to profile
                 const unsubProfile = onSnapshot(profileRef, async (snap) => {
-                    console.log("👤 [Auth] Profile snapshot update. Exists:", snap.exists(), "DocID:", snap.id);
                     if (snap.exists()) {
                         const data = snap.data();
+                        console.log("👤 [Auth] Profile active:", snap.id, data.role);
                         setRealProfile({ id: snap.id, ...data });
                         setLoading(false);
                     } else {
-                        // Profile missing logic
+                        // Profile missing - logic for auto-provisioning or graceful fallback
                         if (authUser.email === 'faceprint@icloud.com') {
-                            // Auto-provision admin
                             const adminData = {
                                 uid: authUser.uid,
                                 email: authUser.email,
@@ -150,15 +163,18 @@ export const AuthProvider = ({ children }) => {
                             try { await setDoc(profileRef, adminData); } catch(e) { console.error("Provision failed", e); }
                             setLoading(false);
                         } else {
-                            // Regular user might be creating profile right now, wait a bit
+                            // NEW USER or DELETED USER
+                            // Wait longer (up to 8s) to allow LoginPage to finish setDoc/upload tasks
+                            // This prevents the "kicked back to login" loop during signup
                             setTimeout(async () => {
                                 const check = await getDoc(profileRef);
                                 if (!check.exists()) {
+                                    console.warn("⚠️ [Auth] Profile strictly missing after grace period. Logging out.");
                                     setRealProfile(false);
                                     setLoading(false);
                                     if (!authUser.email) await auth.signOut();
                                 }
-                            }, 3000);
+                            }, 8000);
                         }
                     }
                 }, (err) => {
