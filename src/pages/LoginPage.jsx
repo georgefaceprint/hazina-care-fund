@@ -132,6 +132,15 @@ const LoginPage = () => {
             if (intlSnap.exists()) {
                 userSnap = intlSnap;
                 userRef = intlRef;
+            } else {
+                // Try Raw International Doc ID (254...) - Common for Agent-registered users
+                const rawIntlPhone = intlPhone.replace('+', '');
+                const rawRef = doc(db, 'users', rawIntlPhone);
+                const rawSnap = await getDoc(rawRef);
+                if (rawSnap.exists()) {
+                    userSnap = rawSnap;
+                    userRef = rawRef;
+                }
             }
         }
         // ------------------------------

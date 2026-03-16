@@ -105,6 +105,16 @@ export const AuthProvider = ({ children }) => {
                         }
                     } catch (e) { console.warn("🔍 [Auth] Intl doc check failed:", e.message); }
 
+                    // 2b. Try Raw International Doc ID (254...) - Common for Agent-registered users
+                    const rawIntlPhone = intlPhone.replace('+', '');
+                    try {
+                        const rawSnap = await getDoc(doc(db, 'users', rawIntlPhone));
+                        if (rawSnap.exists()) {
+                            console.log("✅ [Auth] Found profile via raw intl phone:", rawIntlPhone);
+                            return doc(db, 'users', rawIntlPhone);
+                        }
+                    } catch (e) { console.warn("🔍 [Auth] Raw intl doc check failed:", e.message); }
+
                     // 3. Try UID Fallback Query
                     try {
                         const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
