@@ -75,10 +75,15 @@ export const AuthProvider = ({ children }) => {
             
             // --- Resilient Profile Resolution Strategy ---
             const resolveProfile = async () => {
+                console.log("🔍 [Auth] Resolving profile for:", authUser.uid, authUser.phoneNumber, authUser.email);
                 try {
-                    if (authUser.email) return doc(db, 'users', authUser.uid);
+                    if (authUser.email) {
+                        console.log("🔍 [Auth] Email user detected, checking UID doc:", authUser.uid);
+                        return doc(db, 'users', authUser.uid);
+                    }
 
                     const rawPhone = authUser.phoneNumber || sessionStorage.getItem('hazina_temp_phone');
+                    console.log("🔍 [Auth] rawPhone for lookup:", rawPhone);
                     if (!rawPhone) {
                         console.warn("⚠️ [Auth] No phone or email found for authUser");
                         return null;
@@ -86,6 +91,8 @@ export const AuthProvider = ({ children }) => {
 
                     const localPhone = formatKenyanPhone(rawPhone);
                     const intlPhone = `+${standardizeTo254(rawPhone)}`;
+
+                    console.log("🔍 [Auth] Checking formats:", { localPhone, intlPhone });
 
                     // 1. Try Local Doc ID (07...)
                     try {
@@ -115,12 +122,31 @@ export const AuthProvider = ({ children }) => {
                         }
                     } catch (e) { console.warn("🔍 [Auth] Raw intl doc check failed:", e.message); }
 
-                    // 3. Try UID Fallback Query
+                    // 2c. Try Raw International with Leading Zero (2540...) - Rare edge case
+                    const intlWithZero = intlPhone.replace('+254', '2540');
+                    try {
+                        const zeroSnap = await getDoc(doc(db, 'users', intlWithZero));
+                        if (zeroSnap.exists()) {
+                            console.log("✅ [Auth] Found profile via intl with zero:", intlWithZero);
+                            return doc(db, 'users', intlWithZero);
+                        }
+                    } catch (e) { console.warn("🔍 [Auth] Intl with zero check failed:", e.message); }
+
+                    // 2d. Try UID direct document (Common for Email/Password or manual admins)
+                    try {
+                        const uidSnap = await getDoc(doc(db, 'users', authUser.uid));
+                        if (uidSnap.exists()) {
+                            console.log("✅ [Auth] Found profile via direct UID doc ID:", authUser.uid);
+                            return doc(db, 'users', authUser.uid);
+                        }
+                    } catch (e) { console.warn("🔍 [Auth] UID doc check failed:", e.message); }
+
+                    // 3. Try UID Fallback Query (Search by field, not ID)
                     try {
                         const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
                         const qs = await getDocs(q);
                         if (!qs.empty) {
-                            console.log("✅ [Auth] Found profile via UID query:", qs.docs[0].id);
+                            console.log("✅ [Auth] Found profile via UID field query:", qs.docs[0].id);
                             return doc(db, 'users', qs.docs[0].id);
                         }
                     } catch (e) {

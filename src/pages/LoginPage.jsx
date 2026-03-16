@@ -85,6 +85,15 @@ const LoginPage = () => {
     const { enableDemoMode, isDemoMode, user, profile, loading: authLoading } = useAuth();
 
     useEffect(() => {
+        console.log("🚦 [LoginPage] Auth State:", { 
+            hasUser: !!user, 
+            hasProfile: !!profile, 
+            authLoading, 
+            isDemoMode,
+            profileId: profile?.id,
+            profileRole: profile?.role
+        });
+
         if (isDemoMode && user) {
             navigate('/dashboard');
             return;
@@ -92,6 +101,7 @@ const LoginPage = () => {
 
         // If user is already authenticated and has a profile, redirect appropriately
         if (user && profile && !authLoading) {
+            console.log("🚦 [LoginPage] Redirecting authorized user to dashboard/complete-profile");
             if (!profile.profile_completed) {
                 navigate('/complete-profile');
             } else {
@@ -113,43 +123,57 @@ const LoginPage = () => {
 
 
     const handleLoginSuccess = async (token, formatPhone) => {
+        console.log("🚀 [LoginPage] handleLoginSuccess started for:", formatPhone);
         const authResult = await signInWithCustomToken(auth, token);
         const user = authResult.user;
+        console.log("🚀 [LoginPage] Firebase Auth success, user UID:", user.uid);
         sessionStorage.setItem('hazina_temp_phone', formatPhone);
         
         // --- Resilient Profile Lookup ---
         const localPhone = formatKenyanPhone(formatPhone);
         const intlPhone = `+${standardizeTo254(formatPhone)}`;
+        const rawIntlPhone = intlPhone.replace('+', '');
         
+        console.log("🚀 [LoginPage] Checking Firestore formats:", { localPhone, intlPhone, rawIntlPhone });
+
         const localRef = doc(db, 'users', localPhone);
         const intlRef = doc(db, 'users', intlPhone);
+        const rawRef = doc(db, 'users', rawIntlPhone);
         
         let userSnap = await getDoc(localRef);
         let userRef = localRef;
 
         if (!userSnap.exists()) {
+            console.log("🔍 [LoginPage] Local not found, checking Intl...");
             const intlSnap = await getDoc(intlRef);
             if (intlSnap.exists()) {
+                console.log("✅ [LoginPage] Intl format found!");
                 userSnap = intlSnap;
                 userRef = intlRef;
             } else {
-                // Try Raw International Doc ID (254...) - Common for Agent-registered users
-                const rawIntlPhone = intlPhone.replace('+', '');
-                const rawRef = doc(db, 'users', rawIntlPhone);
+                console.log("🔍 [LoginPage] Intl not found, checking Raw Intl...");
                 const rawSnap = await getDoc(rawRef);
                 if (rawSnap.exists()) {
+                    console.log("✅ [LoginPage] Raw Intl format found!");
                     userSnap = rawSnap;
                     userRef = rawRef;
+                } else {
+                    console.log("🔍 [LoginPage] No existing profile found in any format.");
                 }
             }
+        } else {
+            console.log("✅ [LoginPage] Local format found!");
         }
         // ------------------------------
 
         if (!userSnap.exists()) {
+            console.log("📝 [LoginPage] Creating NEW user profile...");
             const referrerId = sessionStorage.getItem('hazina_referrer');
             await setDoc(userRef, {
                 uid: user.uid,
                 phoneNumber: formatPhone,
+                firstName: firstName.toUpperCase(),
+                surname: surname.toUpperCase(),
                 role: 'guardian',
                 status: 'in-waiting',
                 active_tier: 'bronze',
@@ -158,22 +182,27 @@ const LoginPage = () => {
                 balance: 0,
                 createdAt: serverTimestamp(),
                 profile_completed: false,
+                photoURL: faceUrl, // uses the faceUrl from the parent scope if available
                 grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
                 referrer_id: referrerId || null,
                 recruited_by: sessionStorage.getItem('hazina_agent_code') || null,
                 registration_fee_paid: false,
                 referral_code: generateReferralCode(6)
             });
+            console.log("✅ [LoginPage] New profile created, navigating to complete-profile");
             navigate('/complete-profile');
         } else {
+            console.log("📝 [LoginPage] Updating EXISTING user profile...");
             const userData = userSnap.data();
             const updates = { uid: user.uid };
             if (!userData.referral_code) updates.referral_code = generateReferralCode(6);
             await setDoc(userRef, updates, { merge: true });
 
             if (!userData.profile_completed) {
+                console.log("✅ [LoginPage] Navigation: complete-profile");
                 navigate('/complete-profile');
             } else {
+                console.log("✅ [LoginPage] Navigation: dashboard");
                 navigate('/dashboard');
             }
         }
