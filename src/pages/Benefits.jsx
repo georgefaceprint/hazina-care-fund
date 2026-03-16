@@ -104,30 +104,12 @@ const Benefits = () => {
                 <h3 className="text-xl font-black mb-6">What counts as a Crisis?</h3>
                 <div className="space-y-6">
                     <div className="flex gap-4">
-                        <div className="p-3 bg-white/10 rounded-xl text-emerald-400">
-                            <Heart className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h4 className="font-bold">Medical Emergency</h4>
-                            <p className="text-xs opacity-60 mt-1">Hospitalization or critical medication for any registered dependent.</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-4">
                         <div className="p-3 bg-white/10 rounded-xl text-slate-300">
                             <Skull className="w-6 h-6" />
                         </div>
                         <div>
                             <h4 className="font-bold">Bereavement</h4>
                             <p className="text-xs opacity-60 mt-1">Funeral and transport costs for immediate platform dependents.</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="p-3 bg-white/10 rounded-xl text-blue-400">
-                            <BookOpen className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h4 className="font-bold">School Fees</h4>
-                            <p className="text-xs opacity-60 mt-1">Emergency coverage for term fees to prevent student dropout.</p>
                         </div>
                     </div>
                 </div>

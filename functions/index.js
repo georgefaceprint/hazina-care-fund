@@ -1662,15 +1662,72 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             ResolvedAgentId = agentCode;
         }
         
-        console.log(`[onUserCreated] Resolved Agent ID for log: ${ResolvedAgentId}. Master: ${agentData.masterAgentId}. Found UserDoc: ${!!userDoc}`);
+        // Helper function to update agent wallets and logs in both 'users' and 'agents' collections
+        const distributeCommission = async (targetAgentId, amount, roleLabel) => {
+            if (!targetAgentId) return null;
+            
+            console.log(`[onUserCreated] Distributing ${amount} to ${roleLabel}: ${targetAgentId}`);
+            
+            let targetUserDoc = await db.collection("users").doc(targetAgentId).get();
+            if (!targetUserDoc.exists) {
+                // Try search by agent_code if doc ID fails
+                const snap = await db.collection("users").where("agent_code", "==", targetAgentId).limit(1).get();
+                if (!snap.empty) targetUserDoc = snap.docs[0];
+            }
+
+            const updateData = {
+                totalEarnings: admin.firestore.FieldValue.increment(amount),
+                walletBalance: admin.firestore.FieldValue.increment(amount),
+                lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+
+            // 1. Update User Profile if found
+            if (targetUserDoc && targetUserDoc.exists) {
+                await targetUserDoc.ref.update({
+                    ...updateData,
+                    totalSignups: admin.firestore.FieldValue.increment(1)
+                });
+            }
+
+            // 2. Update Agents Collection doc
+            const agentEntryRef = db.collection("agents").doc(targetAgentId);
+            const agentEntryDoc = await agentEntryRef.get();
+            if (agentEntryDoc.exists) {
+                await agentEntryRef.update({
+                    ...updateData,
+                    totalSignups: admin.firestore.FieldValue.increment(1)
+                });
+            }
+
+            return targetUserDoc && targetUserDoc.exists ? targetUserDoc.data() : (agentEntryDoc.exists ? agentEntryDoc.data() : null);
+        };
+
+        // --- HIERARCHY DISTRIBUTION & ANALYTICS ---
         
-        const rawMasterId = agentData.masterAgentId || null;
-        const masterAgentId = rawMasterId ? rawMasterId.toString().trim().toUpperCase() : null; // Ensure masterAgentId is uppercase
-        const tariff = agentData.tariffRate || 15;
+        // 1. Level 1: Immediate Agent (Gets Commission + Signup Count)
+        const agentTariff = agentData.tariffRate || 15;
+        const agentRes = await distributeCommission(finalAgentId, agentTariff, "AGENT");
+        
+        // Use the most up-to-date data for hierarchy resolution
+        const currentAgentData = agentRes || agentData;
+        const masterAgentId = currentAgentData.masterAgentId ? currentAgentData.masterAgentId.toString().trim().toUpperCase() : null;
+
+        // 2. Level 2: Master Agent (Signup Count ONLY, no commission)
+        let superMasterId = null;
+        if (masterAgentId) {
+            const masterRes = await distributeCommission(masterAgentId, 0, "MASTER_ANALYTICS");
+            if (masterRes) {
+                // Super Master is the Master's Master
+                superMasterId = masterRes.masterAgentId || masterRes.superMasterId || null;
+            }
+        }
+
+        // 3. Level 3: Super Master Agent (Signup Count ONLY, no commission)
+        if (superMasterId) {
+            await distributeCommission(superMasterId.toString().trim().toUpperCase(), 0, "SUPER_MASTER_ANALYTICS");
+        }
 
         // Log the recruitment record with data needed by the dashboard
-        // ID is deterministic to prevent duplicate logs on retries
-        const finalAgentId = ResolvedAgentId.toUpperCase();
         const logId = `recruitment_${finalAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
         await db.collection("recruitment_logs").doc(logId).set({
             userId,
@@ -1679,8 +1736,9 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             agentId: finalAgentId,
             originalAgentInput: agentCode,
             masterAgentId,
-            tariffApplied: tariff,
-            commissionEarned: tariff,
+            superMasterId,
+            tariffApplied: agentTariff,
+            commissionEarned: agentTariff,
             // Carry forward residence data for analytics
             city: newUser.currentTown || '',
             county: newUser.currentCounty || '',
@@ -1689,33 +1747,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        // Update counts in ALL relevant places
-        // A. Update Agent's total count in the 'users' collection (if found there)
-        if (userDoc && userDoc.exists) {
-            console.log(`[onUserCreated] Updating agent totals for ${userDoc.id}`);
-            await userDoc.ref.update({
-                totalSignups: admin.firestore.FieldValue.increment(1),
-                totalEarnings: admin.firestore.FieldValue.increment(tariff),
-                walletBalance: admin.firestore.FieldValue.increment(tariff),
-                lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-        } else {
-            console.warn(`[onUserCreated] AGENT NOT FOUND for update! Tried ID/Phone: ${agentCode}, Intl: ${intlCode}, Local: ${localCode}`);
-        }
-
-        // B. Update 'agents' collection (doc ID is usually the agent code)
-        const agentRef = db.collection("agents").doc(agentCode);
-        const agentExists = await agentRef.get();
-        if (agentExists.exists) {
-            await agentRef.update({
-                totalSignups: admin.firestore.FieldValue.increment(1),
-                totalEarnings: admin.firestore.FieldValue.increment(tariff),
-                walletBalance: admin.firestore.FieldValue.increment(tariff),
-                lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-        }
-
-        console.log(`User ${userId} recruited by ${agentCode} processed. MasterAgent: ${masterAgentId}`);
+        console.log(`User ${userId} recruited by ${agentCode} processed. Hierarchy: Agent(${finalAgentId}) -> Master(${masterAgentId}) -> Super(${superMasterId})`);
     } catch (error) {
         console.error("Recruitment trigger error:", error);
     }
