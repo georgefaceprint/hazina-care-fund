@@ -122,13 +122,17 @@ const LoginPage = () => {
 
 
 
-    const handleLoginSuccess = async (token, formatPhone) => {
-        console.log("🚀 [LoginPage] handleLoginSuccess started for:", formatPhone);
+    const handleLoginSuccess = async (token, formatPhone, optFaceUrl = null) => {
+        console.log("🚀 [LoginPage] handleLoginSuccess started for:", formatPhone, "with faceUrl:", optFaceUrl);
         const authResult = await signInWithCustomToken(auth, token);
         const user = authResult.user;
         console.log("🚀 [LoginPage] Firebase Auth success, user UID:", user.uid);
         sessionStorage.setItem('hazina_temp_phone', formatPhone);
         
+        // Ensure face capture is saved if provided
+        if (optFaceUrl) {
+            console.log("💾 [LoginPage] Saving portrait photo to profile:", optFaceUrl);
+        }
         // --- Resilient Profile Lookup ---
         const localPhone = formatKenyanPhone(formatPhone);
         const intlPhone = `+${standardizeTo254(formatPhone)}`;
@@ -140,31 +144,90 @@ const LoginPage = () => {
         const intlRef = doc(db, 'users', intlPhone);
         const rawRef = doc(db, 'users', rawIntlPhone);
         
-        let userSnap = await getDoc(localRef);
+        let userSnap = null;
         let userRef = localRef;
 
-        if (!userSnap.exists()) {
+        try {
+            console.log("🔍 [LoginPage] Probing Local format...");
+            const snap = await getDoc(localRef);
+            if (snap.exists()) {
+                userSnap = snap;
+                userRef = localRef;
+            }
+        } catch (e) {
+            console.warn("⚠️ [LoginPage] Local format lookup failed (permissions?):", e.message);
+        }
+
+        if (!userSnap) {
             console.log("🔍 [LoginPage] Local not found, checking Intl...");
-            const intlSnap = await getDoc(intlRef);
-            if (intlSnap.exists()) {
-                console.log("✅ [LoginPage] Intl format found!");
-                userSnap = intlSnap;
-                userRef = intlRef;
-            } else {
+            try {
+                const intlSnap = await getDoc(intlRef);
+                if (intlSnap.exists()) {
+                    console.log("✅ [LoginPage] Intl format found!");
+                    userSnap = intlSnap;
+                    userRef = intlRef;
+                }
+            } catch (e) {
+                console.warn("⚠️ [LoginPage] Intl format lookup failed:", e.message);
+            }
+            if (!userSnap) {
                 console.log("🔍 [LoginPage] Intl not found, checking Raw Intl...");
-                const rawSnap = await getDoc(rawRef);
-                if (rawSnap.exists()) {
-                    console.log("✅ [LoginPage] Raw Intl format found!");
-                    userSnap = rawSnap;
-                    userRef = rawRef;
-                } else {
-                    console.log("🔍 [LoginPage] No existing profile found in any format.");
+                try {
+                    const rawSnap = await getDoc(rawRef);
+                    if (rawSnap.exists()) {
+                        console.log("✅ [LoginPage] Raw Intl format found!");
+                        userSnap = rawSnap;
+                        userRef = rawRef;
+                    }
+                } catch (e) {
+                    console.warn("⚠️ [LoginPage] Raw Intl format lookup failed:", e.message);
+                }
+                if (!userSnap) {
+                    console.log("🔍 [LoginPage] Raw Intl not found, checking by UID...");
+                    try {
+                        const uidSnap = await getDoc(uidRef);
+                        if (uidSnap.exists()) {
+                            console.log("✅ [LoginPage] User document found via UID!");
+                            userSnap = uidSnap;
+                            userRef = uidRef;
+                        }
+                    } catch (e) {
+                        console.warn("⚠️ [LoginPage] UID lookup failed:", e.message);
+                    }
+                    if (!userSnap) {
+                        console.log("❌ [LoginPage] No profile found in any format.");
+                        // If no profile found by phone or UID, it means it's a truly new user or an error.
+                        // For existing users without a profile, this path might indicate data inconsistency.
+                        // We'll proceed to create if userSnap.exists() is still false.
+                    }
                 }
             }
         } else {
             console.log("✅ [LoginPage] Local format found!");
         }
         // ------------------------------
+
+        // --- Standardize Portrait Field and Ensure Consistency ---
+        const userData = userSnap?.data() || {};
+        const profileUpdate = {};
+        
+        // If we have a newly uploaded face, save it to BOTH faceUrl and photoURL
+        if (optFaceUrl) {
+            profileUpdate.faceUrl = optFaceUrl;
+            profileUpdate.photoURL = optFaceUrl;
+        }
+
+        // If user already has faceUrl but missing photoURL, sync them
+        if (userData.faceUrl && !userData.photoURL) {
+            profileUpdate.photoURL = userData.faceUrl;
+        }
+
+        if (Object.keys(profileUpdate).length > 0 && userSnap?.exists()) { 
+            console.log("💾 [LoginPage] Updating profile fields:", profileUpdate);
+            await setDoc(userRef, profileUpdate, { merge: true });
+        }
+        // ------------------------------
+
 
         if (!userSnap.exists()) {
             console.log("📝 [LoginPage] Creating NEW user profile...");
@@ -182,7 +245,8 @@ const LoginPage = () => {
                 balance: 0,
                 createdAt: serverTimestamp(),
                 profile_completed: false,
-                photoURL: faceUrl, // uses the faceUrl from the parent scope if available
+                photoURL: optFaceUrl, // uses the optFaceUrl from the parent scope if available
+                faceUrl: optFaceUrl, // also save to faceUrl
                 grace_period_expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
                 referrer_id: referrerId || null,
                 recruited_by: sessionStorage.getItem('hazina_agent_code') || null,
@@ -327,7 +391,7 @@ const LoginPage = () => {
                 homeCounty: homeCounty,
                 nearestTown: nearestTown
             });
-            await handleLoginSuccess(result.data.token, formatPhone);
+            await handleLoginSuccess(result.data.token, formatPhone, faceUrl);
         } catch (error) {
             setError(error.message || 'Verification or Passcode setup failed.');
             if (error.message?.includes('OTP') || error.message?.includes('Code')) {
@@ -642,8 +706,9 @@ const LoginPage = () => {
                                              </div>
                                          ) : (
                                              <div className="flex flex-col items-center justify-center">
-                                                 <Camera className="w-12 h-12 text-slate-300 mb-2 group-hover:text-brand-primary transition-colors" />
-                                                 <p className="text-sm font-bold text-slate-700">Tap to Take Selfie</p>
+                                                  <Camera className="w-12 h-12 text-slate-300 mb-2 group-hover:text-brand-primary transition-colors" />
+                                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">Camera or Gallery</p>
+                                                  <p className="text-[9px] text-slate-300 uppercase font-bold mt-1">Portrait Mode Recommended</p>
                                                  <p className="text-[9px] text-slate-400 uppercase mt-1 tracking-tighter">Required for community verification</p>
                                              </div>
                                          )}

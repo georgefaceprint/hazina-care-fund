@@ -763,18 +763,20 @@ const AgentApp = () => {
                                                         <Camera className="w-8 h-8 text-slate-300 group-hover:text-brand-primary transition-colors" />
                                                     </div>
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-tight leading-relaxed">
-                                                        Position ID or Face <br /> within Vertical Frame
+                                                        Position Member Face <br /> within Vertical Frame
                                                     </p>
                                                 </div>
                                             )}
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
                                                 onChange={(e) => e.target.files[0] && setRegForm({ ...regForm, photo: e.target.files[0] })}
                                                 required
                                             />
                                         </div>
+                                        <p className="text-center mt-3 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">Camera or Gallery</p>
+                                        <p className="text-center text-[9px] text-slate-300 uppercase font-bold mt-1">Portrait orientation required</p>
                                     </motion.div>
                                 )}
 

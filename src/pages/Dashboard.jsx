@@ -203,15 +203,18 @@ const Dashboard = () => {
                     <div className="flex justify-between items-start mb-8">
                         <div className="flex items-center gap-4">
                             <div className="relative">
-                                {profile.id_photo_url ? (
-                                    <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl">
-                                        <img src={profile.id_photo_url} alt="ID" className="w-full h-full object-cover" />
-                                    </div>
-                                ) : (
-                                    <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                                        <User className="w-10 h-10 text-white/20" />
-                                    </div>
-                                )}
+                                {(() => {
+                                    const avatarUrl = profile.photoURL || profile.faceUrl || profile.id_photo_url;
+                                    return avatarUrl ? (
+                                        <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-brand-accent/30 shadow-2xl bg-white/5">
+                                            <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                            <User className="w-10 h-10 text-white/20" />
+                                        </div>
+                                    );
+                                })()}
                                 <div className="absolute -bottom-2 -right-2 bg-brand-primary p-1.5 rounded-lg border border-white/20 shadow-lg">
                                     <Shield className="w-4 h-4 text-white" />
                                 </div>

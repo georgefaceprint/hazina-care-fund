@@ -1521,7 +1521,10 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
             updateData.fullName = request.data.fullName;
         }
         if (request.data.national_id) updateData.national_id = request.data.national_id;
-        if (request.data.faceUrl) updateData.faceUrl = request.data.faceUrl;
+        if (request.data.faceUrl) {
+            updateData.faceUrl = request.data.faceUrl; // Legacy support
+            updateData.photoURL = request.data.faceUrl; // Standardized portrait field
+        }
         
         // Location data
         if (request.data.currentCounty) updateData.currentCounty = request.data.currentCounty;
@@ -1964,6 +1967,7 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
             status: isTestNumber ? 'active' : 'pending_payment',
             recruited_by: agentCode,
             id_photo_url: photoUrl || null,
+            photoURL: photoUrl || null, // Standardized portrait field
             registration_fee_paid: isTestNumber ? true : false,
             balance: 0,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),

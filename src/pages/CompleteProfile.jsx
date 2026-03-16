@@ -195,7 +195,7 @@ const CompleteProfile = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">ID FRONT</label>
-                            <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 overflow-hidden">
+                            <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 overflow-hidden group">
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -206,14 +206,15 @@ const CompleteProfile = () => {
                                 {idPhoto ? (
                                     <CheckCircle2 className="w-8 h-8 text-brand-primary mx-auto" />
                                 ) : (
-                                    <Upload className="w-8 h-8 text-slate-300 mx-auto" />
+                                    <Camera className="w-8 h-8 text-slate-300 mx-auto group-hover:text-brand-primary transition-colors" />
                                 )}
                                 <p className="text-[9px] font-bold text-slate-500 mt-1 uppercase">Front Side</p>
+                                <p className="text-[7px] text-slate-400 uppercase font-bold">Camera or Gallery</p>
                             </div>
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">ID BACK</label>
-                            <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 overflow-hidden">
+                            <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-brand-primary transition-colors cursor-pointer bg-slate-50/50 overflow-hidden group">
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -224,9 +225,10 @@ const CompleteProfile = () => {
                                 {idPhotoBack ? (
                                     <CheckCircle2 className="w-8 h-8 text-brand-primary mx-auto" />
                                 ) : (
-                                    <Upload className="w-8 h-8 text-slate-300 mx-auto" />
+                                    <Camera className="w-8 h-8 text-slate-300 mx-auto group-hover:text-brand-primary transition-colors" />
                                 )}
                                 <p className="text-[9px] font-bold text-slate-500 mt-1 uppercase">Back Side</p>
+                                <p className="text-[7px] text-slate-400 uppercase font-bold">Camera or Gallery</p>
                             </div>
                         </div>
                     </div>
