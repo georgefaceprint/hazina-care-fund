@@ -770,7 +770,6 @@ const AgentApp = () => {
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                capture="user"
                                                 className="absolute inset-0 opacity-0 cursor-pointer"
                                                 onChange={(e) => e.target.files[0] && setRegForm({ ...regForm, photo: e.target.files[0] })}
                                                 required

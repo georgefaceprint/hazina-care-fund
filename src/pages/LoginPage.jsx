@@ -71,7 +71,8 @@ const LoginPage = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [facePhoto, setFacePhoto] = useState(null);
-    const [fullName, setFullName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [surname, setSurname] = useState('');
     const [nationalId, setNationalId] = useState('');
     const [agentCodeInput, setAgentCodeInput] = useState('');
     
@@ -246,8 +247,12 @@ const LoginPage = () => {
                 setError("Please capture your face photo to secure your account.");
                 return;
             }
-            if (!fullName.trim() || fullName.trim().split(/\s+/).length < 2) {
-                setError("Please enter at least two names.");
+            if (!firstName.trim()) {
+                setError("Please enter your First Name.");
+                return;
+            }
+            if (!surname.trim()) {
+                setError("Please enter your Surname.");
                 return;
             }
             if (!nationalId) {
@@ -276,7 +281,8 @@ const LoginPage = () => {
                 validationCode: verificationCode,
                 newPasscode: newPasscode,
                 faceUrl: faceUrl,
-                fullName: fullName,
+                firstName: firstName,
+                surname: surname,
                 national_id: nationalId,
                 currentCounty: currentCounty,
                 currentTown: currentTown,
@@ -470,16 +476,29 @@ const LoginPage = () => {
                          {isNewUser && (
                              <div className="space-y-4 pt-4 border-t border-slate-50">
                                  <div className="space-y-4">
-                                     <div className="space-y-2">
-                                         <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Full Name (Min 2 Names)</label>
-                                         <input
-                                             type="text"
-                                             placeholder="JOHN DOE"
-                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
-                                             value={fullName}
-                                             onChange={(e) => setFullName(e.target.value)}
-                                             required
-                                         />
+                                     <div className="grid grid-cols-2 gap-4">
+                                         <div className="space-y-2">
+                                             <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">First Name</label>
+                                             <input
+                                                 type="text"
+                                                 placeholder="JOHN"
+                                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                                 value={firstName}
+                                                 onChange={(e) => setFirstName(e.target.value)}
+                                                 required
+                                             />
+                                         </div>
+                                         <div className="space-y-2">
+                                             <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Surname</label>
+                                             <input
+                                                 type="text"
+                                                 placeholder="DOE"
+                                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                                 value={surname}
+                                                 onChange={(e) => setSurname(e.target.value)}
+                                                 required
+                                             />
+                                         </div>
                                      </div>
                                      <div className="space-y-2">
                                          <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">National ID Number</label>
@@ -597,7 +616,7 @@ const LoginPage = () => {
 
                          <button
                              type="submit"
-                             disabled={loading || newPasscode.length < 6 || newPasscode !== confirmPasscode || (isNewUser && (!facePhoto || !fullName || !nationalId || !currentCounty || !currentTown || !homeCounty || !nearestTown))}
+                             disabled={loading || newPasscode.length < 6 || newPasscode !== confirmPasscode || (isNewUser && (!facePhoto || !firstName || !surname || !nationalId || !currentCounty || !currentTown || !homeCounty || !nearestTown))}
                              className="btn-primary w-full py-4 text-lg disabled:opacity-50 mt-6"
                          >
                             {loading ? 'Saving...' : 'Set Passcode & Enter'}

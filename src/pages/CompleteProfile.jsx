@@ -62,8 +62,7 @@ const CompleteProfile = () => {
         }
 
         // Validate two or more names
-        const nameParts = fullName.trim().split(/\s+/);
-        if (nameParts.length < 2) {
+        if (!firstName.trim() || !surname.trim()) {
             toast.error(t('name_min_words'));
             return;
         }
@@ -95,7 +94,7 @@ const CompleteProfile = () => {
             });
 
             toast.success("Profile completed successfully!");
-            navigate('/pay-registration');
+            navigate('/dashboard');
         } catch (error) {
             console.error("Error updating profile:", error);
             // Log the attempted ID for better debugging
@@ -125,7 +124,7 @@ const CompleteProfile = () => {
                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Profile Completion</span>
                         <span className="text-sm font-black text-brand-primary">
                             {Math.round(
-                                (fullName.trim().split(/\s+/).length >= 2 ? 15 : 0) +
+                                ((firstName.trim() && surname.trim()) ? 15 : 0) +
                                 (nationalId ? 15 : 0) +
                                 (idPhoto ? 15 : 0) +
                                 (idPhotoBack ? 15 : 0) +
@@ -138,7 +137,7 @@ const CompleteProfile = () => {
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{
-                                width: `${(fullName.trim().split(/\s+/).length >= 2 ? 20 : 0) +
+                                width: `${((firstName.trim() && surname.trim()) ? 20 : 0) +
                                     (nationalId ? 20 : 0) +
                                     (idPhoto ? 20 : 0) +
                                     (idPhotoBack ? 20 : 0) +

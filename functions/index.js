@@ -1513,7 +1513,13 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
         }
         
         const updateData = { passcodeHash };
-        if (request.data.fullName) updateData.fullName = request.data.fullName;
+        if (request.data.firstName) updateData.firstName = request.data.firstName;
+        if (request.data.surname) updateData.surname = request.data.surname;
+        if (request.data.firstName && request.data.surname) {
+            updateData.fullName = `${request.data.firstName} ${request.data.surname}`.trim();
+        } else if (request.data.fullName) {
+            updateData.fullName = request.data.fullName;
+        }
         if (request.data.national_id) updateData.national_id = request.data.national_id;
         if (request.data.faceUrl) updateData.faceUrl = request.data.faceUrl;
         
@@ -1949,6 +1955,8 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
         const newUserRef = db.collection("users").doc(formatPhone);
         await newUserRef.set({
             fullName,
+            firstName: firstName.toUpperCase(),
+            surname: surname.toUpperCase(),
             national_id: idNumber,
             phoneNumber: formatPhone,
             role: 'guardian',
