@@ -209,10 +209,7 @@ const ProfileSettings = () => {
                     </div>
                     <div>
                         <h2 className="font-bold text-slate-900 text-lg">Guardian Account</h2>
-                        <div className="flex items-center gap-1.5 text-slate-500 mt-1">
-                            <Phone className="w-4 h-4" />
-                            <span className="text-sm font-mono tracking-tight">{user?.phoneNumber || 'No phone linked'}</span>
-                        </div>
+                        <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em]">Verified Secure</span>
                     </div>
                 </div>
 

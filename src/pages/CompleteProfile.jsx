@@ -16,7 +16,8 @@ const CompleteProfile = () => {
     const { t } = useLanguage();
     const navigate = useNavigate();
     const toast = useToast();
-    const [fullName, setFullName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [surname, setSurname] = useState('');
     const [nationalId, setNationalId] = useState('');
     const [idPhoto, setIdPhoto] = useState(null);
     const [idPhotoBack, setIdPhotoBack] = useState(null);
@@ -26,6 +27,26 @@ const CompleteProfile = () => {
     const [nearestTown, setNearestTown] = useState('');
     const [uploadingState, setUploadingState] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Prepopulate data
+    useEffect(() => {
+        if (profile) {
+            if (profile.fullName) {
+                const parts = profile.fullName.trim().split(/\s+/);
+                if (parts.length >= 2) {
+                    setFirstName(parts.slice(0, -1).join(' '));
+                    setSurname(parts[parts.length - 1]);
+                } else {
+                    setFirstName(profile.fullName);
+                }
+            }
+            if (profile.national_id) setNationalId(profile.national_id);
+            if (profile.currentCounty) setCurrentCounty(profile.currentCounty);
+            if (profile.currentTown) setCurrentTown(profile.currentTown);
+            if (profile.homeCounty) setHomeCounty(profile.homeCounty);
+            if (profile.nearestTown) setNearestTown(profile.nearestTown);
+        }
+    }, [profile]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -61,7 +82,7 @@ const CompleteProfile = () => {
             const userRef = doc(db, 'users', targetId);
 
             await updateDoc(userRef, {
-                fullName,
+                fullName: `${firstName} ${surname}`.trim(),
                 national_id: nationalId,
                 id_photo_url: photoUrl,
                 id_photo_back_url: photoUrlBack,
@@ -131,15 +152,30 @@ const CompleteProfile = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">{t('full_name')}</label>
-                        <input
-                            type="text"
-                            placeholder="JOHN DOE"
-                            className="w-full bg-slate-50 border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-slate-900 font-medium uppercase"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value.toUpperCase())}
-                            required
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">First & Middle Names</label>
+                            <input
+                                type="text"
+                                placeholder="JOHN"
+                                className="w-full bg-slate-50 border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-slate-900 font-medium uppercase"
+                                value={firstName}
+                                onChange={(e) => setFirstName(e.target.value.toUpperCase())}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">Surname</label>
+                            <input
+                                type="text"
+                                placeholder="DOE"
+                                className="w-full bg-slate-50 border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all text-slate-900 font-medium uppercase"
+                                value={surname}
+                                onChange={(e) => setSurname(e.target.value.toUpperCase())}
+                                required
+                            />
+                        </div>
+                    </div>
                         <p className="text-[10px] text-brand-primary mt-2 italic px-1 font-bold">
                             {t('official_name_reminder')}
                         </p>
