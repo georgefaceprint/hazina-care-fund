@@ -1,0 +1,34 @@
+{
+  "packageId": "org.myhazina.twa",
+  "host": "myhazina.org",
+  "name": "Hazina Care Fund",
+  "shortName": "Hazina",
+  "display": "standalone",
+  "themeColor": "#9D3334",
+  "navigationColor": "#9D3334",
+  "backgroundColor": "#ffffff",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://myhazina.org/pwa-512x512.png",
+  "maskableIconUrl": "https://myhazina.org/pwa-512x512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./hazina-release-key.keystore",
+    "alias": "hazina-alias"
+  },
+  "appVersionCode": 1,
+  "appVersionName": "1.0.0",
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://myhazina.org/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "playBilling": {
+    "enabled": false
+  },
+  "isChromeOSOnly": false,
+  "orientation": "any"
+}
