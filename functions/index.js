@@ -1260,8 +1260,22 @@ exports.checkUserExists = onCall({ cors: true }, async (request) => {
         const { phoneNumber } = request.data;
         if (!phoneNumber) throw new HttpsError('invalid-argument', 'Phone number is required.');
         const formatPhone = formatTo254(phoneNumber);
+        const localPhone = formatToLocal(phoneNumber);
+        const intlPhone = `+${formatPhone}`;
 
-        const userSnap = await db.collection('users').doc(formatPhone).get();
+        // Robust lookup
+        let userSnap = await db.collection('users').doc(formatPhone).get();
+        if (!userSnap.exists) {
+            userSnap = await db.collection('users').doc(localPhone).get();
+        }
+        if (!userSnap.exists) {
+            userSnap = await db.collection('users').doc(intlPhone).get();
+        }
+        if (!userSnap.exists) {
+            const snap = await db.collection('users').where('phoneNumber', 'in', [formatPhone, localPhone, intlPhone]).limit(1).get();
+            if (!snap.empty) userSnap = snap.docs[0];
+        }
+
         if (!userSnap.exists) {
             return { exists: false };
         }
@@ -1273,6 +1287,7 @@ exports.checkUserExists = onCall({ cors: true }, async (request) => {
             profile_completed: !!userData.profile_completed
         };
     } catch (error) {
+        console.error("checkUserExists error:", error);
         throw new HttpsError('internal', error.message);
     }
 });
@@ -1285,44 +1300,75 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
         }
 
         const formatPhone = formatTo254(phoneNumber);
+        const localPhone = formatToLocal(phoneNumber);
+        const intlPhone = `+${formatPhone}`;
 
         // 1. Verify OTP
         let isValidOtp = false;
-        const docRef = db.collection('otp_codes').doc(formatPhone);
-        const docSnap = await docRef.get();
-        if (!docSnap.exists) throw new HttpsError('not-found', 'No pending verification.');
+        // Try to find OTP by any format
+        let docRef = db.collection('otp_codes').doc(formatPhone);
+        let docSnap = await docRef.get();
+        if (!docSnap.exists) {
+            docRef = db.collection('otp_codes').doc(localPhone);
+            docSnap = await docRef.get();
+        }
+        if (!docSnap.exists) {
+            docRef = db.collection('otp_codes').doc(intlPhone);
+            docSnap = await docRef.get();
+        }
+
+        if (!docSnap.exists) throw new HttpsError('not-found', 'No pending verification. Please request a new OTP.');
         const data = docSnap.data();
         if (data.expiresAt.toDate() < new Date()) {
             await docRef.delete();
-            throw new HttpsError('deadline-exceeded', 'OTP has expired.');
+            throw new HttpsError('deadline-exceeded', 'OTP has expired. Please try again.');
         }
         if (data.code !== String(validationCode)) {
-            throw new HttpsError('invalid-argument', 'Invalid OTP code.');
+            // Check if it's the test bypass code
+            const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108', '254755881991', '254105845108'];
+            const isTestUser = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
+            if (isTestUser && String(validationCode) === '123456') {
+                console.log("PASSCODE_SET_BYPASS triggered for:", formatPhone);
+                isValidOtp = true;
+            } else {
+                throw new HttpsError('invalid-argument', 'Invalid verification code. Please check and try again.');
+            }
+        } else {
+            isValidOtp = true;
         }
-        isValidOtp = true;
-        await docRef.delete();
 
-        // --- TESTING BYPASS ---
-        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-        const isTestUser = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
-        if (isTestUser && String(validationCode) === '123456') {
-            console.log("PASSCODE_SET_BYPASS triggered for:", formatPhone);
-            isValidOtp = true; // redundancy
+        if (isValidOtp) {
+            await docRef.delete();
+        } else {
+            throw new HttpsError('invalid-argument', 'OTP verification failed.');
         }
-        // -----------------------
-
-        if (!isValidOtp) throw new HttpsError('invalid-argument', 'OTP verification failed.');
 
         // 2. Hash New Passcode
         const salt = await bcrypt.genSalt(10);
         const passcodeHash = await bcrypt.hash(String(newPasscode), salt);
 
-        // 3. Save to User Document
-        const userRef = db.collection('users').doc(formatPhone);
-        await userRef.set({ passcodeHash }, { merge: true });
+        // 3. Robust User Lookup for Save
+        let userRef = db.collection('users').doc(formatPhone);
+        let userSnap = await userRef.get();
+        if (!userSnap.exists) {
+            userSnap = await db.collection('users').doc(localPhone).get();
+            if (userSnap.exists) userRef = db.collection('users').doc(localPhone);
+        }
+        if (!userSnap.exists) {
+            userSnap = await db.collection('users').doc(intlPhone).get();
+            if (userSnap.exists) userRef = db.collection('users').doc(intlPhone);
+        }
+        
+        const updateData = { passcodeHash };
+        if (request.data.fullName) updateData.fullName = request.data.fullName;
+        if (request.data.nationalId) updateData.nationalId = request.data.nationalId;
+        if (request.data.faceUrl) updateData.faceUrl = request.data.faceUrl;
+        if (request.data.faceUrl) updateData.profile_completed = true;
+
+        await userRef.set(updateData, { merge: true });
 
         // 4. Generate Custom Token
-        const token = await admin.auth().createCustomToken(formatPhone);
+        const token = await admin.auth().createCustomToken(userRef.id);
         return { success: true, token };
 
     } catch (error) {
@@ -1340,34 +1386,49 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
         }
 
         const formatPhone = formatTo254(phoneNumber);
+        const localPhone = formatToLocal(phoneNumber);
+        const intlPhone = `+${formatPhone}`;
         
-        const userSnap = await db.collection('users').doc(formatPhone).get();
+        // Robust lookup
+        let userSnap = await db.collection('users').doc(formatPhone).get();
         if (!userSnap.exists) {
-            throw new HttpsError('not-found', 'User not found.');
+            userSnap = await db.collection('users').doc(localPhone).get();
+        }
+        if (!userSnap.exists) {
+            userSnap = await db.collection('users').doc(intlPhone).get();
+        }
+        if (!userSnap.exists) {
+            const snap = await db.collection('users').where('phoneNumber', 'in', [formatPhone, localPhone, intlPhone]).limit(1).get();
+            if (!snap.empty) userSnap = snap.docs[0];
+        }
+
+        if (!userSnap.exists) {
+            throw new HttpsError('not-found', 'User not found. Please register first.');
         }
 
         const userData = userSnap.data();
+        const docId = userSnap.id;
         
         // --- TESTING BYPASS ---
-        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-        const isTestUser = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
+        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108', '254755881991', '254105845108'];
+        const isTestUser = testNumbers.some(tn => docId.includes(tn.replace('+', '')) || formatPhone.includes(tn.replace('+', '')));
         if (isTestUser && String(passcode) === '123456') {
-            console.log("PASSCODE_BYPASS triggered for:", formatPhone);
-            const token = await admin.auth().createCustomToken(formatPhone);
+            console.log("PASSCODE_BYPASS triggered for:", docId);
+            const token = await admin.auth().createCustomToken(docId);
             return { success: true, token };
         }
         // -----------------------
 
         if (!userData.passcodeHash) {
-             throw new HttpsError('failed-precondition', 'Passcode not set for this account.');
+             throw new HttpsError('failed-precondition', 'Passcode not set for this account. Please use "Forgot Passcode" to reset.');
         }
 
         const isMatch = await bcrypt.compare(String(passcode), userData.passcodeHash);
         if (!isMatch) {
-            throw new HttpsError('invalid-argument', 'Invalid passcode.');
+            throw new HttpsError('invalid-argument', 'Invalid passcode. Please try again.');
         }
 
-        const token = await admin.auth().createCustomToken(formatPhone);
+        const token = await admin.auth().createCustomToken(docId);
         return { success: true, token };
 
     } catch (error) {
