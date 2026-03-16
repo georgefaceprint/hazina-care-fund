@@ -211,7 +211,7 @@ const CompleteProfile = () => {
                                     required
                                 >
                                     <option value="">County</option>
-                                    {KENYA_COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    {kenyanCounties.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                             </div>
@@ -243,7 +243,7 @@ const CompleteProfile = () => {
                                     required
                                 >
                                     <option value="">Home County</option>
-                                    {KENYA_COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    {kenyanCounties.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                             </div>
