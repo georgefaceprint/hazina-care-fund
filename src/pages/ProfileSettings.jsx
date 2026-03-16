@@ -227,7 +227,12 @@ const ProfileSettings = () => {
                                 </div>
                                 <div>
                                     <p className="font-bold text-slate-800 text-sm">Personal Details</p>
-                                    <p className="text-xs text-slate-500">National ID: {profile?.national_id}</p>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
+                                        ID: {profile?.national_id || 'NOT SET'} • {profile?.currentCounty || 'NO COUNTY'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 italic">
+                                        Residence: {profile?.currentTown || 'N/A'}
+                                    </p>
                                 </div>
                             </div>
                             <ChevronRight className="w-5 h-5 text-slate-300" />

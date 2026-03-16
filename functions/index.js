@@ -1447,7 +1447,7 @@ exports.checkUserExists = onCall({ cors: true }, async (request) => {
 
 exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
     try {
-        const { phoneNumber, validationCode, newPasscode } = request.data;
+        const { phoneNumber, validationCode, newPasscode, national_id } = request.data;
         if (!phoneNumber || !validationCode || !newPasscode) {
             throw new HttpsError('invalid-argument', 'Missing required fields.');
         }
@@ -1514,8 +1514,15 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
         
         const updateData = { passcodeHash };
         if (request.data.fullName) updateData.fullName = request.data.fullName;
-        if (request.data.nationalId) updateData.nationalId = request.data.nationalId;
+        if (request.data.national_id) updateData.national_id = request.data.national_id;
         if (request.data.faceUrl) updateData.faceUrl = request.data.faceUrl;
+        
+        // Location data
+        if (request.data.currentCounty) updateData.currentCounty = request.data.currentCounty;
+        if (request.data.currentTown) updateData.currentTown = request.data.currentTown;
+        if (request.data.homeCounty) updateData.homeCounty = request.data.homeCounty;
+        if (request.data.nearestTown) updateData.nearestTown = request.data.nearestTown;
+
         if (request.data.faceUrl) updateData.profile_completed = true;
 
         await userRef.set(updateData, { merge: true });

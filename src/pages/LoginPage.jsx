@@ -277,7 +277,11 @@ const LoginPage = () => {
                 newPasscode: newPasscode,
                 faceUrl: faceUrl,
                 fullName: fullName,
-                nationalId: nationalId
+                national_id: nationalId,
+                currentCounty: currentCounty,
+                currentTown: currentTown,
+                homeCounty: homeCounty,
+                nearestTown: nearestTown
             });
             await handleLoginSuccess(result.data.token, formatPhone);
         } catch (error) {

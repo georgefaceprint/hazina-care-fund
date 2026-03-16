@@ -8,7 +8,7 @@ import { Shield, User, ArrowRight, Upload, Image as ImageIcon, CheckCircle2 } fr
 import { motion } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { uploadProfilePhoto } from '../services/storage';
-import { KENYA_COUNTIES, COUNTY_TOWNS } from '../data/kenyaData';
+import { kenyanCounties, countyTowns } from '../utils/kenyanGeog';
 import { ChevronDown, MapPin } from 'lucide-react';
 
 const CompleteProfile = () => {
@@ -224,7 +224,7 @@ const CompleteProfile = () => {
                                     required
                                 >
                                     <option value="">Closest Town</option>
-                                    {(COUNTY_TOWNS[currentCounty] || []).map(t => <option key={t} value={t}>{t}</option>)}
+                                    {(countyTowns[currentCounty] || []).map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                             </div>
