@@ -272,6 +272,42 @@ const getSasapayToken = async () => {
 };
 
 // Internal Helper to initiate SasaPay C2B
+// Core logic for Standing Order (reusable by USSD and Cloud Functions)
+async function performStandingOrderSetup(userId, amount, frequency, phoneNumber, networkCode = "63902") {
+    const token = await getSasapayToken();
+    const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
+    const merchantRequestID = `SO-${Date.now()}-${userId.substring(0, 5)}`;
+
+    const payload = {
+        MerchantCode: SASAPAY_MERCHANT_CODE,
+        NetworkCode: networkCode,
+        Amount: amount.toString(),
+        Currency: "KES",
+        PhoneNumber: formatTo254(phoneNumber),
+        CallBackURL: callbackUrl,
+        TransactionDesc: `Hazina Auto-Pay Setup`,
+        AccountReference: `HAZINA-SO-${userId.substring(0, 8)}`,
+        Frequency: frequency.toUpperCase(), // DAILY, WEEKLY, MONTHLY
+        MerchantRequestID: merchantRequestID
+    };
+
+    const response = await axios.post(`${SASAPAY_BASE_URL}/payments/standing-order/`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+
+    // Save record for callback tracking
+    await db.collection("standing_orders").doc(merchantRequestID).set({
+        userId,
+        amount,
+        frequency: frequency.toUpperCase(),
+        phoneNumber,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return { success: true, detail: response.data.detail || "Standing order request initiated", merchantRequestID };
+}
+
 const initiateSasapayC2B = async (phoneNumber, amount, userId, networkCode = "63902") => {
     const formattedPhone = formatTo254(phoneNumber);
 
@@ -538,6 +574,7 @@ exports.sasapayCallback = onRequest(async (req, res) => {
 });
 
 // 6. SasaPay Standing Order Setup
+// 6. SasaPay Standing Order Setup
 exports.setupStandingOrder = onCall({ cors: true }, async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'User must be logged in');
 
@@ -545,38 +582,7 @@ exports.setupStandingOrder = onCall({ cors: true }, async (request) => {
     const userId = request.auth.uid;
 
     try {
-        const token = await getSasapayToken();
-        const callbackUrl = "https://sasapaycallback-l5mloh4jka-uc.a.run.app";
-        const merchantRequestID = `SO-${Date.now()}-${userId.substring(0, 5)}`;
-
-        const payload = {
-            MerchantCode: SASAPAY_MERCHANT_CODE,
-            NetworkCode: networkCode || "63902", // Default M-Pesa
-            Amount: amount.toString(),
-            Currency: "KES",
-            PhoneNumber: formatTo254(phoneNumber),
-            CallBackURL: callbackUrl,
-            TransactionDesc: `Hazina Auto-Pay Setup`,
-            AccountReference: `HAZINA-SO-${userId.substring(0, 8)}`,
-            Frequency: frequency || "DAILY", // DAILY, WEEKLY, MONTHLY
-            MerchantRequestID: merchantRequestID
-        };
-
-        const response = await axios.post(`${SASAPAY_BASE_URL}/payments/standing-order/`, payload, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-
-        // Save record for callback tracking
-        await db.collection("standing_orders").doc(merchantRequestID).set({
-            userId,
-            amount,
-            frequency,
-            phoneNumber,
-            status: 'pending',
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        return { success: true, detail: response.data.detail || "Standing order request initiated", merchantRequestID };
+        return await performStandingOrderSetup(userId, amount, frequency, phoneNumber, networkCode);
     } catch (error) {
         console.error("Setup Standing Order Error:", error.response?.data || error.message);
         throw new HttpsError('internal', error.response?.data?.detail || error.message);
@@ -810,62 +816,115 @@ exports.ussd = onRequest(async (req, res) => {
 
         const userExists = userDoc.exists;
         let profile = userExists ? userDoc.data() : null;
-        let userId = userExists ? userDoc.id : null;
+        let userId = userExists ? (userDoc.id || profile.uid) : null;
 
         let response = "";
+        const parts = text ? text.split("*") : [];
+        const level = parts.length;
 
         if (text === "") {
-            // First time accessing the USSD menu
+            // Main Menu
             if (userExists) {
-                const balance = profile.balance || 0;
+                const balance = profile.walletBalance || profile.balance || 0;
                 response = `CON Welcome to Hazina Care\n` +
-                    `Your balance: KSh ${balance}\n` +
-                    `1. Check Shield Status\n` +
-                    `2. Claim Crisis Fund\n` +
+                    `Balance: KSh ${balance}\n` +
+                    `1. Check Shield\n` +
+                    `2. Claim Fund\n` +
                     `3. Add Dependent\n` +
-                    `4. Top Up Wallet`;
+                    `4. Top Up Wallet\n` +
+                    `5. Setup Standing Order`;
             } else {
                 response = `CON Welcome to Hazina Care.\n` +
                     `Register to protect your family.\n` +
                     `1. Register (KSh 1,500/mo Bronze)\n` +
                     `2. Learn More`;
             }
-        } else if (text === "1") {
+        } else if (parts[0] === "1") {
             if (userExists) {
-                // Check Shield Status
+                // Shield Status
                 const now = new Date();
-                const graceExpiry = profile.grace_period_expiry.toDate();
+                const graceExpiry = (profile.grace_period_expiry && profile.grace_period_expiry.toDate()) || now;
                 if (graceExpiry <= now) {
-                    response = `END Your Hazina Shield is FULLY ACTIVE.\nTier: ${profile.active_tier.toUpperCase()}`;
+                    response = `END Your Hazina Shield is FULLY ACTIVE.\nTier: ${(profile.active_tier || 'bronze').toUpperCase()}`;
                 } else {
                     const waitDays = Math.ceil((graceExpiry - now) / (1000 * 60 * 60 * 24));
                     response = `END Your Hazina Shield is IN WAITING.\nMatures in ${waitDays} days. Keep paying your daily contribution!`;
                 }
             } else {
-                // Register flow
-                response = `CON Enter your National ID number:`;
+                // Register flow - Step 1: ID Number
+                if (level === 1) {
+                    response = `CON Enter your National ID number:`;
+                } else if (level === 2) {
+                    // Save temporary registration data or proceed to next step
+                    response = `END Thank you. Visit a Hazina agent or download the app to complete registration.`;
+                }
             }
-        } else if (text === "2" && userExists) {
+        } else if (parts[0] === "2" && userExists) {
             // Claim flow
-            const graceExpiry = profile.grace_period_expiry.toDate();
+            const graceExpiry = (profile.grace_period_expiry && profile.grace_period_expiry.toDate()) || new Date();
             if (graceExpiry > new Date()) {
                 response = `END Sorry, your shield is still maturing. You can claim after your 180-day grace period ends.`;
             } else {
-                response = `CON Select Claim Type:\n1. Medical Crisis\n2. Bereavement\n3. School Fees`;
+                if (level === 1) {
+                    response = `CON Select Claim Type:\n1. Medical Crisis\n2. Bereavement\n3. School Fees`;
+                } else {
+                    response = `END Your request has been received. A Hazina officer will contact you shortly.`;
+                }
             }
-        } else if (text === "4" && userExists) {
-            // Top up via USSD using SasaPay C2B
-            response = `END We are sending an M-Pesa prompt to your phone for KSh 500 to fund your wallet. Please enter your PIN.`;
-
-            // Trigger SasaPay C2B
-            try {
-                await initiateSasapayC2B(phoneNumber, 500, userId);
-            } catch (ussdPayError) {
-                console.error("USSD Pay Error:", ussdPayError);
+        } else if (parts[0] === "3" && userExists) {
+            // Add Dependent
+            if (level === 1) {
+                response = `CON Enter Dependent's Phone Number (07...):`;
+            } else if (level === 2) {
+                response = `CON Enter Dependent's Full Name:`;
+            } else if (level >= 3) {
+                const depPhone = parts[1];
+                const depName = parts.slice(2).join(" ");
+                try {
+                    await db.collection("users").doc(userId).collection("dependants").add({
+                        fullName: depName,
+                        phoneNumber: depPhone,
+                        timestamp: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                    response = `END Dependent ${depName} added successfully.`;
+                } catch (depError) {
+                    response = `END Failed to add dependent. Please try again later.`;
+                }
             }
-        }
-        else {
-            response = "END Invalid option selected. Please dial again.";
+        } else if (parts[0] === "4" && userExists) {
+            // Top Up
+            if (level === 1) {
+                response = `CON Enter amount to Top Up:`;
+            } else if (level === 2) {
+                const amount = parseInt(parts[1]);
+                if (isNaN(amount) || amount < 10) {
+                    response = `END Invalid amount. Min KSh 10.`;
+                } else {
+                    response = `END We are sending an M-Pesa prompt to your phone for KSh ${amount}. Please enter your PIN.`;
+                    initiateSasapayC2B(phoneNumber, amount, userId).catch(e => console.error("USSD Topup Error:", e));
+                }
+            }
+        } else if (parts[0] === "5" && userExists) {
+            // Standing Order
+            if (level === 1) {
+                response = `CON Select Frequency:\n1. Daily\n2. Weekly\n3. Monthly`;
+            } else if (level === 2) {
+                response = `CON Enter amount per transaction:`;
+            } else if (level === 3) {
+                const freqMap = { "1": "DAILY", "2": "WEEKLY", "3": "MONTHLY" };
+                const frequency = freqMap[parts[1]];
+                const amount = parseInt(parts[2]);
+                if (!frequency) {
+                    response = `END Invalid frequency selection.`;
+                } else if (isNaN(amount) || amount < 50) {
+                    response = `END Invalid amount. Min KSh 50 for Auto-Pay.`;
+                } else {
+                    response = `END Setting up ${frequency} Standing Order for KSh ${amount}. You will receive a prompt to authorize.`;
+                    performStandingOrderSetup(userId, amount, frequency, phoneNumber).catch(e => console.error("USSD SO Error:", e));
+                }
+            }
+        } else {
+            response = "END Invalid option or service unavailable for your account.";
         }
 
         // Send the response back to Africa's Talking
@@ -1267,8 +1326,9 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
         return { success: true, token };
 
     } catch (error) {
+        console.error("verifyAndSetPasscode error:", error);
         if (error instanceof HttpsError) throw error;
-        throw new HttpsError('internal', 'Passcode setup failed.');
+        throw new HttpsError('internal', `Passcode setup failed: ${error.message}`);
     }
 });
 
@@ -1311,8 +1371,9 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
         return { success: true, token };
 
     } catch (error) {
+        console.error("loginWithPasscode error:", error);
         if (error instanceof HttpsError) throw error;
-        throw new HttpsError('internal', 'Login failed.');
+        throw new HttpsError('internal', `Login failed: ${error.message}`);
     }
 });
 
