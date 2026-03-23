@@ -79,7 +79,7 @@ service cloud.firestore {
       );
       
       allow create: if isAuthenticated();
-      allow read, create, update: if isAuthenticated() && isAdmin();
+      allow read, create, update: if isAuthenticated() && (isAdmin() || checkAuthComplex(['master_agent']));
     }
     
     // Dependents collection
@@ -109,7 +109,7 @@ service cloud.firestore {
 
     match /agents/{agentId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin();
+      allow write: if isAuthenticated() && (isAdmin() || checkAuthComplex(['master_agent']));
     }
 
     match /master_agents/{masterId} {
