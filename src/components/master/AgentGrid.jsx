@@ -55,11 +55,11 @@ const AgentGrid = ({
                                 <button
                                     onClick={() => {
                                         impersonate(agent);
-                                        navigate('/agent');
+                                        navigate('/agent/dashboard');
                                     }}
-                                    className="px-3 py-1 bg-slate-50 text-[9px] font-black text-slate-500 rounded-lg hover:bg-brand-primary hover:text-white transition-all uppercase tracking-widest border border-slate-100"
+                                    className="px-3 py-1 bg-brand-primary text-[9px] font-black text-white rounded-lg hover:bg-brand-secondary transition-all uppercase tracking-widest border border-brand-primary"
                                 >
-                                    Console
+                                    Login As
                                 </button>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setEditingAgent(agent); }}
