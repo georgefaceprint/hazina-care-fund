@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { formatKenyanPhone, stripPlus } from '../utils/phoneUtils';
 import { db } from '../services/firebase';
-import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Shield, Activity, Plus, TrendingUp, Map, Edit2, Trash2 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
