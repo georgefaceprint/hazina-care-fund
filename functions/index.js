@@ -2328,3 +2328,29 @@ exports.onDependentCreated = onDocumentCreated("dependents/{depId}", async (even
         console.error("Error in onDependentCreated:", error);
     }
 });
+
+// TEMPORARY DIAGNOSTIC UTILITY: Seed test records to verify dashboard
+exports.seedTestConversions = onCall({ cors: true }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Admin only');
+    
+    const agentId = "+254722973287";
+    const created = [];
+    
+    for (let i = 0; i < 10; i++) {
+        const phone = `+25479236013${i}`; // Using 13x sub-range to ensure uniqueness
+        const userRef = db.collection("users").doc(phone);
+        
+        await userRef.set({
+            fullName: `Test Seeding ${i + 1}`,
+            phoneNumber: phone,
+            role: "user",
+            recruited_by: agentId,
+            status: "active",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            uid: phone.replace('+', '')
+        });
+        created.push(phone);
+    }
+    
+    return { message: `Seeded 10 records for ${agentId}`, created };
+});

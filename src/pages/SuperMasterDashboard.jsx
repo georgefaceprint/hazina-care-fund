@@ -212,7 +212,28 @@ const SuperMasterDashboard = () => {
                     </h1>
                     <p className="text-slate-500 font-medium text-lg">System-wide recruitment oversight</p>
                 </div>
-                <div className="mt-4 lg:mt-0 flex gap-4">
+                <div className="mt-4 lg:mt-0 flex flex-wrap gap-4">
+                    <button
+                        onClick={async () => {
+                            if (!window.confirm("Seed 10 test signups for Magent 23 to test dashboard?")) return;
+                            const toastId = toast.loading("Seeding test data...");
+                            try {
+                                const seedFunc = httpsCallable(functions, 'seedTestConversions');
+                                await seedFunc();
+                                toast.dismiss(toastId);
+                                toast.success("10 Test Conversions seeded!");
+                                fetchGlobalData();
+                            } catch (error) {
+                                toast.dismiss(toastId);
+                                toast.error("Seeding failed: " + error.message);
+                            }
+                        }}
+                        className="bg-brand-50 text-brand-primary border border-brand-100 px-6 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-brand-100 transition-all active:scale-95"
+                        title="Seed test data for Magent 23"
+                    >
+                        <Activity className="w-5 h-5" />
+                        Seed Test Data
+                    </button>
                     <button
                         onClick={handleRepairStats}
                         disabled={isRepairing}
