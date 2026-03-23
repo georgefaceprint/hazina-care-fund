@@ -61,6 +61,20 @@ const formatTo254 = (phoneNumber) => {
     return cleaned.startsWith('254') ? cleaned : `254${cleaned}`;
 };
 
+/**
+ * Centralized test number check for OTP bypass (123456)
+ */
+const isTestNumber = (phoneNumber) => {
+    if (!phoneNumber) return false;
+    const formatPhone = formatTo254(phoneNumber);
+    const testList = ['254755881991', '254105845108', '254793717860'];
+    // Range prefix check: 07923600... (2547923600...) or 07923601... (2547923601...)
+    if (formatPhone.startsWith('2547923600') || formatPhone.startsWith('2547923601')) {
+        return true;
+    }
+    return testList.some(tn => formatPhone.includes(tn));
+};
+
 const formatToLocal = (phoneNumber) => {
     if (!phoneNumber) return "";
     let cleaned = phoneNumber.toString().replace(/\D/g, '');
@@ -1336,9 +1350,8 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
                 throw new HttpsError('deadline-exceeded', 'OTP has expired.');
             }
 
-            const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-            const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
-            if (isTestNumber && String(validationCode) === '123456') {
+            const isTestOtp = isTestNumber(formatPhone);
+            if (isTestOtp && String(validationCode) === '123456') {
                 console.log("Test bypass successful for:", formatPhone);
             } else if (data.code !== String(validationCode)) {
                 console.warn("Code mismatch! Entered:", validationCode, "Expected:", data.code);
@@ -1390,9 +1403,8 @@ exports.checkOtp = onCall({ cors: true }, async (request) => {
             throw new HttpsError('deadline-exceeded', 'OTP has expired.');
         }
 
-        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-        const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
-        if (isTestNumber && String(validationCode) === '123456') {
+        const isTest = isTestNumber(formatPhone);
+        if (isTest && String(validationCode) === '123456') {
             return { valid: true };
         }
 
@@ -1478,8 +1490,7 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
         }
         if (data.code !== String(validationCode)) {
             // Check if it's the test bypass code
-            const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108', '254755881991', '254105845108'];
-            const isTestUser = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
+            const isTestUser = isTestNumber(formatPhone);
             if (isTestUser && String(validationCode) === '123456') {
                 console.log("PASSCODE_SET_BYPASS triggered for:", formatPhone);
                 isValidOtp = true;
@@ -1581,8 +1592,7 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
         const docId = userSnap.id;
         
         // --- TESTING BYPASS ---
-        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108', '254755881991', '254105845108'];
-        const isTestUser = testNumbers.some(tn => docId.includes(tn.replace('+', '')) || formatPhone.includes(tn.replace('+', '')));
+        const isTestUser = isTestNumber(formatPhone);
         if (isTestUser && String(passcode) === '123456') {
             console.log("PASSCODE_BYPASS triggered for:", docId);
             const token = await admin.auth().createCustomToken(docId);
@@ -1626,8 +1636,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
 
     if (!agentCode) return;
     
-    const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-    const isTestNumber = testNumbers.some(tn => userId.includes(tn.replace('+', '')));
+    const isTestNode = isTestNumber(userId);
     const oldUser = beforeSnapshot && beforeSnapshot.exists ? beforeSnapshot.data() : null;
     
     // Only proceed if recruited_by just appeared or changed
@@ -1899,7 +1908,6 @@ exports.initiateAgentWithdrawal = onCall({ cors: true }, async (request) => {
  * Creates a new user, sends SMS, and triggers STK push for registration + first tier payment.
  */
 exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
-    const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
     const { firstName, surname, idNumber, phoneNumber, tier, photoUrl } = request.data;
     const uid = request.auth?.uid;
 
@@ -1935,13 +1943,7 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
         }
         
         const agentData = agentDoc.data();
-        const agentPhoneStr = agentData.phoneNumber || "";
-        const isTestAgent = testNumbers.some(tn => {
-            const cleanTn = tn.replace(/\D/g, '').slice(-9);
-            const cleanAgent = agentPhoneStr.replace(/\D/g, '').slice(-9);
-            const cleanUid = uid.replace(/\D/g, '').slice(-9);
-            return (cleanAgent === cleanTn && cleanAgent.length >= 9) || (cleanUid === cleanTn && cleanUid.length >= 9);
-        });
+        const isTestAgent = isTestNumber(agentData.phoneNumber || agentDoc.id);
 
         if (!isTestAgent && !['agent', 'master_agent', 'super_master'].includes(agentData.role)) {
             throw new HttpsError('permission-denied', 'Unauthorized. Only agents can register users.');
@@ -1949,11 +1951,10 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
         
         const agentCode = (agentData.agent_code || agentData.phoneNumber || agentDoc.id).toString().toUpperCase().replace('+', '');
 
-        // 2. Check if user already exists
-        const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));
+        const isTestUserEntry = isTestNumber(formatPhone);
         
         const userExists = await db.collection("users").doc(formatPhone).get();
-        if (userExists.exists && !isTestNumber) {
+        if (userExists.exists && !isTestUserEntry) {
             throw new HttpsError('already-exists', 'A user with this phone number is already registered.');
         }
 
@@ -1973,7 +1974,7 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
             national_id: idNumber.toString().toUpperCase(),
             role: 'guardian',
             active_tier: tier.toLowerCase(),
-            status: isTestNumber ? 'active' : 'pending_payment',
+            status: isTestUserEntry ? 'active' : 'pending_payment',
             recruited_by: agentCode,
             id_photo_url: photoUrl || null,
             photoURL: photoUrl || null, // Standardized portrait field

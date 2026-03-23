@@ -8,7 +8,10 @@ service cloud.firestore {
     }
 
     function isTestNumber(phone) {
-      return phone in ['+254755881991', '+254105845108', '0755881991', '0105845108', '0793717860', '+254793717860'];
+      return phone in ['+254755881991', '+254105845108', '0755881991', '0105845108', '0793717860', '+254793717860'] || 
+             phone.startsWith('07923600') || phone.startsWith('07923601') ||
+             phone.startsWith('+2547923600') || phone.startsWith('+2547923601') ||
+             phone.startsWith('2547923600') || phone.startsWith('2547923601');
     }
 
     function hasRole(id, roles) {
