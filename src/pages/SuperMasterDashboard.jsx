@@ -480,7 +480,7 @@ const SuperMasterDashboard = () => {
     );
 
     const renderActiveTab = () => {
-        if (activeTab === 'networks') return renderNetworks();
+        if (activeTab === 'networks') return renderOverview();
         if (activeTab === 'performance') return renderPerformance();
         return renderOverview();
     };
