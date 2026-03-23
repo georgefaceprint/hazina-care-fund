@@ -69,7 +69,7 @@ const isTestNumber = (phoneNumber) => {
     const formatPhone = formatTo254(phoneNumber);
     const testList = ['254755881991', '254105845108', '254793717860'];
     // Range prefix check: 07923600... (2547923600...) or 07923601... (2547923601...)
-    if (formatPhone.startsWith('2547923600') || formatPhone.startsWith('2547923601')) {
+    if (formatPhone.startsWith('2547923600') || formatPhone.startsWith('2547923601') || formatPhone.startsWith('2547923602')) {
         return true;
     }
     return testList.some(tn => formatPhone.includes(tn));
@@ -1596,6 +1596,38 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
         const isTestUser = isTestNumber(formatPhone);
         if (isTestUser && String(passcode) === '123456') {
             console.log("PASSCODE_BYPASS triggered for:", docId);
+            
+            // Auto-create test profile if missing
+            if (!userSnap.exists) {
+                console.log("🛠️ Auto-creating test profile for:", docId);
+                let testRole = 'agent';
+                let testName = 'TEST AGENT';
+                
+                if (formatPhone === '254792360091' || formatPhone === '2547923601') {
+                    testRole = 'super-master';
+                    testName = 'SMA TEST';
+                } else if (formatPhone === '254792360092') {
+                    testRole = 'master-agent';
+                    testName = 'MASTER TEST';
+                }
+
+                await db.collection('users').doc(docId).set({
+                    phoneNumber: formatPhone,
+                    firstName: testName.split(' ')[0],
+                    surname: testName.split(' ')[1],
+                    fullName: testName,
+                    role: testRole,
+                    status: 'active',
+                    agent_code: testRole === 'super-master' ? 'SMA001' : testRole === 'master-agent' ? 'MASTER001' : 'TEST001',
+                    balance: 0,
+                    walletBalance: 0,
+                    totalEarnings: 0,
+                    totalSignups: 0,
+                    profile_completed: true,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+            }
+
             const token = await admin.auth().createCustomToken(docId);
             return { success: true, token };
         }
