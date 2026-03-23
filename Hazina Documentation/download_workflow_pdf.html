@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Hazina Platform A-Z Documentation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #f8fafc; text-align: center; }
+        .card { background: #1e293b; padding: 3rem; border-radius: 2rem; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-width: 500px; }
+        .spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1.5rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        h2 { color: #10b981; margin-bottom: 1rem; font-weight: 800; letter-spacing: -0.025em; }
+        p { color: #94a3b8; line-height: 1.6; }
+        button { background: #10b981; color: white; border: none; padding: 1rem 2rem; border-radius: 1rem; font-weight: 800; cursor: pointer; margin-top: 1.5rem; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2); }
+        button:hover { background: #059669; transform: translateY(-2px); }
+        button:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div id="loader" class="spinner"></div>
+        <h2 id="status">Generating Platform A-Z...</h2>
+        <p id="subtext">Compiling workflows, hierarchy documentation, and system architecture into a high-fidelity PDF.</p>
+        <button onclick="generatePDF()">Manual Download</button>
+    </div>
+
+    <script>
+        window.jsPDF = window.jspdf.jsPDF;
+
+        const generatePDF = () => {
+            try {
+                const doc = new jsPDF({
+                    orientation: 'p',
+                    unit: 'mm',
+                    format: 'a4',
+                });
+
+                const BRAND_PRIMARY = '#10b981';
+                const BRAND_DARK = '#0f172a';
+                const BRAND_ACCENT = '#4f46e5';
+                const TEXT_DARK = '#1e293b';
+                const TEXT_LIGHT = '#64748b';
+
+                // --- 1. COVER PAGE ---
+                doc.setFillColor(BRAND_DARK);
+                doc.rect(0, 0, 210, 297, 'F');
+                
+                // Tech accents
+                doc.setDrawColor(BRAND_PRIMARY);
+                doc.setLineWidth(1);
+                doc.line(20, 30, 190, 30);
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(48);
+                doc.text('HAZINA', 20, 65);
+                doc.setTextColor(BRAND_PRIMARY);
+                doc.setFontSize(24);
+                doc.text('PLATFORM A-Z', 20, 80);
+
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Full System Workflow & Technical Documentation', 20, 100);
+                doc.text('Recruitment | Financials | Protection | Claims', 20, 108);
+
+                doc.setFillColor(BRAND_PRIMARY);
+                doc.rect(20, 120, 40, 2, 'F');
+
+                doc.setFontSize(10);
+                doc.setTextColor(148, 163, 184);
+                doc.text('OFFICIAL HQ DOCUMENTATION - MARCH 2026', 20, 260);
+                doc.text(`Doc ID: HZ-ARCH-${Math.random().toString(36).substr(2, 6).toUpperCase()}`, 20, 266);
+
+                // --- 2. TABLE OF CONTENTS ---
+                doc.addPage();
+                doc.setTextColor(TEXT_DARK);
+                doc.setFontSize(22);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Table of Contents', 20, 40);
+
+                const toc = [
+                    { t: '1. Organizational Hierarchy', p: 3 },
+                    { t: '2. Recruitment Engine & IDs', p: 4 },
+                    { t: '3. Financial Logic & Daily Burn', p: 5 },
+                    { t: '4. Protection Shield & Maturation', p: 6 },
+                    { t: '5. Claims & Automated Payouts', p: 7 },
+                    { t: '6. Technical Stack & Security', p: 8 },
+                    { t: '7. System Integrations Appendix', p: 9 }
+                ];
+
+                let y = 65;
+                toc.forEach(s => {
+                    doc.setFontSize(12);
+                    doc.setTextColor(TEXT_DARK);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(s.t, 20, y);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(TEXT_LIGHT);
+                    doc.text('................................................................................', 85, y);
+                    doc.setTextColor(TEXT_DARK);
+                    doc.text(`Page ${s.p}`, 180, y);
+                    y += 15;
+                });
+
+                // Helper: Page Header
+                const header = (n, t) => {
+                    doc.addPage();
+                    doc.setTextColor(BRAND_PRIMARY);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(10);
+                    doc.text(`CHAPTER ${n}`, 20, 20);
+                    doc.setTextColor(TEXT_DARK);
+                    doc.setFontSize(26);
+                    doc.text(t, 20, 32);
+                    doc.setDrawColor(BRAND_PRIMARY);
+                    doc.line(20, 38, 55, 38);
+                };
+
+                // Helper: Step Box
+                const step = (y, t, d, icon = '•') => {
+                    doc.setFillColor('#f8fafc');
+                    doc.roundedRect(20, y, 170, 22, 3, 3, 'F');
+                    doc.setTextColor(BRAND_PRIMARY);
+                    doc.setFontSize(18);
+                    doc.text(icon, 25, y + 12);
+                    doc.setTextColor(TEXT_DARK);
+                    doc.setFontSize(12);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(t, 32, y + 8);
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(TEXT_LIGHT);
+                    const splitD = doc.splitTextToSize(d, 150);
+                    doc.text(splitD, 32, y + 14);
+                };
+
+                // --- CH 1: HIERARCHY ---
+                header('01', 'Organizational Hierarchy');
+                y = 55;
+                step(y, 'Super Master (HQ)', 'Global oversight, access to all recruitment pools, and system diagnostics.');
+                y += 28;
+                step(y, 'Master Agent (Regional)', 'Management of field teams, regional heatmaps, and network stats.');
+                y += 28;
+                step(y, 'Field Agent (Recruiter)', 'Ground-level agents utilizing referral codes to register members.');
+                y += 28;
+                step(y, 'Standard User (Guardian)', 'End-members paying for protection shield coverage.');
+
+                // --- CH 2: RECRUITMENT ---
+                header('02', 'Recruitment Engine & IDs');
+                y = 55;
+                step(y, 'Identity Normalization', 'Automatic regex-based conversion of all phone numbers to canonical E.164 (+254...) format.', '⚡');
+                y += 28;
+                step(y, 'Implicit Attribution', 'System captures agent_code from referral URL or QR scan during onboarding.');
+                y += 28;
+                step(y, 'onUserCreated Trigger', 'Cloud Function automatically credits KSh 15 to Agent wallet and increments hierarchy counters.');
+                y += 28;
+                step(y, 'Auto-Migration', 'Legacy IDs are transparently migrated to canonical IDs upon login for data integrity.');
+
+                // --- CH 3: FINANCIALS ---
+                header('03', 'Financial Logic & Daily Burn');
+                y = 55;
+                step(y, 'SasaPay Integration', 'STK Push API is triggered for all member top-ups with real-time callback handling.');
+                y += 28;
+                step(y, 'Unified Wallet', 'Single-source-of-truth balances in Firestore synced across all sessions.');
+                y += 28;
+                step(y, 'Daily Deduction Engine', 'Cron job executing at 2:00 AM EAT to deduct protection costs based on active tier.');
+                y += 28;
+                step(y, 'Protection Tiers', 'Bronze: KSh 10 | Silver: KSh 30 | Gold: KSh 50 (Self + Dependents).');
+
+                // --- CH 4: PROTECTION ---
+                header('04', 'Protection Shield & Maturation');
+                y = 55;
+                step(y, '180-Day Grace Period', 'Members must maintain "Green Shield" status for 6 months before claim eligibility.');
+                y += 28;
+                step(y, 'Dependent Limits', 'Up to 7 family members covered under a single guardian policy shield.');
+                y += 28;
+                step(y, 'Shield Status Indicators', 'Visual feedback: Green (Active), Red (Suspended), Grey (Maturing).');
+
+                // --- CH 5: CLAIMS ---
+                header('05', 'Claims & Automated Payouts');
+                y = 55;
+                step(y, 'Multi-Evidence Upload', 'Dual-flow capture (Native Camera/Gallery) for Medical/ID documents.');
+                y += 28;
+                step(y, 'Admin Appraisal', 'Claims queue in Super Master panel for human verification of documentation.');
+                y += 28;
+                step(y, 'B2C Disbursement', 'Automated M-Pesa payout via SasaPay API directly to the user\'s mobile wallet.');
+
+                // --- CH 6: TECH STACK ---
+                header('06', 'Technical Stack & Security');
+                y = 55;
+                step(y, 'Framework', 'React 18 + Vite PWA with Tailwind CSS design-tokens.');
+                y += 28;
+                step(y, 'Cloud Backend', 'Firestore NoSQL + Node.js 20 Gen-2 Cloud Functions.');
+                y += 28;
+                step(y, 'Security Rules', 'Granular Firestore rules preventing cross-access between different agent networks.');
+
+                // --- CH 7: INTEGRATIONS ---
+                header('07', 'System Integrations Appendix');
+                y = 55;
+                step(y, 'SasaPay (Financial Core)', 'Integrated C2B (STK Push) and B2C (Disbursements) for 100% liquidity automation.', '🏦');
+                y += 28;
+                step(y, 'Africa\'s Talking (SMS)', 'Secure OTP delivery, recruitment alerts, and 2FA notifications over Tier-1 GSM links.', '📱');
+                y += 28;
+                step(y, 'Ratiba (SasaPay Standing Orders)', 'Automated recurring billing engine to maintain 24/7 Shield Protection.', '🔄');
+                y += 28;
+                step(y, 'Sifuna AI Support', 'Platform-aware AI assistant helping members navigate claims and account settings.', '🤖');
+
+                // --- FOOTER ON ALL PAGES ---
+                const pages = doc.internal.getNumberOfPages();
+                for (let i = 2; i <= pages; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.setTextColor(160);
+                    doc.text(`Hazina System Architecture A-Z | Page ${i} of ${pages}`, 105, 285, { align: 'center' });
+                }
+
+                doc.save('Hazina_Platform_Documentation_A-Z.pdf');
+                document.getElementById('status').innerText = 'Platform Doc Ready!';
+                document.getElementById('subtext').innerText = 'Your documentation has been generated and downloaded successfully.';
+                document.getElementById('loader').style.display = 'none';
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status').innerText = 'Generation Failed';
+                document.getElementById('subtext').innerText = error.message;
+            }
+        };
+
+        window.onload = () => {
+            setTimeout(generatePDF, 1500); // Simulate processing
+        };
+    </script>
+</body>
+</html>

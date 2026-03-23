@@ -1,0 +1,58 @@
+graph TD
+    %% Styling
+    classDef superMaster fill:#1e293b,stroke:#0f172a,stroke-width:2px,color:#fff;
+    classDef masterAgent fill:#4f46e5,stroke:#3730a3,stroke-width:2px,color:#fff;
+    classDef fieldAgent fill:#10b981,stroke:#065f46,stroke-width:2px,color:#fff;
+    classDef userGuardian fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;
+    classDef system-internal fill:#f8fafc,stroke:#94a3b8,stroke-width:1px,color:#1e293b;
+    classDef secondary fill:#94a3b8,stroke:#64748b,stroke-width:1px,color:#fff;
+
+    %% 1. Organizational Hierarchy
+    subgraph Hierarchy ["Management Hierarchy"]
+        SM[Super Master HQ]:::superMaster
+        MA[Master Agent - Regional]:::masterAgent
+        FA[Field Agent - Ground]:::fieldAgent
+        UG[Guardian / Member]:::userGuardian
+
+        SM -- Manages/Creates --> MA
+        MA -- Recruits/Builds Team --> FA
+        FA -- Registers --> UG
+    end
+
+    %% 2. Recruitment Flow
+    subgraph Recruitment ["Recruitment & Commission Cycle"]
+        FA -- Uses Referral Code --> Reg[Member Signup]:::fieldAgent
+        Reg -- Triggers Cloud Function --> CF[onUserCreated Notification]:::system-internal
+        
+        CF -- Verifies Agent --> Validate{Is Agent ID Valid?}:::system-internal
+        Validate -- Yes --> Distribute[Distribute Commission]:::system-internal
+        Validate -- No --> LogError[Log Error & Orphaned User]:::secondary
+
+        Distribute -- +Ksh 15 --> FA_Wallet[Field Agent Wallet]:::fieldAgent
+        Distribute -- +1 Signup Count --> MA_Stats[Master Agent Stats]:::masterAgent
+        Distribute -- Global Tracking --> SM_Stats[Super Master HQ Stats]:::superMaster
+    end
+
+    %% 3. Financial & Protection Workflow
+    subgraph Financial ["Member Protection Cycle"]
+        UG -- Monthly/Daily Top-up --> SP[SasaPay Payment Gateway]:::userGuardian
+        SP -- Callback Success --> Wallet[User Shield Balance]:::userGuardian
+        Wallet -- Daily Deduction --> Shield{Is Shield Green?}:::system-internal
+        
+        Shield -- Yes --> Prot[Active Protection Claimable]:::fieldAgent
+        Shield -- No --> Exp[Expired Protection Grace Required]:::secondary
+    end
+
+    %% 4. Claims Management
+    subgraph Claims ["Crisis Management Workflow"]
+        UG -- Submits Claim --> Evidence[Document Upload: ID/Medical/Death Cert]:::system-internal
+        Evidence -- Review Needed --> ADMIN[Admin Portal Review]:::superMaster
+        ADMIN -- Appraisal --> Auth{Authorize Payout?}:::system-internal
+        Auth -- Approved --> Payout[Automated SasaPay Disbursement]:::fieldAgent
+        Auth -- Rejected --> Notify[User Rejection Notice]:::secondary
+    end
+
+    %% Cross-referencing
+    MA_Stats --- FA
+    SM_Stats --- MA
+    Payout --- UG
