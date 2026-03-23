@@ -103,7 +103,12 @@ const RecruitmentLogin = () => {
             console.log("🔑 Authenticated UID:", authResult.user.uid);
 
             // --- TESTING BYPASS: Identify Test Number Robustly ---
-            const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108', '0792360091', '0792360092'];
+            const testNumbers = [
+                '+254755881991', '+254105845108', '0755881991', '0105845108', 
+                '0792360091', '0792360092', '0792360090',
+                '+254792360091', '+254792360092', '+254792360090',
+                '+254793717860', '0793717860'
+            ];
             const formatPhoneIntl = standardizeTo254(phoneNumber);
             const isTestUser = testNumbers.some(tn => standardizeTo254(tn) === formatPhoneIntl) || 
                               formatPhoneIntl.startsWith('2547923600') || 

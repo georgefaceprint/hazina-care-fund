@@ -67,7 +67,7 @@ const formatTo254 = (phoneNumber) => {
 const isTestNumber = (phoneNumber) => {
     if (!phoneNumber) return false;
     const formatPhone = formatTo254(phoneNumber);
-    const testList = ['254755881991', '254105845108', '254793717860'];
+    const testList = ['254755881991', '254105845108', '254793717860', '254792360091', '254792360092', '254792360090'];
     // Range prefix check: 07923600... (2547923600...) or 07923601... (2547923601...)
     if (formatPhone.startsWith('2547923600') || formatPhone.startsWith('2547923601') || formatPhone.startsWith('2547923602')) {
         return true;
