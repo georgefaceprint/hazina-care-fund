@@ -170,6 +170,7 @@ export const useMasterData = () => {
                 tariffRate: 15,
                 nationalId: newAgent.nationalId,
                 totalSignups: 0,
+                role: 'agent',
                 status: 'active',
                 createdAt: serverTimestamp()
             });
@@ -194,7 +195,7 @@ export const useMasterData = () => {
             fetchData();
         } catch (error) {
             console.error("Error adding agent:", error);
-            toast.error("Failed to register agent.");
+            toast.error(`Registration failed: ${error.message || "Unknown error"}`);
         }
     };
 
@@ -211,7 +212,8 @@ export const useMasterData = () => {
 
             await updateDoc(agentRef, updateData);
 
-            const userRef = doc(db, 'users', editingAgent.phoneNumber);
+            const intlPhone = `+${standardizeTo254(editingAgent.phoneNumber)}`;
+            const userRef = doc(db, 'users', intlPhone);
             await updateDoc(userRef, {
                 fullName: editingAgent.fullName,
                 status: editingAgent.status || 'active'
@@ -232,7 +234,8 @@ export const useMasterData = () => {
         try {
             await deleteDoc(doc(db, 'agents', id));
 
-            await updateDoc(doc(db, 'users', phoneNumber), {
+            const intlPhone = `+${standardizeTo254(phoneNumber)}`;
+            await updateDoc(doc(db, 'users', intlPhone), {
                 role: 'user',
                 status: 'inactive'
             });

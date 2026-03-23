@@ -54,7 +54,7 @@ const AgentGrid = ({
                             <div className="flex gap-1">
                                 <button
                                     onClick={() => {
-                                        impersonate(agent);
+                                        impersonate({ ...agent, role: 'agent' });
                                         navigate('/agent/dashboard');
                                     }}
                                     className="px-3 py-1 bg-brand-primary text-[9px] font-black text-white rounded-lg hover:bg-brand-secondary transition-all uppercase tracking-widest border border-brand-primary"
