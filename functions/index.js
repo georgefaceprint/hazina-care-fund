@@ -1749,7 +1749,7 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         }
 
         // Log the recruitment record with data needed by the dashboard
-        const normalizedAgentId = ResolvedAgentId.toString().toUpperCase();
+        const normalizedAgentId = ResolvedAgentId.toString().toUpperCase().replace('+', '');
         const logId = `recruitment_${normalizedAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
         
         await db.collection("recruitment_logs").doc(logId).set({
@@ -1758,8 +1758,8 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             tier: newUser.active_tier || 'bronze',
             agentId: normalizedAgentId,
             originalAgentInput: agentCode,
-            masterAgentId,
-            superMasterId,
+            masterAgentId: masterAgentId ? masterAgentId.toString().toUpperCase().replace('+', '') : null,
+            superMasterId: superMasterId ? superMasterId.toString().toUpperCase().replace('+', '') : null,
             tariffApplied: agentTariff,
             commissionEarned: agentTariff,
             // Carry forward residence data for analytics
@@ -1947,7 +1947,7 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
             throw new HttpsError('permission-denied', 'Unauthorized. Only agents can register users.');
         }
         
-        const agentCode = agentData.agent_code || agentData.phoneNumber || agentDoc.id;
+        const agentCode = (agentData.agent_code || agentData.phoneNumber || agentDoc.id).toString().toUpperCase().replace('+', '');
 
         // 2. Check if user already exists
         const isTestNumber = testNumbers.some(tn => formatPhone.includes(tn.replace('+', '')));

@@ -45,6 +45,7 @@ export const useMasterData = () => {
             intlPhone,
             masterPhoneRaw,
             masterUid,
+            intlPhone ? `+${intlPhone.replace('+', '')}` : null,
             masterCode ? stripPlus(masterCode) : null
         ].filter(id => id && id.toString().length > 3))].map(id => typeof id === 'string' ? id.trim().toUpperCase() : id);
     }, [masterCode, localPhone, intlPhone, masterPhoneRaw, masterUid]);

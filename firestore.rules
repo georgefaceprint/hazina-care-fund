@@ -44,14 +44,21 @@ service cloud.firestore {
     function isOwner(userId) {
       let uid = request.auth.uid;
       let phone = request.auth.token.phone_number;
-      return uid == userId || 
-             (phone != null && phone == userId) ||
-             // Local doc ID (07...) matching Intl UIDs
-             (userId.size() == 10 && (uid == '+254' + userId[1:10] || uid == '254' + userId[1:10] || (phone != null && (phone == '+254' + userId[1:10] || phone == '254' + userId[1:10])))) ||
-             // Intl doc ID (+254...) matching Local UIDs
-             (userId.size() == 13 && (uid == '0' + userId[4:13] || (phone != null && phone == '0' + userId[4:13]))) ||
-             // Intl doc ID (254...) matching Local UIDs
-             (userId.size() == 12 && (uid == '0' + userId[3:12] || (phone != null && phone == '0' + userId[3:12])));
+      let cleanUserId = (userId.size() > 0 && userId[0] == '+') ? userId[1:userId.size()] : userId;
+      let cleanUid = (uid.size() > 0 && uid[0] == '+') ? uid[1:uid.size()] : uid;
+      let cleanPhone = (phone != null && phone.size() > 0 && phone[0] == '+') ? phone[1:phone.size()] : phone;
+      
+      return cleanUid == cleanUserId || 
+             (cleanPhone != null && cleanPhone == cleanUserId) ||
+             // Local vs Intl
+             (cleanUserId.size() == 10 && (cleanUid == '254' + cleanUserId[1:10])) ||
+             (cleanUserId.size() == 12 && (cleanUid == '0' + cleanUserId[3:12]));
+    }
+
+    function isHierarchicalOwner(data) {
+      return isOwner(data.agentId) || 
+             (data.masterAgentId != null && isOwner(data.masterAgentId)) ||
+             (data.superMasterId != null && isOwner(data.superMasterId));
     }
 
     // Users collection
@@ -122,7 +129,7 @@ service cloud.firestore {
 
     match /recruitment_logs/{logId} {
       allow read: if isAuthenticated() && (
-        isOwner(resource.data.agentId) || isAgent(resource.data.agentId) || isAdmin()
+        isHierarchicalOwner(resource.data) || isAgent(resource.data.agentId) || isAdmin()
       );
       allow create: if isAuthenticated() && isProfessional();
     }

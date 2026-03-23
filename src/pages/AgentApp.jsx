@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -53,14 +53,19 @@ const AgentApp = () => {
     const agentUid = profile?.id || profile?.uid || '';
     
     // Comprehensive Set of IDs to match logs (Agent Code, Local Phone, 254 Phone, Raw Phone, UID)
-    const allAgentIds = [...new Set([
-        agentCode, 
-        localPhone, 
-        intlPhone, 
-        agentPhoneRaw, 
-        agentUid,
-        agentCode ? stripPlus(agentCode) : null
-    ].filter(id => id && id.toString().length > 3))].map(id => typeof id === 'string' ? id.trim().toUpperCase() : id);
+    const allAgentIds = useMemo(() => {
+        const base = [
+            agentCode, 
+            localPhone, 
+            intlPhone, 
+            agentPhoneRaw, 
+            agentUid,
+            intlPhone ? `+${intlPhone.replace('+', '')}` : null,
+            agentCode ? stripPlus(agentCode) : null
+        ].filter(id => id && id.toString().length > 3);
+        
+        return [...new Set(base)].map(id => typeof id === 'string' ? id.trim().toUpperCase() : id);
+    }, [agentCode, localPhone, intlPhone, agentPhoneRaw, agentUid]);
     
     const displayCode = (agentCode || localPhone || agentUid).toString().replace(/^(\+254|254|\+)/, '');
     const registrationLink = `${window.location.origin}/r/${displayCode}`;
