@@ -25,17 +25,17 @@ const RecruitmentLogin = () => {
 
 
     const roleConfig = {
-        super_master: {
+        'super-master': {
             title: "SMA HQ",
             subtitle: "Super Master Admin",
             color: "brand-primary"
         },
-        master_agent: {
+        'master-agent': {
             title: "Master Portal",
             subtitle: "Territory Management",
             color: "emerald-500"
         },
-        agent: {
+        'agent': {
             title: "Agent Hub",
             subtitle: "Field Recruitment",
             color: "slate-900"
@@ -103,12 +103,12 @@ const RecruitmentLogin = () => {
             console.log("🔑 Authenticated UID:", authResult.user.uid);
 
             // --- TESTING BYPASS: Identify Test Number Robustly ---
-            const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-            const cleanInput = phoneNumber.replace(/\D/g, '').slice(-9);
-            const isTestUser = testNumbers.some(tn => {
-                const cleanTn = tn.replace(/\D/g, '').slice(-9);
-                return cleanTn === cleanInput && cleanInput.length >= 9;
-            });
+            const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108', '0792360091', '0792360092'];
+            const formatPhoneIntl = standardizeTo254(phoneNumber);
+            const isTestUser = testNumbers.some(tn => standardizeTo254(tn) === formatPhoneIntl) || 
+                              formatPhoneIntl.startsWith('2547923600') || 
+                              formatPhoneIntl.startsWith('2547923601') || 
+                              formatPhoneIntl.startsWith('2547923602');
             // ----------------------------------------------------
 
             // Standardize Profile Resolution
@@ -155,17 +155,17 @@ const RecruitmentLogin = () => {
                         if (isTestUser && data.role === selectedRole) {
                             unsub();
                             console.log("🚀 Sync Complete! Redirecting to selection...");
-                            toast.success(`${selectedRole.replace('_', ' ').toUpperCase()} Portal Authorized`);
-                            if (selectedRole === 'super_master') navigate('/smagent/dashboard');
-                            else if (selectedRole === 'master_agent') navigate('/magent/dashboard');
+                            toast.success(`${selectedRole.replace('-', ' ').toUpperCase()} Portal Authorized`);
+                            if (selectedRole === 'super-master') navigate('/smagent/dashboard');
+                            else if (selectedRole === 'master-agent') navigate('/magent/dashboard');
                             else navigate('/agent/dashboard');
                         } else if (!isTestUser && data.role) {
                             unsub();
                             console.log("🚀 Sync Complete! Redirecting to assigned role...");
-                            if (data.role === 'super_master') {
+                            if (data.role === 'super-master' || data.role === 'super_master') {
                                 toast.success("SMA HQ Authorized");
                                 navigate('/smagent/dashboard');
-                            } else if (data.role === 'master_agent') {
+                            } else if (data.role === 'master-agent' || data.role === 'master_agent') {
                                 toast.success("Master Portal Authorized");
                                 navigate('/magent/dashboard');
                             } else if (data.role === 'agent') {
@@ -184,8 +184,8 @@ const RecruitmentLogin = () => {
                     unsub();
                     console.log("⚠️ Sync Timeout - Forcing navigation");
                     if (isTestUser) {
-                        if (selectedRole === 'super_master') navigate('/smagent/dashboard');
-                        else if (selectedRole === 'master_agent') navigate('/magent/dashboard');
+                        if (selectedRole === 'super-master') navigate('/smagent/dashboard');
+                        else if (selectedRole === 'master-agent') navigate('/magent/dashboard');
                         else navigate('/agent/dashboard');
                     }
                 }, 4000);
@@ -224,7 +224,7 @@ const RecruitmentLogin = () => {
                                 : 'text-slate-400 hover:text-slate-600'
                             }`}
                         >
-                            {role === 'super_master' ? 'SMA' : role === 'master_agent' ? 'Master' : 'Agent'}
+                            {role === 'super-master' ? 'SMA' : role === 'master-agent' ? 'Master' : 'Agent'}
                         </button>
                     ))}
                 </div>
