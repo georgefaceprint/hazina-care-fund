@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, AlertCircle, X, Info } from 'lucide-react';
+import { CheckCircle2, AlertCircle, X, Info, Loader2 } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
@@ -34,6 +34,12 @@ export const ToastProvider = ({ children }) => {
         error: (msg) => addToast(msg, 'error'),
         info: (msg) => addToast(msg, 'info'),
         warning: (msg) => addToast(msg, 'warning'),
+        loading: (msg) => {
+            const id = Math.random().toString(36).substring(2, 9);
+            setToasts((prev) => [...prev, { id, message: msg, type: 'loading' }]);
+            return id;
+        },
+        dismiss: (id) => removeToast(id)
     };
 
     return (
@@ -58,6 +64,7 @@ export const ToastProvider = ({ children }) => {
                                 {t.type === 'error' && <AlertCircle className="w-5 h-5 text-red-500" />}
                                 {t.type === 'warning' && <AlertCircle className="w-5 h-5 text-amber-500" />}
                                 {t.type === 'info' && <Info className="w-5 h-5 text-blue-400" />}
+                                {t.type === 'loading' && <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />}
                             </div>
                             <p className="text-sm font-bold flex-1 leading-tight">{t.message}</p>
                             <button

@@ -96,23 +96,45 @@ export const AuthProvider = ({ children }) => {
                     console.log("🔍 [Auth] Candidate IDs:", candidates);
 
                     // Fetch all candidates and find the one with the "best" role
-                    const snaps = await Promise.all(candidates.map(id => getDoc(doc(db, 'users', id))));
-                    const proSnap = snaps.find(s => s.exists() && ['super_master', 'master_agent', 'agent', 'admin'].includes(s.data()?.role));
+                    const candidateSnaps = await Promise.all(candidates.map(id => getDoc(doc(db, 'users', id))));
+                    const snaps = candidateSnaps.filter(s => s.exists());
 
-                    if (proSnap) {
-                        console.log("💎 [Auth] Found professional profile:", proSnap.id, proSnap.data().role);
-                        return doc(db, 'users', proSnap.id);
+                    // Prioritize professional profiles
+                    const proSnap = snaps.find(s => ['super_master', 'master_agent', 'agent', 'admin'].includes(s.data()?.role));
+                    const winningSnap = proSnap || snaps[0];
+
+                    if (winningSnap) {
+                        const currentId = winningSnap.id;
+                        
+                        // ONCE AND FOR ALL FIX: Auto-migration to +254 format
+                        if (currentId !== intlPhone && !['admin', 'test'].includes(winningSnap.data()?.role)) {
+                            console.log(`🔄 [Auth] Migrating legacy profile ${currentId} -> ${intlPhone}`);
+                            const data = winningSnap.data();
+                            
+                            // 1. Create the new standardized doc
+                            await setDoc(doc(db, 'users', intlPhone), {
+                                ...data,
+                                phoneNumber: intlPhone,
+                                updatedAt: serverTimestamp(),
+                                migration_source: currentId
+                            }, { merge: true });
+
+                            // 2. Delete the old fragmented doc (if it's not the UID or a special ID)
+                            if (currentId !== authUser.uid && currentId !== authUser.email) {
+                                try {
+                                    await deleteDoc(doc(db, 'users', currentId));
+                                    console.log(`✅ [Auth] Fragmentation resolved: ${currentId} removed.`);
+                                } catch (e) {
+                                    console.warn(`⚠️ [Auth] Could not delete old doc ${currentId}:`, e.message);
+                                }
+                            }
+                            return doc(db, 'users', intlPhone);
+                        }
+                        
+                        return doc(db, 'users', currentId);
                     }
 
-                    // Fallback to the first existing doc or the preferred intl format
-                    const existingSnap = snaps.find(s => s.exists());
-                    if (existingSnap) {
-                        console.log("👤 [Auth] Found standard profile:", existingSnap.id);
-                        return doc(db, 'users', existingSnap.id);
-                    }
-
-                    // Strict new user residency
-                    console.log("🎯 [Auth] No doc found, defaulting to intl ID:", intlPhone);
+                    // Default to intl ID for new users
                     return doc(db, 'users', intlPhone);
                 } catch (err) {
                     console.error("❌ [Auth] critical error in resolveProfile:", err);

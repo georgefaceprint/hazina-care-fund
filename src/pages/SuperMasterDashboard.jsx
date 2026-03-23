@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { formatKenyanPhone, stripPlus, standardizeTo254 } from '../utils/phoneUtils';
 import { db } from '../services/firebase';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { Shield, Activity, Plus, TrendingUp, Map, Edit2, Trash2 } from 'lucide-react';
+import { Shield, Activity, Plus, TrendingUp, Map, Edit2, Trash2, RotateCcw } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { functions } from '../services/firebase';
+import { httpsCallable } from 'firebase/functions';
 
 const SuperMasterDashboard = () => {
     const { profile, impersonate } = useAuth();
@@ -31,6 +33,7 @@ const SuperMasterDashboard = () => {
         activeAgents: 0,
         todayGrowth: 0
     });
+    const [isRepairing, setIsRepairing] = useState(false);
 
     useEffect(() => {
         // Initial fetch
@@ -176,6 +179,28 @@ const SuperMasterDashboard = () => {
         }
     };
 
+    const handleRepairStats = async () => {
+        if (!window.confirm("This will scan the entire recruitment database and correct missing logs/stats. Proceed?")) return;
+        
+        setIsRepairing(true);
+        const repairId = toast.loading("Repairing system data...");
+        
+        try {
+            const backfillFunc = httpsCallable(functions, 'backfillRecruitmentLogs');
+            const result = await backfillFunc();
+            
+            toast.dismiss(repairId);
+            toast.success(result.data.message || "Data repair complete!");
+            fetchGlobalData();
+        } catch (error) {
+            console.error("Repair failed:", error);
+            toast.dismiss(repairId);
+            toast.error(error.message || "Repair process failed.");
+        } finally {
+            setIsRepairing(false);
+        }
+    };
+
     // Extract the main UI into a render function to handle tabs
     const renderOverview = () => (
         <div className="space-y-10">
@@ -187,7 +212,16 @@ const SuperMasterDashboard = () => {
                     </h1>
                     <p className="text-slate-500 font-medium text-lg">System-wide recruitment oversight</p>
                 </div>
-                <div className="mt-4 lg:mt-0">
+                <div className="mt-4 lg:mt-0 flex gap-4">
+                    <button
+                        onClick={handleRepairStats}
+                        disabled={isRepairing}
+                        className="bg-brand-50 text-brand-primary border border-brand-100 px-6 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-brand-100 transition-all active:scale-95 disabled:opacity-50"
+                        title="Repair logs and wallet stats"
+                    >
+                        <RotateCcw className={`w-5 h-5 ${isRepairing ? 'animate-spin' : ''}`} />
+                        Repair Stats
+                    </button>
                     <button
                         onClick={() => setShowAddModal(true)}
                         className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-95"

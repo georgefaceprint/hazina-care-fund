@@ -1719,52 +1719,58 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             
             console.log(`[onUserCreated] Distributing ${amount} to ${roleLabel}: ${targetAgentId}`);
             
-            // Normalize ID for lookup: Try intl format first
-            const intlId = targetAgentId.startsWith('+') ? targetAgentId : `+${formatTo254(targetAgentId)}`;
-            let targetUserDoc = await db.collection("users").doc(intlId).get();
+            // Normalize ID for lookup
+            let targetUserDoc = null;
+            const isPhone = /^\+?\d+$/.test(targetAgentId.toString());
             
-            if (!targetUserDoc.exists) {
-                // Try original ID
-                targetUserDoc = await db.collection("users").doc(targetAgentId).get();
-            }
+            // Try all possible variants for the document ID
+            const lookups = [
+                targetAgentId,
+                targetAgentId.toString().startsWith('+') ? targetAgentId : `+${formatTo254(targetAgentId)}`,
+                formatToLocal(targetAgentId)
+            ];
 
-            if (!targetUserDoc.exists) {
-                // Try search by agent_code if doc ID fails
-                const snap = await db.collection("users").where("agent_code", "==", targetAgentId).limit(1).get();
+            for (const id of [...new Set(lookups)]) {
+                const d = await db.collection("users").doc(id).get();
+                if (d.exists) {
+                    targetUserDoc = d;
+                    break;
+                }
+            }
+            
+            if (!targetUserDoc) {
+                // Last ditch: search by field
+                const snap = await db.collection("users")
+                    .where("agent_code", "==", targetAgentId)
+                    .limit(1).get() || 
+                    await db.collection("users")
+                    .where("phoneNumber", "in", lookups)
+                    .limit(1).get();
                 if (!snap.empty) targetUserDoc = snap.docs[0];
-            }
-
-            if (!targetUserDoc.exists) {
-                 // Try search by phoneNumber field (fallback for fragmented profiles)
-                 const snap = await db.collection("users").where("phoneNumber", "in", [targetAgentId, formatTo254(targetAgentId), formatToLocal(targetAgentId)]).limit(1).get();
-                 if (!snap.empty) targetUserDoc = snap.docs[0];
             }
 
             const updateData = {
                 totalEarnings: admin.firestore.FieldValue.increment(amount),
                 walletBalance: admin.firestore.FieldValue.increment(amount),
-                lastSignupAt: admin.firestore.FieldValue.serverTimestamp()
+                lastSignupAt: admin.firestore.FieldValue.serverTimestamp(),
+                totalSignups: admin.firestore.FieldValue.increment(1)
             };
 
-            // 1. Update User Profile if found
             if (targetUserDoc && targetUserDoc.exists) {
-                await targetUserDoc.ref.update({
-                    ...updateData,
-                    totalSignups: admin.firestore.FieldValue.increment(1)
-                });
+                await targetUserDoc.ref.update(updateData);
+                
+                // Also update the 'agents' or 'master_agents' collection if applicable
+                const coll = roleLabel.includes("MASTER") ? "master_agents" : "agents";
+                const idFromDoc = targetUserDoc.id;
+                const altId = targetUserDoc.data().agent_code || targetUserDoc.data().agentCode;
+
+                if (idFromDoc) await db.collection(coll).doc(idFromDoc).set(updateData, { merge: true });
+                if (altId && altId !== idFromDoc) await db.collection(coll).doc(altId.toString().toUpperCase()).set(updateData, { merge: true });
+                
+                return targetUserDoc.data();
             }
 
-            // 2. Update Agents Collection doc
-            const agentEntryRef = db.collection("agents").doc(targetAgentId);
-            const agentEntryDoc = await agentEntryRef.get();
-            if (agentEntryDoc.exists) {
-                await agentEntryRef.update({
-                    ...updateData,
-                    totalSignups: admin.firestore.FieldValue.increment(1)
-                });
-            }
-
-            return targetUserDoc && targetUserDoc.exists ? targetUserDoc.data() : (agentEntryDoc.exists ? agentEntryDoc.data() : null);
+            return null;
         };
 
         // --- HIERARCHY DISTRIBUTION & ANALYTICS ---
@@ -1773,44 +1779,36 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         const agentTariff = agentData.tariffRate || 15;
         const agentRes = await distributeCommission(ResolvedAgentId, agentTariff, "AGENT");
         
-        // Use the most up-to-date data for hierarchy resolution
         const currentAgentData = agentRes || agentData;
         const masterAgentId = currentAgentData.masterAgentId ? currentAgentData.masterAgentId.toString().trim().toUpperCase() : null;
 
         // 2. Level 2: Master Agent (Signup Count ONLY, no commission)
-        let superMasterId = null;
+        let finalSuperId = null;
         if (masterAgentId) {
             const masterRes = await distributeCommission(masterAgentId, 0, "MASTER_ANALYTICS");
-            if (masterRes) {
-                // Super Master is the Master's Master
-                superMasterId = masterRes.masterAgentId || masterRes.superMasterId || null;
-            }
+            if (masterRes) finalSuperId = masterRes.masterAgentId || masterRes.superMasterId || null;
         }
 
-        // 3. Level 3: Super Master Agent (Signup Count ONLY, no commission)
-        if (superMasterId) {
-            await distributeCommission(superMasterId.toString().trim().toUpperCase(), 0, "SUPER_MASTER_ANALYTICS");
+        // 3. Level 3: Super Master Agent (Signup Count ONLY)
+        if (finalSuperId) {
+            await distributeCommission(finalSuperId.toString().trim().toUpperCase(), 0, "SUPER_MASTER_ANALYTICS");
         }
 
-        // Log the recruitment record with data needed by the dashboard
-        const normalizedAgentId = ResolvedAgentId.toString().toUpperCase().replace('+', '');
-        const logId = `recruitment_${normalizedAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
+        // --- FINAL LOGGING ---
+        // Ensure log agentId is consistent with AgentApp's lookup formats (+254...)
+        const logAgentId = /^\d+$/.test(ResolvedAgentId) ? `+${formatTo254(ResolvedAgentId)}` : ResolvedAgentId.toString().toUpperCase();
+        const logId = `recruitment_${logAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
         
         await db.collection("recruitment_logs").doc(logId).set({
             userId,
             userName: newUser.fullName,
             tier: newUser.active_tier || 'bronze',
-            agentId: normalizedAgentId,
+            agentId: logAgentId,
             originalAgentInput: agentCode,
-            masterAgentId: masterAgentId ? masterAgentId.toString().toUpperCase().replace('+', '') : null,
-            superMasterId: superMasterId ? superMasterId.toString().toUpperCase().replace('+', '') : null,
+            masterAgentId: masterAgentId,
+            superMasterId: finalSuperId,
             tariffApplied: agentTariff,
             commissionEarned: agentTariff,
-            // Carry forward residence data for analytics
-            city: newUser.currentTown || '',
-            county: newUser.currentCounty || '',
-            homeCounty: newUser.homeCounty || '',
-            nearestTown: newUser.nearestTown || '',
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
@@ -2091,49 +2089,108 @@ exports.createTestUser = onCall({ cors: true }, async (request) => {
 });
 
 // TEMPORARY: Backfill missing data in recruitment logs
-exports.backfillRecruitmentLogs = onCall({ cors: true, memory: "512MiB" }, async (request) => {
+// REPAIR UTILITY: Corrects missing logs and zeroed stats across the whole project
+exports.backfillRecruitmentLogs = onCall({ cors: true, memory: "1GiB", timeoutSeconds: 300 }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Admin only.');
+
     try {
-        const logsSnap = await db.collection("recruitment_logs").get();
-        let updatedCount = 0;
-        let skipCount = 0;
+        console.log("🚀 Starting Global Recruitment Log & Stats Repair...");
+        
+        // 1. Fetch all users
+        const usersSnap = await db.collection("users").get();
+        let logsCreated = 0;
+        let statsFixed = 0;
+        let errors = [];
 
-        const updates = logsSnap.docs.map(async (logDoc) => {
-            const data = logDoc.data();
-            const logId = logDoc.id;
-            
-            // Check if log is missing critical fields or has faulty agentId
-            const needsRepair = !data.userName || !data.agentId || data.agentId === "undefined";
-            
-            if (needsRepair) {
-                const updatePayload = {};
+        const updates = usersSnap.docs.map(async (userDoc) => {
+            try {
+                const userData = userDoc.data();
+                const userId = userDoc.id;
+                const recruitedByRaw = userData.recruited_by;
+
+                if (!recruitedByRaw) return;
+
+                // 2. Resolve Agent
+                const agentInput = recruitedByRaw.toString().trim().toUpperCase();
+                let agentDoc = null;
                 
-                // 1. Repair agentId from originalAgentInput or logId if possible
-                if (!data.agentId || data.agentId === "undefined") {
-                    const recoveredId = data.originalAgentInput || logId.split('_')[1];
-                    if (recoveredId && recoveredId !== "undefined") {
-                        updatePayload.agentId = recoveredId.toUpperCase();
+                const lookups = [
+                    agentInput,
+                    agentInput.startsWith('+') ? agentInput : `+${formatTo254(agentInput)}`,
+                    formatToLocal(agentInput)
+                ];
+
+                for (const id of [...new Set(lookups)]) {
+                    const d = await db.collection("users").doc(id).get();
+                    if (d.exists) {
+                        agentDoc = d;
+                        break;
                     }
                 }
 
-                // 2. Repair userName and tier from user doc
-                if (data.userId) {
-                    const userDoc = await db.collection("users").doc(data.userId).get();
-                    if (userDoc.exists) {
-                        const userData = userDoc.data();
-                        updatePayload.userName = userData.fullName || data.userName || 'Member';
-                        updatePayload.tier = userData.active_tier || data.tier || 'bronze';
-                        updatePayload.commissionEarned = data.tariffApplied || 15;
-                    }
+                if (!agentDoc) {
+                    const snap = await db.collection("users")
+                        .where("agent_code", "==", agentInput)
+                        .limit(1).get() || 
+                        await db.collection("users")
+                        .where("phoneNumber", "in", lookups)
+                        .limit(1).get();
+                    if (!snap.empty) agentDoc = snap.docs[0];
                 }
 
-                if (Object.keys(updatePayload).length > 0) {
-                    await logDoc.ref.update(updatePayload);
-                    updatedCount++;
-                } else {
-                    skipCount++;
+                if (!agentDoc) return;
+
+                const agentData = agentDoc.data();
+                const agentId = agentDoc.id;
+                
+                // Canonical ID for logging
+                const logAgentId = /^\d+$/.test(agentId) ? (agentId.startsWith('+') ? agentId : `+${formatTo254(agentId)}`) : agentId.toString().toUpperCase();
+                
+                // Standardized Log ID
+                const logId = `recruitment_${logAgentId}_${userId}`.replace(/[^\w\d_]/g, '');
+                const logRef = db.collection("recruitment_logs").doc(logId);
+                const logSnap = await logRef.get();
+
+                if (!logSnap.exists) {
+                    const agentTariff = agentData.tariffRate || 15;
+                    const isMaster = ['master_agent', 'super_master'].includes(agentData.role);
+                    const commission = isMaster ? 0 : agentTariff;
+
+                    // Update Log
+                    await logRef.set({
+                        userId,
+                        userName: userData.fullName || userData.firstName || 'Member',
+                        tier: userData.active_tier || 'bronze',
+                        agentId: logAgentId,
+                        originalAgentInput: recruitedByRaw,
+                        masterAgentId: agentData.masterAgentId || null,
+                        superMasterId: agentData.superMasterId || null,
+                        tariffApplied: agentTariff,
+                        commissionEarned: commission,
+                        timestamp: userData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+                        repaired: true
+                    });
+                    logsCreated++;
+
+                    // Update Agent Stats
+                    const updatePayload = {
+                        totalSignups: admin.firestore.FieldValue.increment(1),
+                        totalEarnings: admin.firestore.FieldValue.increment(commission),
+                        walletBalance: admin.firestore.FieldValue.increment(commission),
+                        lastSignupAt: userData.createdAt || admin.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    await agentDoc.ref.update(updatePayload);
+                    
+                    // Sync to supplemental collections
+                    const coll = isMaster ? "master_agents" : "agents";
+                    await db.collection(coll).doc(agentId).set(updatePayload, { merge: true });
+                    if (agentData.agent_code) await db.collection(coll).doc(agentData.agent_code).set(updatePayload, { merge: true });
+                    
+                    statsFixed++;
                 }
-            } else {
-                skipCount++;
+            } catch (err) {
+                errors.push(`User ${userDoc.id}: ${err.message}`);
             }
         });
 
@@ -2141,7 +2198,9 @@ exports.backfillRecruitmentLogs = onCall({ cors: true, memory: "512MiB" }, async
 
         return { 
             success: true, 
-            message: `Backfill complete. Updated: ${updatedCount}, Skipped/Already OK: ${skipCount}` 
+            message: `Repair completed. Logs Created: ${logsCreated}, Stats Fixed: ${statsFixed}`,
+            errorCount: errors.length,
+            errors: errors.slice(0, 10) // Show first 10 if any
         };
     } catch (error) {
         throw new HttpsError('internal', error.message);
