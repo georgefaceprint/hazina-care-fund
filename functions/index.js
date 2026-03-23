@@ -1513,14 +1513,14 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
         }
         
         const updateData = { passcodeHash };
-        if (request.data.firstName) updateData.firstName = request.data.firstName;
-        if (request.data.surname) updateData.surname = request.data.surname;
+        if (request.data.firstName) updateData.firstName = request.data.firstName.toString().toUpperCase();
+        if (request.data.surname) updateData.surname = request.data.surname.toString().toUpperCase();
         if (request.data.firstName && request.data.surname) {
-            updateData.fullName = `${request.data.firstName} ${request.data.surname}`.trim();
+            updateData.fullName = `${request.data.firstName} ${request.data.surname}`.trim().toUpperCase();
         } else if (request.data.fullName) {
-            updateData.fullName = request.data.fullName;
+            updateData.fullName = request.data.fullName.toString().toUpperCase();
         }
-        if (request.data.national_id) updateData.national_id = request.data.national_id;
+        if (request.data.national_id) updateData.national_id = request.data.national_id.toString().toUpperCase();
         if (request.data.faceUrl) {
             updateData.faceUrl = request.data.faceUrl; // Legacy support
             updateData.photoURL = request.data.faceUrl; // Standardized portrait field
@@ -1536,8 +1536,10 @@ exports.verifyAndSetPasscode = onCall({ cors: true }, async (request) => {
 
         await userRef.set(updateData, { merge: true });
 
-        // 4. Generate Custom Token
-        const token = await admin.auth().createCustomToken(userRef.id);
+        // 4. Generate Custom Token with Phone Claim for Rule ownership
+        const token = await admin.auth().createCustomToken(userRef.id, {
+            phone_number: formatPhone
+        });
         return { success: true, token };
 
     } catch (error) {
@@ -1597,7 +1599,9 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
             throw new HttpsError('invalid-argument', 'Invalid passcode. Please try again.');
         }
 
-        const token = await admin.auth().createCustomToken(docId);
+        const token = await admin.auth().createCustomToken(docId, {
+            phone_number: formatPhone
+        });
         return { success: true, token };
 
     } catch (error) {
@@ -1959,12 +1963,14 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
         const totalAmount = registrationFee + TIER_COSTS[tier.toLowerCase()];
 
         const newUserRef = db.collection("users").doc(formatPhone);
+        // Create user document with uppercase normalization
         await newUserRef.set({
-            fullName,
-            firstName: firstName.toUpperCase(),
-            surname: surname.toUpperCase(),
-            national_id: idNumber,
+            uid: null, // Will be set if user signs up via Firebase Auth later
             phoneNumber: formatPhone,
+            firstName: firstName.toString().toUpperCase(),
+            surname: surname.toString().toUpperCase(),
+            fullName: `${firstName} ${surname}`.trim().toUpperCase(),
+            national_id: idNumber.toString().toUpperCase(),
             role: 'guardian',
             active_tier: tier.toLowerCase(),
             status: isTestNumber ? 'active' : 'pending_payment',

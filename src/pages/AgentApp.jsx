@@ -659,10 +659,10 @@ const AgentApp = () => {
                                                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">National ID Number</label>
                                                 <input
                                                     type="text"
-                                                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold"
+                                                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-brand-primary transition-all font-bold uppercase"
                                                     placeholder="12345678"
                                                     value={regForm.idNumber}
-                                                    onChange={(e) => setRegForm({ ...regForm, idNumber: e.target.value })}
+                                                    onChange={(e) => setRegForm({ ...regForm, idNumber: e.target.value.toUpperCase() })}
                                                     required
                                                 />
                                             </div>

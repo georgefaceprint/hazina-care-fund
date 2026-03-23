@@ -17,13 +17,17 @@ service cloud.firestore {
     }
 
     function checkAuthComplex(roles) {
-      return hasRole(request.auth.uid, roles) ||
-             (request.auth.uid.size() == 10 && hasRole('+254' + request.auth.uid[1:], roles)) ||
-             (request.auth.uid.size() == 13 && hasRole('0' + request.auth.uid[4:], roles)) ||
-             (request.auth.token.phone_number != null && (
-               hasRole(request.auth.token.phone_number, roles) ||
-               (request.auth.token.phone_number.size() == 10 && hasRole('+254' + request.auth.token.phone_number[1:], roles)) ||
-               (request.auth.token.phone_number.size() == 13 && hasRole('0' + request.auth.token.phone_number[4:], roles))
+      let uid = request.auth.uid;
+      let phone = request.auth.token.phone_number;
+      return hasRole(uid, roles) ||
+             (uid.size() == 10 && (hasRole('+254' + uid[1:10], roles) || hasRole('254' + uid[1:10], roles))) ||
+             (uid.size() == 13 && hasRole('0' + uid[4:13], roles)) ||
+             (uid.size() == 12 && hasRole('0' + uid[3:12], roles)) ||
+             (phone != null && (
+               hasRole(phone, roles) ||
+               (phone.size() == 10 && (hasRole('+254' + phone[1:10], roles) || hasRole('254' + phone[1:10], roles))) ||
+               (phone.size() == 13 && hasRole('0' + phone[4:13], roles)) ||
+               (phone.size() == 12 && hasRole('0' + phone[3:12], roles))
              ));
     }
 
@@ -38,14 +42,16 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return request.auth.uid == userId || 
-             (userId.size() == 10 && request.auth.uid == '+254' + userId[1:]) ||
-             (userId.size() == 13 && request.auth.uid == '0' + userId[4:]) ||
-             (request.auth.token.phone_number != null && (
-               request.auth.token.phone_number == userId ||
-               (userId.size() == 10 && request.auth.token.phone_number == '+254' + userId[1:]) ||
-               (userId.size() == 13 && request.auth.token.phone_number == '0' + userId[4:])
-             ));
+      let uid = request.auth.uid;
+      let phone = request.auth.token.phone_number;
+      return uid == userId || 
+             (phone != null && phone == userId) ||
+             // Local doc ID (07...) matching Intl UIDs
+             (userId.size() == 10 && (uid == '+254' + userId[1:10] || uid == '254' + userId[1:10] || (phone != null && (phone == '+254' + userId[1:10] || phone == '254' + userId[1:10])))) ||
+             // Intl doc ID (+254...) matching Local UIDs
+             (userId.size() == 13 && (uid == '0' + userId[4:13] || (phone != null && phone == '0' + userId[4:13]))) ||
+             // Intl doc ID (254...) matching Local UIDs
+             (userId.size() == 12 && (uid == '0' + userId[3:12] || (phone != null && phone == '0' + userId[3:12])));
     }
 
     // Users collection
@@ -102,11 +108,16 @@ service cloud.firestore {
     }
 
     function isAgent(code) {
-      return (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agent_code == code) ||
-             (request.auth.token.phone_number != null && 
-              exists(/databases/$(database)/documents/users/$(request.auth.token.phone_number)) && 
-              get(/databases/$(database)/documents/users/$(request.auth.token.phone_number)).data.agent_code == code);
+      let uid = request.auth.uid;
+      let phone = request.auth.token.phone_number;
+      return (exists(/databases/$(database)/documents/users/$(uid)) && get(/databases/$(database)/documents/users/$(uid)).data.agent_code == code) ||
+             (uid.size() == 10 && exists(/databases/$(database)/documents/users/$( '254' + uid[1:10] )) && get(/databases/$(database)/documents/users/$( '254' + uid[1:10] )).data.agent_code == code) ||
+             (uid.size() == 12 && exists(/databases/$(database)/documents/users/$( '0' + uid[3:12] )) && get(/databases/$(database)/documents/users/$( '0' + uid[3:12] )).data.agent_code == code) ||
+             (phone != null && (
+               (exists(/databases/$(database)/documents/users/$(phone)) && get(/databases/$(database)/documents/users/$(phone)).data.agent_code == code) ||
+               (phone.size() == 10 && exists(/databases/$(database)/documents/users/$( '254' + phone[1:10] )) && get(/databases/$(database)/documents/users/$( '254' + phone[1:10] )).data.agent_code == code) ||
+               (phone.size() == 12 && exists(/databases/$(database)/documents/users/$( '0' + phone[3:12] )) && get(/databases/$(database)/documents/users/$( '0' + phone[3:12] )).data.agent_code == code)
+             ));
     }
 
     match /recruitment_logs/{logId} {

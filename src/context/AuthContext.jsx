@@ -171,7 +171,10 @@ export const AuthProvider = ({ children }) => {
 
             try {
                 const profileRef = await resolveProfile();
+                console.log("📍 [Auth] Resolved Profile Path:", profileRef?.path);
+
                 if (!profileRef) {
+                    console.warn("⚠️ [Auth] No profile reference could be resolved.");
                     setRealProfile(false);
                     setLoading(false);
                     return;
@@ -200,17 +203,31 @@ export const AuthProvider = ({ children }) => {
                             setLoading(false);
                         } else {
                             // NEW USER or DELETED USER
-                            // Wait longer (up to 8s) to allow LoginPage to finish setDoc/upload tasks
+                            // Wait longer (up to 12s) to allow LoginPage to finish setDoc/upload tasks
                             // This prevents the "kicked back to login" loop during signup
+                            const registrationInProgress = !!sessionStorage.getItem('hazina_temp_phone');
+                            
                             setTimeout(async () => {
                                 const check = await getDoc(profileRef);
                                 if (!check.exists()) {
-                                    console.warn("⚠️ [Auth] Profile strictly missing after grace period. Logging out.");
+                                    if (registrationInProgress) {
+                                        console.log("⏳ [Auth] Registration likely in progress. Final grace period extension...");
+                                        // One last check after 5 more seconds
+                                        await new Promise(r => setTimeout(r, 5000));
+                                        const finalCheck = await getDoc(profileRef);
+                                        if (finalCheck.exists()) return;
+                                    }
+                                    
+                                    console.warn("⚠️ [Auth] Profile strictly missing after grace period. Doc:", profileRef.path);
                                     setRealProfile(false);
                                     setLoading(false);
-                                    if (!authUser.email) await auth.signOut();
+                                    // Only sign out if strictly necessary (phone users without profiles)
+                                    if (!authUser.email && !registrationInProgress) {
+                                        console.error("🚫 [Auth] Session invalid (no profile). Logging out.");
+                                        await auth.signOut();
+                                    }
                                 }
-                            }, 8000);
+                            }, 12000);
                         }
                     }
                 }, (err) => {

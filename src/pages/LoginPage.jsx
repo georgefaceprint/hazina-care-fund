@@ -586,7 +586,7 @@ const LoginPage = () => {
                                                  placeholder="JOHN"
                                                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
                                                  value={firstName}
-                                                 onChange={(e) => setFirstName(e.target.value)}
+                                                 onChange={(e) => setFirstName(e.target.value.toUpperCase())}
                                                  required
                                              />
                                          </div>
@@ -597,7 +597,7 @@ const LoginPage = () => {
                                                  placeholder="DOE"
                                                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
                                                  value={surname}
-                                                 onChange={(e) => setSurname(e.target.value)}
+                                                 onChange={(e) => setSurname(e.target.value.toUpperCase())}
                                                  required
                                              />
                                          </div>
@@ -609,7 +609,7 @@ const LoginPage = () => {
                                              placeholder="12345678"
                                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
                                              value={nationalId}
-                                             onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
+                                             onChange={(e) => setNationalId(e.target.value.toUpperCase())}
                                              required
                                          />
                                      </div>
@@ -617,8 +617,8 @@ const LoginPage = () => {
                                          <label className="text-[10px] font-black uppercase text-brand-primary ml-1 tracking-widest">Agent Referral Code (Optional)</label>
                                          <input
                                              type="text"
-                                             placeholder="CT001"
-                                             className="w-full bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 text-slate-900 font-bold uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+                                             placeholder="AGENT001"
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-brand-primary font-black uppercase outline-none focus:ring-2 focus:ring-brand-primary transition-all placeholder:text-slate-300"
                                              value={agentCodeInput}
                                              onChange={(e) => setAgentCodeInput(e.target.value.toUpperCase())}
                                          />

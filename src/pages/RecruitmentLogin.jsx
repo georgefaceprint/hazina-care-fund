@@ -256,14 +256,14 @@ const RecruitmentLogin = () => {
                                     <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest block">Authorization ID (Phone)</label>
                                     <div className="relative">
                                         <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
-                                        <input
-                                            type="tel"
-                                            required
-                                            placeholder="07XX XXX XXX"
-                                            className="w-full bg-slate-50 border-none rounded-[1.5rem] pl-14 pr-6 py-5 text-slate-900 focus:ring-2 focus:ring-brand-primary transition-all text-sm outline-none font-bold"
-                                            value={phoneNumber}
-                                            onChange={(e) => setPhoneNumber(e.target.value)}
-                                        />
+                                            <input
+                                                type="tel"
+                                                required
+                                                placeholder="07XX XXX XXX"
+                                                className="w-full bg-slate-50 border-none rounded-[1.5rem] pl-14 pr-6 py-5 text-slate-900 focus:ring-2 focus:ring-brand-primary transition-all text-sm outline-none font-bold uppercase"
+                                                value={phoneNumber}
+                                                onChange={(e) => setPhoneNumber(e.target.value.toUpperCase())}
+                                            />
                                     </div>
                                 </div>
 
