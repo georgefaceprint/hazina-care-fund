@@ -1251,7 +1251,7 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
         console.log(`OTP code ${code} saved to Firestore for: ${formatPhone}`);
 
         // ACTUALLY SEND THE SMS via Africa's Talking
-        if (!isTestNumber) {
+        if (!isTestNum) {
             try {
                 const sms = africastalking.SMS;
                 const result = await sms.send({

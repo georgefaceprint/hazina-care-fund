@@ -127,7 +127,7 @@ const RecruitmentLogin = () => {
                 }
             }
 
-            console.log("🛠️ Sync Phase - isTestUser:", isTestUser, "cleanInput:", cleanInput, "DocID:", finalUserRef.id);
+            console.log("🛠️ Sync Phase - isTestUser:", isTestUser, "Phone:", formatPhoneIntl, "DocID:", finalUserRef.id);
 
             if (isTestUser) {
                 console.log("🛠️ Forcing test role to:", selectedRole);
