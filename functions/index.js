@@ -1604,10 +1604,10 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
                 let testName = 'TEST AGENT';
                 
                 if (formatPhone === '254792360091' || formatPhone === '2547923601') {
-                    testRole = 'super-master';
+                    testRole = 'super_master';
                     testName = 'SMA TEST';
                 } else if (formatPhone === '254792360092') {
-                    testRole = 'master-agent';
+                    testRole = 'master_agent';
                     testName = 'MASTER TEST';
                 }
 

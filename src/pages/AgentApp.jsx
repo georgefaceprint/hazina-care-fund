@@ -319,8 +319,8 @@ const AgentApp = () => {
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                         <Zap className="w-8 h-8 text-brand-primary" />
-                        {profile?.role === 'super-master' ? 'Super Master Console' : 
-                         profile?.role === 'master-agent' ? 'Master Agent Console' : 
+                        {profile?.role === 'super_master' ? 'Super Master Console' : 
+                         profile?.role === 'master_agent' ? 'Master Agent Console' : 
                          'Agent Performance Console'}
                     </h1>
                     <p className="text-slate-500 font-medium">Welcome, {profile?.fullName}</p>
