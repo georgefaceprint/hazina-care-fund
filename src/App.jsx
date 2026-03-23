@@ -43,10 +43,18 @@ const RoleBasedRedirect = () => {
   );
   if (!profile) return <Navigate to="/login" replace />;
 
+  const currentPath = window.location.pathname;
+  const isProfessionalZone = currentPath.includes('/agent') || currentPath.includes('/magent') || currentPath.includes('/smagent');
+
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
   if (profile.role === 'super_master') return <Navigate to="/smagent/dashboard" replace />;
   if (profile.role === 'master_agent') return <Navigate to="/magent/dashboard" replace />;
   if (profile.role === 'agent') return <Navigate to="/agent/dashboard" replace />;
+
+  if (isProfessionalZone) {
+    // If they were trying to reach a recruitment portal but have no professional role, send back to recruitment login
+    return <Navigate to="/agent" replace />;
+  }
 
   // Default for guardians
   return <Navigate to="/dashboard" replace />;
@@ -102,8 +110,8 @@ const RoleProtectedRoute = ({ children, requireAdmin = false, requireAgent = fal
     return <RoleBasedRedirect />;
   }
 
-  if (requireSuper && profile?.role !== 'super_master') {
-    return <RoleBasedRedirect />;
+  if (isProfessionalPath && !isRecruiter) {
+    return <Navigate to="/agent" replace />;
   }
 
   return children;

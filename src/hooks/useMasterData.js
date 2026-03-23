@@ -174,10 +174,12 @@ export const useMasterData = () => {
                 createdAt: serverTimestamp()
             });
 
-            const userRef = doc(db, 'users', formattedPhone);
+            const intlPhone = `+${standardizeTo254(newAgent.phoneNumber)}`;
+            const userRef = doc(db, 'users', intlPhone);
             await setDoc(userRef, {
                 fullName: newAgent.fullName,
                 phoneNumber: formattedPhone,
+                intlPhone: intlPhone,
                 role: 'agent',
                 agent_code: newAgent.agentCode.toUpperCase(),
                 nationalId: newAgent.nationalId,

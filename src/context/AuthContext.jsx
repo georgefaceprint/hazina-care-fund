@@ -75,94 +75,45 @@ export const AuthProvider = ({ children }) => {
             
             // --- Resilient Profile Resolution Strategy ---
             const resolveProfile = async () => {
-                console.log("🔍 [Auth] Resolving profile for:", authUser.uid, authUser.phoneNumber, authUser.email);
+                console.log("🔍 [Auth] Resolving professional profile for:", authUser.uid, authUser.phoneNumber);
                 try {
-                    if (authUser.email) {
-                        console.log("🔍 [Auth] Email user detected, checking UID doc:", authUser.uid);
-                        return doc(db, 'users', authUser.uid);
-                    }
-
                     const rawPhone = authUser.phoneNumber || sessionStorage.getItem('hazina_temp_phone');
-                    console.log("🔍 [Auth] rawPhone for lookup:", rawPhone);
-                    if (!rawPhone) {
-                        console.warn("⚠️ [Auth] No phone or email found for authUser");
-                        return null;
-                    }
+                    if (!rawPhone && !authUser.email) return null;
 
                     const localPhone = formatKenyanPhone(rawPhone);
                     const intlPhone = `+${standardizeTo254(rawPhone)}`;
-
-                    console.log("🔍 [Auth] Checking formats:", { localPhone, intlPhone });
-
-                    // 1. Try International Doc ID (+254...) - CANONICAL
-                    try {
-                        const intlSnap = await getDoc(doc(db, 'users', intlPhone));
-                        if (intlSnap.exists()) {
-                            console.log("✅ [Auth] Found profile via intl phone:", intlPhone);
-                            return doc(db, 'users', intlPhone);
-                        }
-                    } catch (e) { console.warn("🔍 [Auth] Intl doc check failed:", e.message); }
-
-                    // 2. Try Local Doc ID (07...) - LEGACY FALLBACK
-                    try {
-                        const localSnap = await getDoc(doc(db, 'users', localPhone));
-                        if (localSnap.exists()) {
-                            console.log("✅ [Auth] Found profile via local phone:", localPhone);
-                            return doc(db, 'users', localPhone);
-                        }
-                    } catch (e) { console.warn("🔍 [Auth] Local doc check failed:", e.message); }
-
-                    // 2b. Try Raw International Doc ID (254...) - Common for Agent-registered users
                     const rawIntlPhone = intlPhone.replace('+', '');
-                    try {
-                        const rawSnap = await getDoc(doc(db, 'users', rawIntlPhone));
-                        if (rawSnap.exists()) {
-                            console.log("✅ [Auth] Found profile via raw intl phone:", rawIntlPhone);
-                            return doc(db, 'users', rawIntlPhone);
-                        }
-                    } catch (e) { console.warn("🔍 [Auth] Raw intl doc check failed:", e.message); }
 
-                    // 2c. Try Raw International with Leading Zero (2540...) - Rare edge case
-                    const intlWithZero = intlPhone.replace('+254', '2540');
-                    try {
-                        const zeroSnap = await getDoc(doc(db, 'users', intlWithZero));
-                        if (zeroSnap.exists()) {
-                            console.log("✅ [Auth] Found profile via intl with zero:", intlWithZero);
-                            return doc(db, 'users', intlWithZero);
-                        }
-                    } catch (e) { console.warn("🔍 [Auth] Intl with zero check failed:", e.message); }
+                    // Collect ALL candidate document IDs
+                    const candidates = [...new Set([
+                        intlPhone, 
+                        localPhone, 
+                        rawIntlPhone, 
+                        authUser.uid,
+                        authUser.email
+                    ].filter(Boolean))];
 
-                    // 2d. Try UID direct document (Common for Email/Password or manual admins)
-                    try {
-                        const uidSnap = await getDoc(doc(db, 'users', authUser.uid));
-                        if (uidSnap.exists()) {
-                            console.log("✅ [Auth] Found profile via direct UID doc ID:", authUser.uid);
-                            return doc(db, 'users', authUser.uid);
-                        }
-                    } catch (e) { console.warn("🔍 [Auth] UID doc check failed:", e.message); }
+                    console.log("🔍 [Auth] Candidate IDs:", candidates);
 
-                    // 3. Try UID Fallback Query (Search by field, not ID)
-                    try {
-                        const q = query(collection(db, 'users'), where('uid', '==', authUser.uid));
-                        const qs = await getDocs(q);
-                        if (!qs.empty) {
-                            console.log("✅ [Auth] Found profile via UID field query:", qs.docs[0].id);
-                            return doc(db, 'users', qs.docs[0].id);
-                        }
-                    } catch (e) {
-                        console.error("🔍 [Auth] Profile Fallback Query Error:", e);
+                    // Fetch all candidates and find the one with the "best" role
+                    const snaps = await Promise.all(candidates.map(id => getDoc(doc(db, 'users', id))));
+                    const proSnap = snaps.find(s => s.exists() && ['super_master', 'master_agent', 'agent', 'admin'].includes(s.data()?.role));
+
+                    if (proSnap) {
+                        console.log("💎 [Auth] Found professional profile:", proSnap.id, proSnap.data().role);
+                        return doc(db, 'users', proSnap.id);
                     }
 
-                    // 4. Ultimate Fallback (Default to preferred residency for new users)
-                    // If we have a phone number but no doc exists yet, it's likely a new signup.
-                    // Hazina prefers local format (07...) for user documents.
-                    if (localPhone) {
-                        console.log("🎯 [Auth] New user residency fallback: local phone", localPhone);
-                        return doc(db, 'users', localPhone);
+                    // Fallback to the first existing doc or the preferred intl format
+                    const existingSnap = snaps.find(s => s.exists());
+                    if (existingSnap) {
+                        console.log("👤 [Auth] Found standard profile:", existingSnap.id);
+                        return doc(db, 'users', existingSnap.id);
                     }
 
-                    console.log("🎯 [Auth] Absolute fallback: authUser.uid", authUser.uid);
-                    return doc(db, 'users', authUser.uid);
+                    // Strict new user residency
+                    console.log("🎯 [Auth] No doc found, defaulting to intl ID:", intlPhone);
+                    return doc(db, 'users', intlPhone);
                 } catch (err) {
                     console.error("❌ [Auth] critical error in resolveProfile:", err);
                     return authUser.uid ? doc(db, 'users', authUser.uid) : null; 

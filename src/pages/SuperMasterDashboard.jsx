@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { formatKenyanPhone, stripPlus } from '../utils/phoneUtils';
+import { formatKenyanPhone, stripPlus, standardizeTo254 } from '../utils/phoneUtils';
 import { db } from '../services/firebase';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Shield, Activity, Plus, TrendingUp, Map, Edit2, Trash2 } from 'lucide-react';
@@ -105,10 +105,12 @@ const SuperMasterDashboard = () => {
 
             await setDoc(masterRef, masterData);
 
-            const userRef = doc(db, 'users', formattedPhone);
+            const intlPhone = `+${standardizeTo254(newMaster.phoneNumber)}`;
+            const userRef = doc(db, 'users', intlPhone);
             await setDoc(userRef, {
                 fullName: newMaster.fullName,
                 phoneNumber: formattedPhone,
+                intlPhone: intlPhone,
                 role: 'master_agent',
                 status: 'active',
                 registration_fee_paid: true,
