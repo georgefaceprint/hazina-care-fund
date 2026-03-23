@@ -1234,15 +1234,9 @@ exports.sendOtp = onCall({ cors: true }, async (request) => {
         }
 
         // Generate a random 6-digit code
-        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-        const cleanPhone = formatPhone.replace(/\D/g, '').slice(-9);
-        const isTestNumber = testNumbers.some(tn => {
-            const cleanTn = tn.replace(/\D/g, '').slice(-9);
-            return cleanTn === cleanPhone && cleanPhone.length >= 9;
-        });
-
-        console.log(`[SEND_OTP] isTestNumber: ${isTestNumber}, cleanPhone: ${cleanPhone}`);
-        const code = isTestNumber ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
+        const isTestNum = isTestNumber(formatPhone);
+        console.log(`[SEND_OTP] isTestNumber: ${isTestNum}, phone: ${formatPhone}`);
+        const code = isTestNum ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
 
         // Save to Firestore with 1 hour expiration
         const expiry = new Date();
@@ -1293,16 +1287,10 @@ exports.verifyOtp = onCall({ cors: true }, async (request) => {
         let shouldProduceToken = false;
 
         // --- TESTING BYPASS ---
-        const testNumbers = ['+254755881991', '+254105845108', '0755881991', '0105845108'];
-        const cleanPhone = formatPhone.replace(/\D/g, '').slice(-9);
-        const isTest = testNumbers.some(tn => {
-            const cleanTn = tn.replace(/\D/g, '').slice(-9);
-            return cleanTn === cleanPhone && cleanPhone.length >= 9;
-        });
+        const isTestNum = isTestNumber(formatPhone);
+        console.log(`[VERIFY_OTP] isTestNumber: ${isTestNum}, phone: ${formatPhone}, code: ${validationCode}`);
 
-        console.log(`[VERIFY_OTP] isTest: ${isTest}, cleanPhone: ${cleanPhone}, code: ${validationCode}`);
-
-        if (isTest && String(validationCode) === '123456') {
+        if (isTestNum && String(validationCode) === '123456') {
             console.log("TEST_BYPASS triggered for:", formatPhone);
             const token = await admin.auth().createCustomToken(formatPhone, {
                 phone_number: formatPhone

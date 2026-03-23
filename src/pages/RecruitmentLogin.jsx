@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Shield, Phone, ArrowRight, Loader2, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Shield, Phone, ArrowRight, Loader2, CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { auth, db, functions } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -241,6 +241,20 @@ const RecruitmentLogin = () => {
                             {roleConfig[selectedRole].subtitle}
                         </p>
                     </div>
+
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-sm"
+                            >
+                                <XCircle className="w-5 h-5 flex-shrink-0" />
+                                <span>{error}</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     <AnimatePresence mode='wait'>
                         {!confirmationResult ? (
