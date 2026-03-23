@@ -94,16 +94,7 @@ export const AuthProvider = ({ children }) => {
 
                     console.log("🔍 [Auth] Checking formats:", { localPhone, intlPhone });
 
-                    // 1. Try Local Doc ID (07...)
-                    try {
-                        const localSnap = await getDoc(doc(db, 'users', localPhone));
-                        if (localSnap.exists()) {
-                            console.log("✅ [Auth] Found profile via local phone:", localPhone);
-                            return doc(db, 'users', localPhone);
-                        }
-                    } catch (e) { console.warn("🔍 [Auth] Local doc check failed:", e.message); }
-
-                    // 2. Try International Doc ID (+254...)
+                    // 1. Try International Doc ID (+254...) - CANONICAL
                     try {
                         const intlSnap = await getDoc(doc(db, 'users', intlPhone));
                         if (intlSnap.exists()) {
@@ -111,6 +102,15 @@ export const AuthProvider = ({ children }) => {
                             return doc(db, 'users', intlPhone);
                         }
                     } catch (e) { console.warn("🔍 [Auth] Intl doc check failed:", e.message); }
+
+                    // 2. Try Local Doc ID (07...) - LEGACY FALLBACK
+                    try {
+                        const localSnap = await getDoc(doc(db, 'users', localPhone));
+                        if (localSnap.exists()) {
+                            console.log("✅ [Auth] Found profile via local phone:", localPhone);
+                            return doc(db, 'users', localPhone);
+                        }
+                    } catch (e) { console.warn("🔍 [Auth] Local doc check failed:", e.message); }
 
                     // 2b. Try Raw International Doc ID (254...) - Common for Agent-registered users
                     const rawIntlPhone = intlPhone.replace('+', '');

@@ -1049,7 +1049,7 @@ exports.ussd = onRequest(async (req, res) => {
                             active_tier: targetTier,
                             updatedAt: admin.firestore.FieldValue.serverTimestamp()
                         });
-
+                        
                         // Calculate new total burn
                         const totalBurn = await calculateUserBurn(userId, { ...profile, active_tier: targetTier });
                         const activeSO = await getActiveStandingOrder(userId);
@@ -1571,15 +1571,16 @@ exports.loginWithPasscode = onCall({ cors: true }, async (request) => {
         const localPhone = formatToLocal(phoneNumber);
         const intlPhone = `+${formatPhone}`;
         
-        // Robust lookup
-        let userSnap = await db.collection('users').doc(formatPhone).get();
+        // Robust lookup: Standardize on +254 as primary key for all users
+        let userSnap = await db.collection('users').doc(intlPhone).get();
+        if (!userSnap.exists) {
+            userSnap = await db.collection('users').doc(formatPhone).get();
+        }
         if (!userSnap.exists) {
             userSnap = await db.collection('users').doc(localPhone).get();
         }
         if (!userSnap.exists) {
-            userSnap = await db.collection('users').doc(intlPhone).get();
-        }
-        if (!userSnap.exists) {
+            // Field search fallback (if phone is stored in field but doc ID is different/UID)
             const snap = await db.collection('users').where('phoneNumber', 'in', [formatPhone, localPhone, intlPhone]).limit(1).get();
             if (!snap.empty) userSnap = snap.docs[0];
         }
@@ -1661,12 +1662,12 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
         
         // If not found and looks like a phone, try formatted variants
         if (!userDoc.exists && isLikelyPhone) {
-            const intlCode = agentCode.startsWith('+') ? agentCode : formatTo254(agentCode);
+            const intlCode = agentCode.startsWith('+') ? agentCode : `+${formatTo254(agentCode)}`;
             const localCode = formatToLocal(agentCode);
             if (agentCode !== intlCode) {
                 userDoc = await db.collection("users").doc(intlCode).get();
             }
-            if (!userDoc.exists && agentCode !== localCode) {
+            if (!userDoc?.exists && agentCode !== localCode) {
                 userDoc = await db.collection("users").doc(localCode).get();
             }
         }
@@ -1698,11 +1699,25 @@ exports.onUserCreated = onDocumentWritten("users/{userId}", async (event) => {
             
             console.log(`[onUserCreated] Distributing ${amount} to ${roleLabel}: ${targetAgentId}`);
             
-            let targetUserDoc = await db.collection("users").doc(targetAgentId).get();
+            // Normalize ID for lookup: Try intl format first
+            const intlId = targetAgentId.startsWith('+') ? targetAgentId : `+${formatTo254(targetAgentId)}`;
+            let targetUserDoc = await db.collection("users").doc(intlId).get();
+            
+            if (!targetUserDoc.exists) {
+                // Try original ID
+                targetUserDoc = await db.collection("users").doc(targetAgentId).get();
+            }
+
             if (!targetUserDoc.exists) {
                 // Try search by agent_code if doc ID fails
                 const snap = await db.collection("users").where("agent_code", "==", targetAgentId).limit(1).get();
                 if (!snap.empty) targetUserDoc = snap.docs[0];
+            }
+
+            if (!targetUserDoc.exists) {
+                 // Try search by phoneNumber field (fallback for fragmented profiles)
+                 const snap = await db.collection("users").where("phoneNumber", "in", [targetAgentId, formatTo254(targetAgentId), formatToLocal(targetAgentId)]).limit(1).get();
+                 if (!snap.empty) targetUserDoc = snap.docs[0];
             }
 
             const updateData = {
@@ -1951,23 +1966,34 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
         
         const agentCode = (agentData.agent_code || agentData.phoneNumber || agentDoc.id).toString().toUpperCase().replace('+', '');
 
-        const isTestUserEntry = isTestNumber(formatPhone);
+        const intlPhone = `+${formatPhone}`;
+        const isTestUserEntry = isTestNumber(intlPhone);
         
-        const userExists = await db.collection("users").doc(formatPhone).get();
-        if (userExists.exists && !isTestUserEntry) {
+        let userExists = await db.collection("users").doc(intlPhone).get();
+        let userExistsDoc = await db.collection("users").doc(intlPhone).get();
+        if (!userExistsDoc.exists) {
+             // Fallback to legacy formats for registration block
+             userExistsDoc = await db.collection("users").doc(formatPhone).get();
+             if (!userExistsDoc.exists) {
+                 userExistsDoc = await db.collection("users").doc(formatToLocal(phoneNumber)).get();
+             }
+        }
+
+        if (userExistsDoc.exists && !isTestUserEntry) {
             throw new HttpsError('already-exists', 'A user with this phone number is already registered.');
         }
 
-        // 3. Register User
+        // 3. Register User - Standardize on +254 doc ID
         const TIER_COSTS = { bronze: 50, silver: 147, gold: 229 };
         const registrationFee = 100;
         const totalAmount = registrationFee + TIER_COSTS[tier.toLowerCase()];
 
-        const newUserRef = db.collection("users").doc(formatPhone);
+        const newUserRef = db.collection("users").doc(intlPhone);
         // Create user document with uppercase normalization
         await newUserRef.set({
             uid: null, // Will be set if user signs up via Firebase Auth later
-            phoneNumber: formatPhone,
+            phoneNumber: intlPhone, // Standardized to intl
+            localPhoneNumber: formatToLocal(phoneNumber),
             firstName: firstName.toString().toUpperCase(),
             surname: surname.toString().toUpperCase(),
             fullName: `${firstName} ${surname}`.trim().toUpperCase(),
@@ -1978,10 +2004,12 @@ exports.registerUserByAgent = onCall({ cors: true }, async (request) => {
             recruited_by: agentCode,
             id_photo_url: photoUrl || null,
             photoURL: photoUrl || null, // Standardized portrait field
-            registration_fee_paid: isTestNumber ? true : false,
-            balance: 0,
+            registration_fee_paid: isTestUserEntry ? true : false, // Use isTestUserEntry for payment status
+            masterAgentId: agentData.masterAgentId || null,
+            superMasterId: agentData.superMasterId || null,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            profile_completed: false // User needs to complete profile after payment
         });
 
         // 4. Send SMS via Africa's Talking
